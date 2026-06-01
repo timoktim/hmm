@@ -1,6 +1,7 @@
 from src.ui.readiness_policy import (
     CANONICAL_EVIDENCE_LEVELS,
     CANONICAL_READINESS_STATUSES,
+    evaluate_hmm_churn_dwell_display,
     evaluate_hmm_state_display,
     evaluate_hmm_strategy_display,
     evaluate_hsmm_lifecycle_field_display,
@@ -83,6 +84,39 @@ def test_strategy_without_causal_cache_is_research_only_or_hidden():
     assert decision.evidence_level == "exploratory"
     assert decision.readiness_status == "research_only"
     assert "missing_causal_cache_id" in decision.warnings
+    assert_canonical(decision)
+
+
+def test_hmm_churn_dwell_excessive_churn_hides_strategy_outputs():
+    decision = evaluate_hmm_churn_dwell_display(
+        churn_bucket="excessive",
+        confidence_integration_status="available_confidence",
+        alignment_integration_status="available_alignment",
+        causal_cache_available=True,
+    )
+
+    assert decision.action == "hide_strategy"
+    assert decision.display is False
+    assert decision.evidence_level == "exploratory"
+    assert decision.readiness_status == "research_only"
+    assert decision.metadata["display_action"] == "hide_strategy"
+    assert "strategy_not_validated_due_to_excessive_churn" in decision.warnings
+    assert_canonical(decision)
+
+
+def test_hmm_churn_dwell_missing_confidence_downgrades_to_research_only():
+    decision = evaluate_hmm_churn_dwell_display(
+        churn_bucket="low",
+        confidence_integration_status="unavailable",
+        alignment_integration_status="unavailable",
+        causal_cache_available=True,
+    )
+
+    assert decision.action == "research_only"
+    assert decision.display is True
+    assert decision.readiness_status == "research_only"
+    assert decision.metadata["display_action"] == "research_only"
+    assert "hmm_confidence_low_or_unavailable" in decision.warnings
     assert_canonical(decision)
 
 

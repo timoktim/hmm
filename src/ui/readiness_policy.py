@@ -24,6 +24,7 @@ CANONICAL_EVIDENCE_LEVELS = frozenset(
 CANONICAL_READINESS_STATUSES = frozenset(
     {"blocked", "research_only", "internal_only", "partial", "validated", "decision_ready"}
 )
+CANONICAL_CHURN_BUCKETS = frozenset({"low", "medium", "high", "excessive", "unknown"})
 INVALID_PROBABILITY_STATUSES = frozenset(
     {"invalid", "missing", "insufficient_sample", "insufficient", "unknown"}
 )
@@ -389,6 +390,111 @@ def evaluate_hmm_strategy_display(
         semantic_role="strategy_evaluation",
         reason="Strategy evaluation has causal cache metadata.",
         metadata={"policy_source": policy.get("policy_source")},
+    )
+
+
+def evaluate_hmm_churn_dwell_display(
+    *,
+    churn_bucket: str | None,
+    confidence_integration_status: str | None = None,
+    alignment_integration_status: str | None = None,
+    causal_cache_available: bool | None = None,
+    policy: Mapping[str, Any] | None = None,
+) -> ReadinessDecision:
+    """Gate HMM churn/dwell diagnostics before UI or strategy promotion."""
+
+    policy = policy or get_default_stage00_policy()
+    bucket = _norm(churn_bucket, "unknown")
+    if bucket not in CANONICAL_CHURN_BUCKETS:
+        bucket = "unknown"
+
+    confidence_status = _norm(confidence_integration_status, "unavailable")
+    alignment_status = _norm(alignment_integration_status, "unavailable")
+    warnings: list[str] = []
+    if confidence_status in {"", "unavailable", "missing", "missing_for_run", "low", "low_confidence"}:
+        warnings.append("hmm_confidence_low_or_unavailable")
+    if alignment_status in {"unstable", "fail", "failed", "misaligned"}:
+        warnings.append("hmm_label_alignment_unstable")
+
+    metadata = {
+        "churn_bucket": bucket,
+        "confidence_integration_status": confidence_status or "unavailable",
+        "alignment_integration_status": alignment_status or "unavailable",
+        "causal_cache_available": causal_cache_available,
+        "policy_source": policy.get("policy_source"),
+    }
+
+    if bucket == "unknown":
+        return _decision(
+            "blocked",
+            False,
+            evidence_level="exploratory",
+            readiness_status="blocked",
+            semantic_role="hmm_churn_dwell_readiness",
+            reason="missing_or_insufficient_hmm_state_sequence",
+            warnings=tuple([*warnings, "missing_or_insufficient_hmm_state_sequence"]),
+            metadata={**metadata, "display_action": "blocked"},
+        )
+
+    if bucket == "excessive":
+        return _decision(
+            "hide_strategy",
+            False,
+            evidence_level="exploratory",
+            readiness_status="research_only",
+            semantic_role="hmm_churn_dwell_readiness",
+            reason="excessive_hmm_state_churn",
+            warnings=tuple([*warnings, "strategy_not_validated_due_to_excessive_churn"]),
+            metadata={**metadata, "display_action": "hide_strategy"},
+        )
+
+    if causal_cache_available is False:
+        return _decision(
+            "research_only",
+            False,
+            evidence_level="exploratory",
+            readiness_status="research_only",
+            state_source=UNKNOWN_SOURCE,
+            semantic_role="hmm_churn_dwell_readiness",
+            reason="Strategy evaluation lacks causal walk-forward cache metadata.",
+            warnings=tuple([*warnings, "missing_causal_cache_id"]),
+            metadata={**metadata, "display_action": "research_only"},
+        )
+
+    if confidence_status in {"", "unavailable", "missing", "missing_for_run", "low", "low_confidence"}:
+        return _decision(
+            "research_only",
+            True,
+            evidence_level="exploratory",
+            readiness_status="research_only",
+            semantic_role="hmm_churn_dwell_readiness",
+            reason="hmm_confidence_low_or_unavailable",
+            warnings=tuple(warnings),
+            metadata={**metadata, "display_action": "research_only"},
+        )
+
+    if bucket == "high" or warnings:
+        return _decision(
+            "warn",
+            True,
+            evidence_level="internal_diagnostic",
+            readiness_status="partial",
+            semantic_role="hmm_churn_dwell_readiness",
+            reason="high_hmm_state_churn" if bucket == "high" else "hmm_churn_dwell_warning",
+            warnings=tuple(warnings or ["high_hmm_state_churn"]),
+            metadata={**metadata, "display_action": "warn"},
+        )
+
+    display_action = "normal" if bucket == "low" else "warn"
+    return _decision(
+        "allow" if display_action == "normal" else "warn",
+        True,
+        evidence_level="internal_diagnostic",
+        readiness_status="partial" if display_action == "warn" else "internal_only",
+        semantic_role="hmm_churn_dwell_readiness",
+        reason="hmm_churn_dwell_within_default_thresholds",
+        warnings=tuple(warnings),
+        metadata={**metadata, "display_action": display_action},
     )
 
 
