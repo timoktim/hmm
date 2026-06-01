@@ -1,33 +1,33 @@
 # Stage 01 WP-C HMM Churn/Dwell Report
 
 index_id: STAGE01-WP-C-v1
-status: partial
-run_id: latest
-state rows found: no
-churn/dwell rows generated: 0
-row coverage: 0 rows, 0 sectors
-date coverage: n/a .. n/a
+status: pass
+run_id: bea7ff20106a
+state rows found: yes
+churn/dwell rows generated: 42210
+row coverage: 584981 rows, 464 sectors
+date coverage: 2020-02-07 .. 2026-05-28
 
 ## Metrics
 
-- transition_count: 0
-- transition_rate_1d: None
-- mean_dwell_days: None
-- median_dwell_days: None
-- p10_dwell_days: None
-- p90_dwell_days: None
-- single_day_episode_share: None
-- episode_count: 0
-- fragmentation_score: None
-- churn_bucket: unknown
+- transition_count: 41746
+- transition_rate_1d: 0.07142
+- mean_dwell_days: 13.858825
+- median_dwell_days: 9.0
+- p10_dwell_days: 1.0
+- p90_dwell_days: 32.0
+- single_day_episode_share: 0.107581
+- episode_count: 42210
+- fragmentation_score: 0.20961
+- churn_bucket: low
 
 ## Readiness
 
-- dwell_readiness_status: blocked
-- display_action: blocked
+- dwell_readiness_status: research_only
+- display_action: research_only
 - confidence_integration_status: unavailable
-- alignment_integration_status: unavailable
-- causal_cache_available: None
+- alignment_integration_status: available_table_without_run_id
+- causal_cache_available: False
 
 ## Threshold Defaults
 
@@ -45,6 +45,5 @@ date coverage: n/a .. n/a
 - implemented WP-B label alignment: no
 
 ## Warnings
-- database file not found: data/db/a_share_hmm.duckdb
 - hmm_confidence_low_or_unavailable
-- missing_or_insufficient_hmm_state_sequence
+- missing_causal_cache_id
