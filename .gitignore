@@ -25,5 +25,8 @@ reports/**
 !reports/baseline_freeze/stage00_v0_baseline_20260601/*.json
 !reports/baseline_freeze/stage00_v0_baseline_20260601/*.jsonl
 !reports/baseline_freeze/stage00_v0_baseline_20260601/*.csv
+!reports/ui_readiness/
+!reports/ui_readiness/*.md
+!reports/ui_readiness/*.json
 
 *.zip

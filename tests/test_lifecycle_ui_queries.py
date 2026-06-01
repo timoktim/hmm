@@ -46,6 +46,8 @@ def test_lifecycle_latest_query_reads_only_latest_trade_date():
     assert "trade_date = (" in sql
     assert "MAX(trade_date)" in sql
     assert "ORDER BY trade_date" not in sql
+    assert "raw_p_exit" not in sql
+    assert "calibrated_p_exit" not in sql
 
 
 def test_sector_trajectory_query_is_sector_scoped_and_limited():

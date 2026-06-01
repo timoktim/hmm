@@ -5,7 +5,34 @@ import streamlit as st
 
 from src.data_pipeline.storage import DuckDBStorage
 from src.ui.components.data_status_bar import render_data_status_bar
+from src.ui.evidence_badges import readiness_badge
+from src.ui.readiness_policy import evaluate_hsmm_lifecycle_field_display, is_numeric_p_exit_field
 
+
+LIFECYCLE_UI_COLUMNS = """
+        run_id, profile_mode, state_date_policy, trade_date, sector_code, sector_name,
+        state_label, display_episode_id, display_state_age_days, display_age_bucket,
+        display_episode_start_date, state_phase, historical_median_duration_days,
+        historical_p10_duration_days, historical_p25_duration_days,
+        historical_p33_duration_days, historical_p66_duration_days,
+        historical_p75_duration_days, historical_p90_duration_days,
+        duration_percentile_display, exit_tendency_1d, exit_tendency_3d,
+        exit_tendency_5d, exit_tendency_10d, exit_tendency_20d,
+        exit_tendency_basis_1d, exit_tendency_basis_3d, exit_tendency_basis_5d,
+        exit_tendency_basis_10d, exit_tendency_basis_20d,
+        probability_display_policy, probability_status_1d, probability_status_3d,
+        probability_status_5d, probability_status_10d, probability_status_20d,
+        next_state_tendency, next_state_tendency_label,
+        next_state_tendency_label_status, next_state_tendency_label_sample_count,
+        next_state_tendency_label_top_share, next_state_tendency_phase_aware,
+        next_state_tendency_phase_status, next_state_tendency_phase_sample_count,
+        next_state_tendency_phase_top_share, next_state_tendency_age_bucket,
+        next_state_tendency_age_status, next_state_tendency_age_sample_count,
+        next_state_tendency_age_top_share, profile_cutoff_date,
+        profile_sample_window_start, profile_sample_window_end,
+        source_checkpoint_id, source_run_id, source_probability_run_id,
+        state_source, created_at
+"""
 
 STATE_LABELS = {
     "Trend": "趋势",
@@ -22,9 +49,9 @@ PHASE_LABELS = {
     "unknown": "未知",
 }
 TENDENCY_LABELS = {
-    "low": "低",
-    "medium": "中",
-    "high": "高",
+    "low": "低倾向",
+    "medium": "中倾向",
+    "high": "高倾向",
     "unavailable": "样本不足",
 }
 
@@ -85,8 +112,9 @@ def _load_lifecycle_latest_daily(
     if cutoff is None or pd.isna(cutoff):
         return pd.DataFrame()
     df = storage.read_df(
-        """
-        SELECT *
+        f"""
+        SELECT
+        {LIFECYCLE_UI_COLUMNS}
         FROM hsmm_lifecycle_ui_daily
         WHERE run_id = ?
           AND profile_mode = ?
@@ -227,8 +255,27 @@ def _display_tendency(value: object) -> str:
     return TENDENCY_LABELS.get(str(value), str(value))
 
 
+def _attach_lifecycle_readiness(df: pd.DataFrame) -> pd.DataFrame:
+    if df.empty:
+        return df
+    out = df.copy()
+    decision = evaluate_hsmm_lifecycle_field_display("state_age")
+    badge = readiness_badge(decision)
+    out["evidence_level"] = decision.evidence_level
+    out["readiness_status"] = decision.readiness_status
+    out["readiness_badge"] = badge["label"]
+    if "state_source" not in out.columns:
+        out["state_source"] = "unknown_due_to_missing_metadata"
+    return out
+
+
 def _display_frame(df: pd.DataFrame) -> pd.DataFrame:
     out = df.copy()
+    for col in list(out.columns):
+        if is_numeric_p_exit_field(col):
+            decision = evaluate_hsmm_lifecycle_field_display(col)
+            if not decision.display:
+                out.drop(columns=[col], inplace=True)
     for col in ["state_label", "next_state_tendency_phase_aware", "next_state_tendency_age_bucket"]:
         if col in out.columns:
             out[col] = out[col].map(_display_state)
@@ -242,7 +289,10 @@ def _display_frame(df: pd.DataFrame) -> pd.DataFrame:
 
 def render_lifecycle_page(storage: DuckDBStorage, universe_id: str | None = None) -> None:
     st.title("状态生命周期")
-    st.caption("内部研究页：用于观察板块展示状态的持续时间、阶段位置和退出倾向。输出不是价格方向判断，也不是操作建议。")
+    st.caption(
+        "内部诊断页：用于观察板块展示状态的持续时间、阶段位置和低/中/高退出倾向。"
+        "输出不是排序、交易建议或价格方向判断。"
+    )
 
     run_id_default = _latest_lifecycle_run(storage)
     if not run_id_default:
@@ -283,7 +333,7 @@ def render_lifecycle_page(storage: DuckDBStorage, universe_id: str | None = None
 
     metadata = _load_profile_metadata(storage, run_id, profile_mode, state_date_policy)
     latest_date = ui["trade_date"].max()
-    latest = ui.copy()
+    latest = _attach_lifecycle_readiness(ui)
     if universe_id:
         items = storage.list_universe_items(universe_id)
         allowed = set(items["item_id"].astype(str)) if not items.empty else set()
@@ -302,7 +352,11 @@ def render_lifecycle_page(storage: DuckDBStorage, universe_id: str | None = None
             f"已完成展示周期数：{row.get('completed_episode_count')}"
         )
 
-    st.info("退出倾向为低 / 中 / 高的相对分组，不是百分比概率。历史下一状态倾向来自已实现的展示状态切换。Stress 表示当前压力状态，不代表未来一定走弱。")
+    st.info(
+        "退出倾向为低 / 中 / 高的内部诊断分组，不是百分比概率。"
+        "历史下一状态倾向来自已实现的展示状态切换 profile，不是模型预测概率。"
+        "Stress 表示当前压力状态，不代表未来一定走弱。"
+    )
 
     st.subheader("状态分布")
     if not latest.empty:
@@ -348,6 +402,7 @@ def render_lifecycle_page(storage: DuckDBStorage, universe_id: str | None = None
         if col in filtered.columns:
             filtered[col] = filtered[col].map(_format_share)
     display_cols = [
+        "run_id",
         "sector_code",
         "sector_name",
         "state_label",
@@ -362,6 +417,12 @@ def render_lifecycle_page(storage: DuckDBStorage, universe_id: str | None = None
         "next_state_tendency_phase_top_share",
         "next_state_tendency_age_bucket",
         "profile_mode",
+        "profile_cutoff_date",
+        "state_date_policy",
+        "state_source",
+        "evidence_level",
+        "readiness_status",
+        "readiness_badge",
     ]
     display = _display_frame(filtered[[c for c in display_cols if c in filtered.columns]])
     display.rename(
@@ -377,9 +438,16 @@ def render_lifecycle_page(storage: DuckDBStorage, universe_id: str | None = None
             "next_state_tendency_phase_aware": "按阶段的下一状态倾向",
             "next_state_tendency_phase_status": "阶段样本状态",
             "next_state_tendency_phase_sample_count": "阶段样本数",
-            "next_state_tendency_phase_top_share": "阶段历史占比",
+            "next_state_tendency_phase_top_share": "阶段历史样本占比",
             "next_state_tendency_age_bucket": "按年龄段的下一状态倾向",
+            "run_id": "Run ID",
             "profile_mode": "Profile 口径",
+            "profile_cutoff_date": "Profile 截止日",
+            "state_date_policy": "状态日期口径",
+            "state_source": "状态来源",
+            "evidence_level": "证据层级",
+            "readiness_status": "Readiness",
+            "readiness_badge": "Readiness badge",
         },
         inplace=True,
     )
@@ -502,7 +570,7 @@ def render_lifecycle_page(storage: DuckDBStorage, universe_id: str | None = None
 - **展示状态**：Trend / Neutral / Stress / Repair 的用户可见标签。
 - **已持续交易日**：当前展示状态连续存在的交易日数量，跨 checkpoint 不重置。
 - **阶段**：根据历史已完成展示周期长度划分为早段、中段、晚段。
-- **退出倾向**：相对分组，只表达当前展示状态在指定窗口内结束的倾向强弱。
-- **历史下一状态倾向**：基于历史上已实现的下一展示状态统计；样本不足时显示“样本不足”，状态分散时显示“混合”。
+- **退出倾向**：低 / 中 / 高相对分组，只表达当前展示状态在指定窗口内结束的内部诊断倾向强弱。
+- **历史下一状态倾向**：基于历史上已实现的下一展示状态 profile；样本不足时显示“样本不足”，状态分散时显示“混合”，不是模型预测概率。
             """.strip()
         )

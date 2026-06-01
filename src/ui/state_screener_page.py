@@ -8,6 +8,7 @@ from src.analysis.sector_cycles import build_state_segments, load_sector_states_
 from src.data_pipeline.storage import DuckDBStorage
 from src.data_pipeline.universe import universe_sector_ids
 from src.ui.components.data_status_bar import render_data_status_bar
+from src.ui.causal_boundary import classify_state_source
 from src.ui.formatters import format_probability_columns
 from src.ui.help_texts import display_state_label, rename_columns_for_display
 from src.ui.run_context import render_run_scope_status
@@ -79,6 +80,7 @@ def render_state_screener(storage: DuckDBStorage, universe_id: str | None = None
     cache_key = None
     if source == "in_sample_display":
         st.warning("样本内状态适合观察模型如何划分状态，不等同于历史可执行依据。")
+        st.caption("state_source: in_sample_explanation；readiness: research_only。")
     else:
         st.info("因果 walk-forward 状态更适合用于回测和有效性判断。")
         caches = walk_forward_cache_options_for_scope(storage, active_universe)
@@ -98,6 +100,7 @@ def render_state_screener(storage: DuckDBStorage, universe_id: str | None = None
             default_cache_index = int(pd.to_numeric(caches["cached_sectors"], errors="coerce").fillna(0).idxmax())
         selected_cache = st.selectbox("walk-forward 缓存", labels, index=default_cache_index)
         cache_key = selected_cache.split(" | ")[0]
+        st.caption(f"state_source: {classify_state_source({'causal_cache_id': cache_key})}；cache: {cache_key}")
 
     st.subheader("筛选条件")
     template_name = st.selectbox("筛选模板", list(TEMPLATES.keys()), help="预设常见状态切换场景，可切到自定义后手动调整。", key="state_screener_template")
@@ -122,8 +125,8 @@ def render_state_screener(storage: DuckDBStorage, universe_id: str | None = None
         key=f"state_screener_to_{template_name}",
     )
     c5, c6, c7 = st.columns(3)
-    prob_trend_min = c5.slider("趋势上行概率下限", 0.0, 1.0, float(template.get("prob_trend_up_min", 0.55)), 0.05)
-    prob_risk_max = c6.slider("风险回避概率上限", 0.0, 1.0, float(template.get("prob_risk_off_max", 0.30)), 0.05)
+    prob_trend_min = c5.slider("趋势状态置信度下限", 0.0, 1.0, float(template.get("prob_trend_up_min", 0.55)), 0.05)
+    prob_risk_max = c6.slider("风险回避状态置信度上限", 0.0, 1.0, float(template.get("prob_risk_off_max", 0.30)), 0.05)
     only_current = c7.checkbox("只看当前仍处于目标状态", value=True)
 
     states = load_sector_states_for_analysis(storage, run_id, universe_id=active_universe, source=source, cache_key=cache_key)
@@ -192,6 +195,10 @@ def render_state_screener(storage: DuckDBStorage, universe_id: str | None = None
     if result.empty:
         st.info("没有符合条件的板块。可以放宽概率阈值，或关闭“只看当前仍处于目标状态”查看历史切换。")
         return
+    result = result.copy()
+    result["state_source"] = "causal_walk_forward" if source == "walk_forward" else "in_sample_explanation"
+    result["evidence_level"] = "internal_diagnostic" if source == "walk_forward" else "exploratory"
+    result["readiness_status"] = "partial" if source == "walk_forward" else "research_only"
     display = format_probability_columns(result, ["prob_trend_up", "prob_neutral", "prob_risk_off"])
     preview_names = display["sector_name"].fillna(display["sector_id"]).astype(str).head(60).tolist()
     st.caption(f"命中板块预览（共 {len(display)} 个）：{'、'.join(preview_names)}")
