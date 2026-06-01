@@ -28,6 +28,12 @@ reports/**
 !reports/ui_readiness/
 !reports/ui_readiness/*.md
 !reports/ui_readiness/*.json
+!reports/hmm_confidence/
+!reports/hmm_confidence/*.md
+!reports/hmm_confidence/*.json
+!reports/hmm_label_alignment/
+!reports/hmm_label_alignment/*.md
+!reports/hmm_label_alignment/*.json
 !reports/hmm_churn_dwell/
 !reports/hmm_churn_dwell/*.md
 !reports/hmm_churn_dwell/*.json
