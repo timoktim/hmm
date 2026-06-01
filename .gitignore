@@ -19,6 +19,12 @@ reports/**
 !reports/evidence_registry/
 !reports/evidence_registry/*.md
 !reports/evidence_registry/*.json
+!reports/baseline_freeze/
+!reports/baseline_freeze/stage00_v0_baseline_20260601/
+!reports/baseline_freeze/stage00_v0_baseline_20260601/*.md
+!reports/baseline_freeze/stage00_v0_baseline_20260601/*.json
+!reports/baseline_freeze/stage00_v0_baseline_20260601/*.jsonl
+!reports/baseline_freeze/stage00_v0_baseline_20260601/*.csv
 !reports/ui_readiness/
 !reports/ui_readiness/*.md
 !reports/ui_readiness/*.json
