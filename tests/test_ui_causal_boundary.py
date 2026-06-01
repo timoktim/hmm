@@ -4,6 +4,12 @@ from src.ui.causal_boundary import (
     classify_state_source,
     require_causal_for_strategy,
 )
+from src.ui.readiness_policy import CANONICAL_EVIDENCE_LEVELS, CANONICAL_READINESS_STATUSES
+
+
+def assert_canonical(decision):
+    assert decision.evidence_level in CANONICAL_EVIDENCE_LEVELS
+    assert decision.readiness_status in CANONICAL_READINESS_STATUSES
 
 
 def test_classify_state_source_uses_explicit_metadata_and_cache_hints():
@@ -102,4 +108,7 @@ def test_require_causal_for_strategy_allows_cached_record():
     decision = require_causal_for_strategy({"causal_cache_id": "cache-1"})
 
     assert decision.action == "allow"
+    assert decision.evidence_level == "validated_signal"
+    assert decision.readiness_status == "validated"
     assert decision.state_source == "causal_walk_forward"
+    assert_canonical(decision)

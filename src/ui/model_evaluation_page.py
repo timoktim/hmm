@@ -95,7 +95,7 @@ def render_model_evaluation(storage: DuckDBStorage, universe_id: str | None = No
     strategy_decision = require_causal_for_strategy(
         {
             "causal_cache_id": strategy_cache_id,
-            "evidence_level": "causal_walk_forward" if strategy_cache_id else "in_sample_explanation",
+            "evidence_level": "validated_signal" if strategy_cache_id else "exploratory",
             "readiness_status": "validated" if strategy_cache_id else "research_only",
         }
     )

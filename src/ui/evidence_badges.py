@@ -10,10 +10,10 @@ from src.ui.readiness_policy import ReadinessDecision
 BADGE_LABELS = {
     "decision_ready": "Decision ready",
     "validated": "Validated",
+    "partial": "Partial",
     "research_only": "Research only",
-    "internal_diagnostic": "Internal diagnostic",
-    "unknown_due_to_missing_metadata": "Unknown metadata",
-    "hidden": "Hidden",
+    "internal_only": "Internal only",
+    "blocked": "Blocked",
 }
 
 
@@ -25,7 +25,7 @@ def readiness_badge(decision_or_status: ReadinessDecision | str) -> dict[str, st
     )
     label = BADGE_LABELS.get(status, status.replace("_", " ").title())
     tone = "success" if status in {"decision_ready", "validated"} else "warning"
-    if status in {"hidden", "blocked_mixed_state_source", "blocked_misleading_probability_label"}:
+    if status == "blocked":
         tone = "danger"
     return {"label": label, "status": status, "tone": tone}
 

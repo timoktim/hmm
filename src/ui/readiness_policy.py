@@ -18,6 +18,12 @@ from typing import Any, Iterable, Mapping, MutableMapping, Sequence
 NUMERIC_P_EXIT_FIELDS = frozenset({"raw_p_exit", "calibrated_p_exit", "p_exit"})
 STATE_AGE_FIELDS = frozenset({"state_age", "state_age_days", "age", "age_days"})
 STATE_PHASE_FIELDS = frozenset({"state_phase", "phase", "lifecycle_phase"})
+CANONICAL_EVIDENCE_LEVELS = frozenset(
+    {"exploratory", "internal_diagnostic", "validated_signal", "decision_support"}
+)
+CANONICAL_READINESS_STATUSES = frozenset(
+    {"blocked", "research_only", "internal_only", "partial", "validated", "decision_ready"}
+)
 INVALID_PROBABILITY_STATUSES = frozenset(
     {"invalid", "missing", "insufficient_sample", "insufficient", "unknown"}
 )
@@ -56,6 +62,12 @@ class ReadinessDecision:
     warnings: tuple[str, ...] = ()
     metadata: Mapping[str, Any] = field(default_factory=dict)
 
+    def __post_init__(self) -> None:
+        if self.evidence_level not in CANONICAL_EVIDENCE_LEVELS:
+            raise ValueError(f"non-canonical evidence_level: {self.evidence_level}")
+        if self.readiness_status not in CANONICAL_READINESS_STATUSES:
+            raise ValueError(f"non-canonical readiness_status: {self.readiness_status}")
+
     @property
     def allowed(self) -> bool:
         return self.action == "allow" and self.display
@@ -80,6 +92,16 @@ def _truthy(value: Any) -> bool:
     if isinstance(value, str):
         return bool(value.strip())
     return bool(value)
+
+
+def _canonical_evidence_override(value: str | None) -> str | None:
+    normalized = _norm(value)
+    return normalized if normalized in CANONICAL_EVIDENCE_LEVELS else None
+
+
+def _canonical_readiness_override(value: str | None) -> str | None:
+    normalized = _norm(value)
+    return normalized if normalized in CANONICAL_READINESS_STATUSES else None
 
 
 def is_numeric_p_exit_field(field_name: str) -> bool:
@@ -245,6 +267,7 @@ def evaluate_hmm_state_display(
     ctx = _norm(context)
     role = _norm(semantic_role)
     label = display_label or ""
+    evidence_level = _canonical_evidence_override(evidence_level)
 
     if "posterior" in field or "prob" in field:
         findings = find_misleading_probability_claims([label])
@@ -253,21 +276,21 @@ def evaluate_hmm_state_display(
                 "hide",
                 False,
                 evidence_level=evidence_level or "internal_diagnostic",
-                readiness_status="blocked_misleading_probability_label",
+                readiness_status="blocked",
                 state_source=source,
                 semantic_role=role or "state_confidence",
-                reason="HMM posterior may only be displayed as state confidence.",
-                warnings=("hmm_posterior_not_return_probability",),
-                metadata={"findings": findings},
+                reason="blocked_misleading_probability_label",
+                warnings=("hmm_posterior_not_return_probability", "blocked_misleading_probability_label"),
+                metadata={"findings": findings, "policy_source": policy.get("policy_source")},
             )
         return _decision(
             "allow",
             True,
             evidence_level=evidence_level or "internal_diagnostic",
-            readiness_status="allowed_state_confidence_only",
+            readiness_status="internal_only",
             state_source=source,
             semantic_role="state_confidence",
-            reason="HMM posterior is displayed only as state confidence.",
+            reason="allowed_state_confidence_only",
             metadata={"policy_source": policy.get("policy_source")},
         )
 
@@ -275,8 +298,8 @@ def evaluate_hmm_state_display(
         return _decision(
             "allow",
             True,
-            evidence_level=evidence_level or "causal_walk_forward",
-            readiness_status="decision_ready",
+            evidence_level=evidence_level or "internal_diagnostic",
+            readiness_status="partial",
             state_source="causal_walk_forward",
             semantic_role="state_label",
             reason="State source is causal walk-forward.",
@@ -287,7 +310,7 @@ def evaluate_hmm_state_display(
         return _decision(
             "research_only",
             True,
-            evidence_level=evidence_level or "in_sample_explanation",
+            evidence_level=evidence_level or "exploratory",
             readiness_status="research_only",
             state_source="in_sample_explanation",
             semantic_role="state_label",
@@ -299,12 +322,12 @@ def evaluate_hmm_state_display(
     return _decision(
         "warn",
         True,
-        evidence_level=evidence_level or "unknown",
-        readiness_status=UNKNOWN_SOURCE,
+        evidence_level=evidence_level or "exploratory",
+        readiness_status="blocked",
         state_source=UNKNOWN_SOURCE,
         semantic_role="state_label",
-        reason="Missing state_source metadata; show conservative warning.",
-        warnings=("state_source_missing",),
+        reason=UNKNOWN_SOURCE,
+        warnings=("state_source_missing", UNKNOWN_SOURCE),
         metadata={"policy_source": policy.get("policy_source")},
     )
 
@@ -328,12 +351,14 @@ def evaluate_hmm_strategy_display(
         "cache_metadata": cache_metadata or {},
     }
     has_cache = _contains_causal_cache(metadata)
+    evidence_level = _canonical_evidence_override(evidence_level)
+    readiness_status = _canonical_readiness_override(readiness_status)
 
     if policy.get("require_causal_cache_for_strategy", True) and not has_cache:
         return _decision(
             "research_only",
             False,
-            evidence_level=evidence_level or "in_sample_explanation",
+            evidence_level=evidence_level or "exploratory",
             readiness_status="research_only",
             state_source=UNKNOWN_SOURCE,
             semantic_role="strategy_evaluation",
@@ -346,19 +371,19 @@ def evaluate_hmm_strategy_display(
         return _decision(
             "research_only",
             True,
-            evidence_level=evidence_level or "causal_walk_forward",
-            readiness_status="research_signal",
+            evidence_level=evidence_level or "validated_signal",
+            readiness_status="partial",
             state_source="causal_walk_forward",
             semantic_role="strategy_evaluation",
-            reason="Causal cache exists, but baseline threshold was not passed.",
-            warnings=("baseline_not_passed",),
+            reason="research_signal",
+            warnings=("baseline_not_passed", "research_signal"),
             metadata={"policy_source": policy.get("policy_source")},
         )
 
     return _decision(
         "allow",
         True,
-        evidence_level=evidence_level or "causal_walk_forward",
+        evidence_level=evidence_level or "validated_signal",
         readiness_status=readiness_status or "validated",
         state_source="causal_walk_forward",
         semantic_role="strategy_evaluation",
@@ -388,7 +413,7 @@ def evaluate_hsmm_lifecycle_field_display(
             "allow",
             True,
             evidence_level="internal_diagnostic",
-            readiness_status="internal_diagnostic",
+            readiness_status="internal_only",
             semantic_role="state_age",
             reason="HSMM state age is an allowed internal diagnostic.",
             metadata={"policy_source": policy.get("policy_source")},
@@ -399,7 +424,7 @@ def evaluate_hsmm_lifecycle_field_display(
             "allow",
             True,
             evidence_level="internal_diagnostic",
-            readiness_status="internal_diagnostic",
+            readiness_status="internal_only",
             semantic_role="state_phase",
             reason="HSMM state phase is an allowed internal diagnostic.",
             metadata={"policy_source": policy.get("policy_source")},
@@ -410,7 +435,7 @@ def evaluate_hsmm_lifecycle_field_display(
             "allow",
             True,
             evidence_level="internal_diagnostic",
-            readiness_status="internal_diagnostic",
+            readiness_status="internal_only",
             semantic_role="ordinal_exit_tendency",
             reason="HSMM exit tendency may be shown only as low/medium/high ordinal tendency.",
             metadata={"display_format": "ordinal_tendency", "policy_source": policy.get("policy_source")},
@@ -421,7 +446,7 @@ def evaluate_hsmm_lifecycle_field_display(
             "allow",
             True,
             evidence_level="internal_diagnostic",
-            readiness_status="internal_diagnostic",
+            readiness_status="internal_only",
             semantic_role="realized_historical_tendency",
             reason="Next-state tendency may only describe realized historical tendency.",
             metadata={"display_format": "ordinal_tendency", "policy_source": policy.get("policy_source")},
@@ -433,11 +458,11 @@ def evaluate_hsmm_lifecycle_field_display(
                 "hide",
                 False,
                 evidence_level="internal_diagnostic",
-                readiness_status="hidden",
+                readiness_status="blocked",
                 semantic_role=semantic_role or "numeric_exit_probability",
-                reason=f"Numeric p_exit hidden because probability_status is {prob_status}.",
-                warnings=("do_not_fill_missing_probability_with_zero",),
-                metadata={"policy_source": policy.get("policy_source")},
+                reason=f"hidden_due_to_{prob_status}_probability_status",
+                warnings=("do_not_fill_missing_probability_with_zero", "hidden"),
+                metadata={"policy_source": policy.get("policy_source"), "probability_status": prob_status},
             )
 
         allow_numeric = bool(policy.get("allow_numeric_p_exit_when_validated", False))
@@ -445,31 +470,34 @@ def evaluate_hsmm_lifecycle_field_display(
             return _decision(
                 "allow",
                 True,
-                evidence_level="validated_probability",
+                evidence_level="validated_signal",
                 readiness_status=readiness,
                 semantic_role="usable_probability",
                 reason="Numeric p_exit allowed by policy and validation metadata.",
-                metadata={"policy_source": policy.get("policy_source")},
+                metadata={
+                    "policy_source": policy.get("policy_source"),
+                    "probability_evidence": "validated_probability",
+                },
             )
 
         return _decision(
             "hide",
             False,
             evidence_level="internal_diagnostic",
-            readiness_status="hidden",
+            readiness_status="blocked",
             semantic_role=semantic_role or "numeric_exit_probability",
-            reason="Numeric p_exit is hidden by the conservative Stage 00 policy.",
-            warnings=("numeric_p_exit_requires_usable_probability_and_policy_allow",),
+            reason="hidden_by_stage00_policy",
+            warnings=("numeric_p_exit_requires_usable_probability_and_policy_allow", "hidden"),
             metadata={"policy_source": policy.get("policy_source")},
         )
 
     return _decision(
         "warn",
         False,
-        evidence_level="unknown",
-        readiness_status=UNKNOWN_SOURCE,
+        evidence_level="exploratory",
+        readiness_status="blocked",
         semantic_role=semantic_role or "unknown_field",
-        reason=f"No readiness rule is defined for field {field_name}.",
+        reason="unknown_lifecycle_field",
         warnings=("unknown_lifecycle_field",),
         metadata={"policy_source": policy.get("policy_source")},
     )
@@ -487,12 +515,12 @@ def evaluate_state_source_boundary(
         return _decision(
             "warn",
             False,
-            evidence_level="unknown",
-            readiness_status=UNKNOWN_SOURCE,
+            evidence_level="exploratory",
+            readiness_status="blocked",
             state_source=UNKNOWN_SOURCE,
             semantic_role="state_source_boundary",
-            reason="State source metadata is missing.",
-            warnings=("state_source_missing",),
+            reason=UNKNOWN_SOURCE,
+            warnings=("state_source_missing", UNKNOWN_SOURCE),
         )
 
     has_causal = bool(normalized & CAUSAL_SOURCES)
@@ -501,12 +529,12 @@ def evaluate_state_source_boundary(
         return _decision(
             "block",
             False,
-            evidence_level="mixed",
-            readiness_status="blocked_mixed_state_source",
+            evidence_level="exploratory",
+            readiness_status="blocked",
             state_source="mixed",
             semantic_role="state_source_boundary",
-            reason="UI dataset mixes in-sample and causal walk-forward state sources.",
-            warnings=("mixed_in_sample_and_causal_state_source",),
+            reason="blocked_mixed_state_source",
+            warnings=("mixed_in_sample_and_causal_state_source", "blocked_mixed_state_source"),
             metadata={"state_sources": sorted(normalized)},
         )
 
@@ -514,7 +542,7 @@ def evaluate_state_source_boundary(
         return _decision(
             "research_only",
             False,
-            evidence_level="in_sample_explanation",
+            evidence_level="exploratory",
             readiness_status="research_only",
             state_source=next(iter(sorted(normalized))),
             semantic_role="state_source_boundary",
@@ -527,8 +555,8 @@ def evaluate_state_source_boundary(
     return _decision(
         "allow" if has_causal else "research_only",
         True,
-        evidence_level=source,
-        readiness_status="decision_ready" if has_causal else "research_only",
+        evidence_level="internal_diagnostic" if has_causal else "exploratory",
+        readiness_status="partial" if has_causal else "research_only",
         state_source=source,
         semantic_role="state_source_boundary",
         reason="State source boundary is internally consistent.",

@@ -197,8 +197,8 @@ def render_state_screener(storage: DuckDBStorage, universe_id: str | None = None
         return
     result = result.copy()
     result["state_source"] = "causal_walk_forward" if source == "walk_forward" else "in_sample_explanation"
-    result["evidence_level"] = "causal_walk_forward" if source == "walk_forward" else "in_sample_explanation"
-    result["readiness_status"] = "decision_ready" if source == "walk_forward" else "research_only"
+    result["evidence_level"] = "internal_diagnostic" if source == "walk_forward" else "exploratory"
+    result["readiness_status"] = "partial" if source == "walk_forward" else "research_only"
     display = format_probability_columns(result, ["prob_trend_up", "prob_neutral", "prob_risk_off"])
     preview_names = display["sector_name"].fillna(display["sector_id"]).astype(str).head(60).tolist()
     st.caption(f"命中板块预览（共 {len(display)} 个）：{'、'.join(preview_names)}")
