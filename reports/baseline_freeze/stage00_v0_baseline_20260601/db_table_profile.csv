@@ -1,0 +1,15 @@
+table_name,exists,row_count,min_trade_date,max_trade_date,distinct_run_count,distinct_sector_count,feature_scope_id_sample,universe_id_sample,notes
+model_runs,True,25,,,25,,"[""all"", ""universe:universe:2026关注_b29c353d:with_custom""]","[""universe:2026关注_b29c353d""]","[""no date column found for min_trade_date/max_trade_date"", ""no sector column found for distinct_sector_count""]"
+sector_state_daily,True,2655935,2020-02-07,2026-05-28,25,464,[],[],[]
+walk_forward_cache_runs,True,7,,,,,"[""all""]",[],"[""no date column found for min_trade_date/max_trade_date"", ""no run id column found for distinct_run_count"", ""no sector column found for distinct_sector_count""]"
+walk_forward_state_cache,True,226810,2020-03-20,2026-05-27,,464,[],[],"[""no run id column found for distinct_run_count""]"
+hsmm_model_runs,True,8,,,8,,"[""all""]",[],"[""no date column found for min_trade_date/max_trade_date"", ""no sector column found for distinct_sector_count""]"
+hsmm_model_checkpoints,True,36,,,8,,[],[],"[""no date column found for min_trade_date/max_trade_date"", ""no sector column found for distinct_sector_count""]"
+hsmm_state_daily,True,244532,2025-01-02,2026-05-28,8,464,"[""all""]",[],[]
+hsmm_state_episodes,True,56806,,,8,464,[],[],"[""no date column found for min_trade_date/max_trade_date""]"
+hsmm_display_label_episodes,True,29199,,,1,464,[],[],"[""no date column found for min_trade_date/max_trade_date""]"
+hsmm_lifecycle_ui_daily,True,557104,2025-01-02,2026-05-28,1,464,[],[],[]
+hsmm_lifecycle_duration_profile,True,8,2025-10-31,2026-05-28,1,,[],[],"[""no sector column found for distinct_sector_count""]"
+hsmm_next_state_tendency_profile,True,96,2025-10-31,2026-05-28,1,,[],[],"[""no sector column found for distinct_sector_count""]"
+market_breadth_daily,True,3092,2020-01-02,2026-05-26,,,[],[],"[""no run id column found for distinct_run_count"", ""no sector column found for distinct_sector_count""]"
+sector_features,True,632756,2020-01-02,2026-05-28,,465,"[""all"", ""universe:universe:2026关注_b29c353d:with_custom""]",[],"[""no run id column found for distinct_run_count""]"
