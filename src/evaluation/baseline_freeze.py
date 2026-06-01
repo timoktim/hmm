@@ -93,7 +93,7 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--register-evidence",
         action="store_true",
-        help="Write evidence seed records when no WP-A registry is available.",
+        help="Record evidence seed metadata while keeping the local DuckDB read-only.",
     )
     return parser
 
@@ -434,17 +434,6 @@ def register_baseline_evidence(db_path: Path, output_dir: Path, snapshot: dict[s
 
     evidence_id = "evidence_stage00_wp_b_baseline_freeze"
     validation_run_id = "validation_stage00_wp_b_baseline_freeze"
-    now = snapshot["created_at"]
-    status = "pass" if snapshot["status"] == "pass" else "unknown"
-    warnings = {
-        "missing_artifacts": snapshot["missing_artifacts"],
-        "summary_verdict": snapshot["summary_verdict"],
-    }
-    metrics = {
-        "db_available": snapshot["database"]["db_available"],
-        "table_count": len(snapshot["database"]["table_profiles"]),
-        "external_fetch_attempted": False,
-    }
 
     try:
         with duckdb.connect(str(db_path), read_only=True) as conn:
@@ -453,94 +442,12 @@ def register_baseline_evidence(db_path: Path, output_dir: Path, snapshot: dict[s
     except Exception as exc:
         return {"registered": False, "reason": f"registry_check_failed: {exc}"}
 
-    try:
-        with duckdb.connect(str(db_path)) as conn:
-            conn.execute(
-                """
-                INSERT INTO model_evidence_registry (
-                  evidence_id, run_id, model_type, model_family, evidence_level,
-                  readiness_status, verdict_code, verdict_label, feature_scope_id,
-                  report_path, artifact_manifest_json, metrics_json, notes,
-                  created_at, updated_at
-                )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ON CONFLICT (evidence_id) DO UPDATE SET
-                  verdict_code = EXCLUDED.verdict_code,
-                  verdict_label = EXCLUDED.verdict_label,
-                  report_path = EXCLUDED.report_path,
-                  artifact_manifest_json = EXCLUDED.artifact_manifest_json,
-                  metrics_json = EXCLUDED.metrics_json,
-                  notes = EXCLUDED.notes,
-                  updated_at = EXCLUDED.updated_at
-                """,
-                [
-                    evidence_id,
-                    "stage00_v0_baseline_20260601",
-                    "baseline",
-                    "hmm_hsmm",
-                    "internal_diagnostic",
-                    "partial" if snapshot["status"] == "partial" else "validated",
-                    snapshot["summary_verdict"],
-                    "Stage 00 V0 baseline freeze",
-                    "baseline_freeze",
-                    str(output_dir / "summary.md"),
-                    json.dumps(snapshot["artifact_inventory"], ensure_ascii=False, sort_keys=True),
-                    json.dumps(metrics, ensure_ascii=False, sort_keys=True),
-                    "Stage 00 WP-B baseline freeze; no external data fetch; no training algorithm changes.",
-                    now,
-                    now,
-                ],
-            )
-            conn.execute(
-                """
-                INSERT INTO validation_runs (
-                  validation_run_id, run_id, evidence_id, validation_type, command,
-                  status, verdict_code, started_at, finished_at, python_version,
-                  duckdb_version, platform, git_sha, db_path, report_dir,
-                  metrics_json, warnings_json, created_at
-                )
-                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                ON CONFLICT (validation_run_id) DO UPDATE SET
-                  status = EXCLUDED.status,
-                  verdict_code = EXCLUDED.verdict_code,
-                  finished_at = EXCLUDED.finished_at,
-                  python_version = EXCLUDED.python_version,
-                  duckdb_version = EXCLUDED.duckdb_version,
-                  platform = EXCLUDED.platform,
-                  git_sha = EXCLUDED.git_sha,
-                  db_path = EXCLUDED.db_path,
-                  report_dir = EXCLUDED.report_dir,
-                  metrics_json = EXCLUDED.metrics_json,
-                  warnings_json = EXCLUDED.warnings_json
-                """,
-                [
-                    validation_run_id,
-                    "stage00_v0_baseline_20260601",
-                    evidence_id,
-                    "baseline_freeze",
-                    "python -m src.evaluation.baseline_freeze --db data/db/a_share_hmm.duckdb --output reports/baseline_freeze/stage00_v0_baseline_20260601 --run-tests no --no-fetch --register-evidence",
-                    status,
-                    snapshot["summary_verdict"],
-                    now,
-                    now,
-                    snapshot["environment"]["python_version"],
-                    snapshot["environment"]["duckdb_version"],
-                    snapshot["environment"]["platform"],
-                    snapshot["environment"]["git_sha"],
-                    str(db_path),
-                    str(output_dir),
-                    json.dumps(metrics, ensure_ascii=False, sort_keys=True),
-                    json.dumps(warnings, ensure_ascii=False, sort_keys=True),
-                    now,
-                ],
-            )
-    except Exception as exc:
-        return {"registered": False, "reason": f"registry_write_failed: {exc}"}
-
     return {
-        "registered": True,
+        "registered": False,
+        "reason": "read_only_baseline_freeze",
         "evidence_id": evidence_id,
         "validation_run_id": validation_run_id,
+        "seed_path": str(output_dir / "evidence_seed.jsonl"),
     }
 
 

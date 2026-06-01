@@ -2,9 +2,9 @@
 
 - index_id: STAGE00-WP-B-v1
 - work_package: STAGE00_WP_B_baseline_freeze
-- status: partial
-- verdict: BaselineFreezePartialDueToMissingArtifacts
-- created_at: 2026-06-01T11:43:22+00:00
+- status: pass
+- verdict: BaselineFreezePassWithLocalDbInventory
+- created_at: 2026-06-01T12:48:53+00:00
 - external_fetch_attempted: no
 
 ## Environment
@@ -12,14 +12,14 @@
 - python_version: 3.12.13
 - duckdb_version: 1.5.3
 - platform: macOS-26.4.1-arm64-arm-64bit
-- working_directory: /Users/tianxiwang/Documents/Codex/2026-05-19/files-mentioned-by-the-user-a/a_share_hmm_analyzer_macos/a_share_hmm_analyzer
-- is_git_repo: False
-- git_sha: unknown
+- working_directory: /private/tmp/hmm-wp-b
+- is_git_repo: True
+- git_sha: a74a3567934b410c83ed166bef030df5719a35c3
 
 ## Local DB Usage
 
 - DB found: yes
-- DB path: /Users/tianxiwang/Documents/Codex/2026-05-19/files-mentioned-by-the-user-a/a_share_hmm_analyzer_macos/a_share_hmm_analyzer/data/db/a_share_hmm.duckdb
+- DB path: data/db/a_share_hmm.duckdb
 - DB file size: 760492032
 - DuckDB opened read-only: yes
 - External fetch attempted=no
@@ -74,7 +74,7 @@ Reference points are recorded in baseline_snapshot.json and are not hard-coded p
 
 ## Missing Artifacts
 
-- HSMM_LIFECYCLE_UI_V0_HARDENING_TEST_RESULTS_20260601.md
+- none
 
 ## Validation Commands
 

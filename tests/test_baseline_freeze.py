@@ -108,6 +108,34 @@ class BaselineFreezeTests(unittest.TestCase):
             self.assertEqual(profile.feature_scope_id_sample, ["features_v0"])
             self.assertEqual(profile.universe_id_sample, ["universe_v0"])
 
+    @unittest.skipUnless(importlib.util.find_spec("duckdb"), "duckdb not installed")
+    def test_register_evidence_does_not_write_to_db(self) -> None:
+        import duckdb  # type: ignore
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            db_path = root / "registry.duckdb"
+            con = duckdb.connect(str(db_path))
+            con.execute("create table model_evidence_registry(evidence_id varchar)")
+            con.execute("create table validation_runs(validation_run_id varchar)")
+            con.close()
+
+            snapshot = generate_baseline_snapshot(
+                db_path=db_path,
+                output_dir=root / "out",
+                working_dir=root,
+                run_tests="no",
+                register_evidence=True,
+            )
+
+            self.assertEqual(snapshot["evidence_registration"]["reason"], "read_only_baseline_freeze")
+            con = duckdb.connect(str(db_path), read_only=True)
+            evidence_count = con.execute("select count(*) from model_evidence_registry").fetchone()[0]
+            validation_count = con.execute("select count(*) from validation_runs").fetchone()[0]
+            con.close()
+            self.assertEqual(evidence_count, 0)
+            self.assertEqual(validation_count, 0)
+
     def test_json_loads_and_csv_is_readable(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
