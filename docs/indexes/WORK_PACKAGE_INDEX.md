@@ -14,6 +14,29 @@ This file is the authoritative work-package index for Codex. Google Drive may st
 3. Each stage/WP pair should have only one active version.
 4. Codex must report the index_id, file path, version, branch, commands run, test results, generated reports, data usage, and unresolved risks.
 5. Stage 01 must start from updated `main`, must not fetch external data by default, and must not modify HMM/HSMM training algorithms.
+6. Any task that needs V0 local data must read `docs/runtime/LOCAL_DB_HANDOFF.md` first and run its local DB preflight check.
+
+## Local DB Protocol
+
+The V0 DuckDB database is not stored in GitHub. Data-backed validation must use either:
+
+```text
+data/db/a_share_hmm.duckdb
+```
+
+or an explicit environment override:
+
+```bash
+export ASHARE_HMM_DB_PATH=/absolute/path/to/a_share_hmm.duckdb
+```
+
+Codex must not commit DuckDB or WAL files. Missing DB is a blocking condition for data-backed validation and should be reported as `local_db_missing`, not silently treated as pass.
+
+Canonical instructions:
+
+```text
+docs/runtime/LOCAL_DB_HANDOFF.md
+```
 
 ## Work Packages
 
@@ -60,8 +83,9 @@ Codex should:
 2. Find the assigned index_id.
 3. Confirm status = active.
 4. Open the referenced path.
-5. Execute the package on a dedicated branch.
-6. Return results using the package-specific return contract.
+5. If the task needs local V0 data, read `docs/runtime/LOCAL_DB_HANDOFF.md` and run the DB preflight check.
+6. Execute the package on a dedicated branch.
+7. Return results using the package-specific return contract.
 
 ## Return Contract
 
@@ -78,6 +102,8 @@ Each Codex thread must return:
 - test results
 - generated reports
 - local DB usage: yes/no
+- local DB path used: required for data-backed validation
+- local DB preflight result: required for data-backed validation
 - external data fetch: must be no for Stage 01
 - training algorithm modified: must be no for Stage 01
 - risks and unresolved issues
@@ -92,4 +118,5 @@ Do not rely on deleting files. When a new version is created, change the old row
 | date | change | by |
 |---|---|---|
 | 2026-06-01 | Created GitHub-based Stage 00 work package index. | ChatGPT |
-| 2026-06-01 | Archived accepted Stage 00 packages and activated Stage 01 WP-A/WP-B/WP-C. | ChatGPT |
+| 2026-06-01 | Added Stage 01 work packages and boundaries. | Codex |
+| 2026-06-02 | Added local DB handoff protocol reference. | ChatGPT |
