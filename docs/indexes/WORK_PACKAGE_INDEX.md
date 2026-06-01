@@ -19,9 +19,9 @@ This file is the authoritative work-package index for Codex. Google Drive may st
 
 | index_id | stage | wp | status | version | path | codex_thread | acceptance_status |
 |---|---:|---|---|---|---|---|---|
-| STAGE00-WP-A-v1 | 00 | A | active | v1 | docs/work_packages/stage_00/STAGE00_WP_A_evidence_registry.md | Codex A | pending |
-| STAGE00-WP-B-v1 | 00 | B | active | v1 | docs/work_packages/stage_00/STAGE00_WP_B_baseline_freeze.md | Codex B | pending |
-| STAGE00-WP-C-v1 | 00 | C | active | v1 | docs/work_packages/stage_00/STAGE00_WP_C_ui_readiness_causal_boundary.md | Codex C | pending |
+| STAGE00-WP-A-v1 | 00 | A | archived | v1 | docs/work_packages/stage_00/STAGE00_WP_A_evidence_registry.md | Codex A | accepted |
+| STAGE00-WP-B-v1 | 00 | B | archived | v1 | docs/work_packages/stage_00/STAGE00_WP_B_baseline_freeze.md | Codex B | accepted |
+| STAGE00-WP-C-v1 | 00 | C | archived | v1 | docs/work_packages/stage_00/STAGE00_WP_C_ui_readiness_causal_boundary.md | Codex C | accepted |
 
 ## Stage 00 Boundary
 
