@@ -2,7 +2,7 @@
   "index_id": "STAGE00-WP-B-v1",
   "work_package": "STAGE00_WP_B_baseline_freeze",
   "version": "v1",
-  "created_at": "2026-06-01T12:48:53+00:00",
+  "created_at": "2026-06-01T13:11:26+00:00",
   "external_fetch_attempted": false,
   "no_fetch_mode": true,
   "status": "pass",
@@ -13,7 +13,7 @@
     "platform": "macOS-26.4.1-arm64-arm-64bit",
     "working_directory": "/private/tmp/hmm-wp-b",
     "is_git_repo": true,
-    "git_sha": "a74a3567934b410c83ed166bef030df5719a35c3",
+    "git_sha": "2a93839aa449696b1299ae7444f4b4fe1eeb3896",
     "requirements": [
       {
         "path": "requirements.txt",
@@ -28,7 +28,7 @@
     ],
     "package_list": [],
     "package_list_note": "omitted because dependency file hashes are recorded",
-    "created_at": "2026-06-01T12:48:52+00:00"
+    "created_at": "2026-06-01T13:11:26+00:00"
   },
   "database": {
     "db_path": "data/db/a_share_hmm.duckdb",
@@ -253,7 +253,25 @@
     "run_inventory": [
       {
         "source_table": "model_runs",
-        "run_id": "5f79a9cf3610",
+        "run_id": "372c17e6f518",
+        "row_count": 1,
+        "min_trade_date": null,
+        "max_trade_date": null,
+        "feature_scope_id_sample": "universe:universe:2026关注_b29c353d:with_custom",
+        "universe_id_sample": "universe:2026关注_b29c353d"
+      },
+      {
+        "source_table": "model_runs",
+        "run_id": "bea7ff20106a",
+        "row_count": 1,
+        "min_trade_date": null,
+        "max_trade_date": null,
+        "feature_scope_id_sample": "all",
+        "universe_id_sample": null
+      },
+      {
+        "source_table": "model_runs",
+        "run_id": "5e429b990c71",
         "row_count": 1,
         "min_trade_date": null,
         "max_trade_date": null,
@@ -263,6 +281,24 @@
       {
         "source_table": "model_runs",
         "run_id": "b8c07fa771e5",
+        "row_count": 1,
+        "min_trade_date": null,
+        "max_trade_date": null,
+        "feature_scope_id_sample": "all",
+        "universe_id_sample": null
+      },
+      {
+        "source_table": "model_runs",
+        "run_id": "2b300d88e8d1",
+        "row_count": 1,
+        "min_trade_date": null,
+        "max_trade_date": null,
+        "feature_scope_id_sample": "all",
+        "universe_id_sample": "universe:2026关注_b29c353d"
+      },
+      {
+        "source_table": "model_runs",
+        "run_id": "1e8e3264c723",
         "row_count": 1,
         "min_trade_date": null,
         "max_trade_date": null,
@@ -285,6 +321,87 @@
         "min_trade_date": null,
         "max_trade_date": null,
         "feature_scope_id_sample": "all",
+        "universe_id_sample": "universe:2026关注_b29c353d"
+      },
+      {
+        "source_table": "model_runs",
+        "run_id": "5f79a9cf3610",
+        "row_count": 1,
+        "min_trade_date": null,
+        "max_trade_date": null,
+        "feature_scope_id_sample": "all",
+        "universe_id_sample": null
+      },
+      {
+        "source_table": "model_runs",
+        "run_id": "559265f259e0",
+        "row_count": 1,
+        "min_trade_date": null,
+        "max_trade_date": null,
+        "feature_scope_id_sample": "all",
+        "universe_id_sample": null
+      },
+      {
+        "source_table": "model_runs",
+        "run_id": "c7c7cafcd987",
+        "row_count": 1,
+        "min_trade_date": null,
+        "max_trade_date": null,
+        "feature_scope_id_sample": "all",
+        "universe_id_sample": "universe:2026关注_b29c353d"
+      },
+      {
+        "source_table": "model_runs",
+        "run_id": "51a625987d93",
+        "row_count": 1,
+        "min_trade_date": null,
+        "max_trade_date": null,
+        "feature_scope_id_sample": "universe:universe:2026关注_b29c353d:with_custom",
+        "universe_id_sample": "universe:2026关注_b29c353d"
+      },
+      {
+        "source_table": "model_runs",
+        "run_id": "7f67cc2b67dc",
+        "row_count": 1,
+        "min_trade_date": null,
+        "max_trade_date": null,
+        "feature_scope_id_sample": "all",
+        "universe_id_sample": null
+      },
+      {
+        "source_table": "model_runs",
+        "run_id": "521f828df14b",
+        "row_count": 1,
+        "min_trade_date": null,
+        "max_trade_date": null,
+        "feature_scope_id_sample": "all",
+        "universe_id_sample": null
+      },
+      {
+        "source_table": "model_runs",
+        "run_id": "cde041235b12",
+        "row_count": 1,
+        "min_trade_date": null,
+        "max_trade_date": null,
+        "feature_scope_id_sample": "all",
+        "universe_id_sample": "universe:2026关注_b29c353d"
+      },
+      {
+        "source_table": "model_runs",
+        "run_id": "8c4e7ea2ac80",
+        "row_count": 1,
+        "min_trade_date": null,
+        "max_trade_date": null,
+        "feature_scope_id_sample": "universe:universe:2026关注_b29c353d:with_custom",
+        "universe_id_sample": "universe:2026关注_b29c353d"
+      },
+      {
+        "source_table": "model_runs",
+        "run_id": "e94e98642e49",
+        "row_count": 1,
+        "min_trade_date": null,
+        "max_trade_date": null,
+        "feature_scope_id_sample": "universe:universe:2026关注_b29c353d:with_custom",
         "universe_id_sample": "universe:2026关注_b29c353d"
       },
       {
@@ -334,30 +451,12 @@
       },
       {
         "source_table": "model_runs",
-        "run_id": "559265f259e0",
+        "run_id": "c7635a6cec46",
         "row_count": 1,
         "min_trade_date": null,
         "max_trade_date": null,
         "feature_scope_id_sample": "all",
         "universe_id_sample": null
-      },
-      {
-        "source_table": "model_runs",
-        "run_id": "c7c7cafcd987",
-        "row_count": 1,
-        "min_trade_date": null,
-        "max_trade_date": null,
-        "feature_scope_id_sample": "all",
-        "universe_id_sample": "universe:2026关注_b29c353d"
-      },
-      {
-        "source_table": "model_runs",
-        "run_id": "51a625987d93",
-        "row_count": 1,
-        "min_trade_date": null,
-        "max_trade_date": null,
-        "feature_scope_id_sample": "universe:universe:2026关注_b29c353d:with_custom",
-        "universe_id_sample": "universe:2026关注_b29c353d"
       },
       {
         "source_table": "model_runs",
@@ -378,107 +477,8 @@
         "universe_id_sample": null
       },
       {
-        "source_table": "model_runs",
-        "run_id": "bea7ff20106a",
-        "row_count": 1,
-        "min_trade_date": null,
-        "max_trade_date": null,
-        "feature_scope_id_sample": "all",
-        "universe_id_sample": null
-      },
-      {
-        "source_table": "model_runs",
-        "run_id": "7f67cc2b67dc",
-        "row_count": 1,
-        "min_trade_date": null,
-        "max_trade_date": null,
-        "feature_scope_id_sample": "all",
-        "universe_id_sample": null
-      },
-      {
-        "source_table": "model_runs",
-        "run_id": "521f828df14b",
-        "row_count": 1,
-        "min_trade_date": null,
-        "max_trade_date": null,
-        "feature_scope_id_sample": "all",
-        "universe_id_sample": null
-      },
-      {
-        "source_table": "model_runs",
-        "run_id": "cde041235b12",
-        "row_count": 1,
-        "min_trade_date": null,
-        "max_trade_date": null,
-        "feature_scope_id_sample": "all",
-        "universe_id_sample": "universe:2026关注_b29c353d"
-      },
-      {
-        "source_table": "model_runs",
-        "run_id": "8c4e7ea2ac80",
-        "row_count": 1,
-        "min_trade_date": null,
-        "max_trade_date": null,
-        "feature_scope_id_sample": "universe:universe:2026关注_b29c353d:with_custom",
-        "universe_id_sample": "universe:2026关注_b29c353d"
-      },
-      {
-        "source_table": "model_runs",
-        "run_id": "e94e98642e49",
-        "row_count": 1,
-        "min_trade_date": null,
-        "max_trade_date": null,
-        "feature_scope_id_sample": "universe:universe:2026关注_b29c353d:with_custom",
-        "universe_id_sample": "universe:2026关注_b29c353d"
-      },
-      {
-        "source_table": "model_runs",
-        "run_id": "372c17e6f518",
-        "row_count": 1,
-        "min_trade_date": null,
-        "max_trade_date": null,
-        "feature_scope_id_sample": "universe:universe:2026关注_b29c353d:with_custom",
-        "universe_id_sample": "universe:2026关注_b29c353d"
-      },
-      {
-        "source_table": "model_runs",
-        "run_id": "2b300d88e8d1",
-        "row_count": 1,
-        "min_trade_date": null,
-        "max_trade_date": null,
-        "feature_scope_id_sample": "all",
-        "universe_id_sample": "universe:2026关注_b29c353d"
-      },
-      {
-        "source_table": "model_runs",
-        "run_id": "1e8e3264c723",
-        "row_count": 1,
-        "min_trade_date": null,
-        "max_trade_date": null,
-        "feature_scope_id_sample": "all",
-        "universe_id_sample": null
-      },
-      {
-        "source_table": "model_runs",
-        "run_id": "5e429b990c71",
-        "row_count": 1,
-        "min_trade_date": null,
-        "max_trade_date": null,
-        "feature_scope_id_sample": "all",
-        "universe_id_sample": null
-      },
-      {
-        "source_table": "model_runs",
-        "run_id": "c7635a6cec46",
-        "row_count": 1,
-        "min_trade_date": null,
-        "max_trade_date": null,
-        "feature_scope_id_sample": "all",
-        "universe_id_sample": null
-      },
-      {
         "source_table": "sector_state_daily",
-        "run_id": "b59117f64b8e",
+        "run_id": "bea7ff20106a",
         "row_count": 584981,
         "min_trade_date": "2020-02-07",
         "max_trade_date": "2026-05-28",
@@ -487,7 +487,7 @@
       },
       {
         "source_table": "sector_state_daily",
-        "run_id": "bea7ff20106a",
+        "run_id": "b59117f64b8e",
         "row_count": 584981,
         "min_trade_date": "2020-02-07",
         "max_trade_date": "2026-05-28",
@@ -514,15 +514,6 @@
       },
       {
         "source_table": "sector_state_daily",
-        "run_id": "b8c07fa771e5",
-        "row_count": 77571,
-        "min_trade_date": "2020-02-07",
-        "max_trade_date": "2026-05-18",
-        "feature_scope_id_sample": null,
-        "universe_id_sample": null
-      },
-      {
-        "source_table": "sector_state_daily",
         "run_id": "229c00a04097",
         "row_count": 77571,
         "min_trade_date": "2020-02-07",
@@ -541,8 +532,8 @@
       },
       {
         "source_table": "sector_state_daily",
-        "run_id": "0045947bb002",
-        "row_count": 47151,
+        "run_id": "b8c07fa771e5",
+        "row_count": 77571,
         "min_trade_date": "2020-02-07",
         "max_trade_date": "2026-05-18",
         "feature_scope_id_sample": null,
@@ -550,7 +541,7 @@
       },
       {
         "source_table": "sector_state_daily",
-        "run_id": "559265f259e0",
+        "run_id": "37bc5fb5007f",
         "row_count": 47151,
         "min_trade_date": "2020-02-07",
         "max_trade_date": "2026-05-18",
@@ -568,7 +559,7 @@
       },
       {
         "source_table": "sector_state_daily",
-        "run_id": "37bc5fb5007f",
+        "run_id": "5f79a9cf3610",
         "row_count": 47151,
         "min_trade_date": "2020-02-07",
         "max_trade_date": "2026-05-18",
@@ -577,7 +568,16 @@
       },
       {
         "source_table": "sector_state_daily",
-        "run_id": "5f79a9cf3610",
+        "run_id": "559265f259e0",
+        "row_count": 47151,
+        "min_trade_date": "2020-02-07",
+        "max_trade_date": "2026-05-18",
+        "feature_scope_id_sample": null,
+        "universe_id_sample": null
+      },
+      {
+        "source_table": "sector_state_daily",
+        "run_id": "0045947bb002",
         "row_count": 47151,
         "min_trade_date": "2020-02-07",
         "max_trade_date": "2026-05-18",
@@ -604,15 +604,6 @@
       },
       {
         "source_table": "sector_state_daily",
-        "run_id": "cde041235b12",
-        "row_count": 30500,
-        "min_trade_date": "2020-02-07",
-        "max_trade_date": "2026-05-22",
-        "feature_scope_id_sample": null,
-        "universe_id_sample": null
-      },
-      {
-        "source_table": "sector_state_daily",
         "run_id": "51a625987d93",
         "row_count": 30500,
         "min_trade_date": "2020-02-07",
@@ -623,6 +614,15 @@
       {
         "source_table": "sector_state_daily",
         "run_id": "8c4e7ea2ac80",
+        "row_count": 30500,
+        "min_trade_date": "2020-02-07",
+        "max_trade_date": "2026-05-22",
+        "feature_scope_id_sample": null,
+        "universe_id_sample": null
+      },
+      {
+        "source_table": "sector_state_daily",
+        "run_id": "cde041235b12",
         "row_count": 30500,
         "min_trade_date": "2020-02-07",
         "max_trade_date": "2026-05-22",
@@ -649,7 +649,7 @@
       },
       {
         "source_table": "sector_state_daily",
-        "run_id": "521f828df14b",
+        "run_id": "e6f2a6e70267",
         "row_count": 30421,
         "min_trade_date": "2020-02-07",
         "max_trade_date": "2026-05-19",
@@ -658,7 +658,7 @@
       },
       {
         "source_table": "sector_state_daily",
-        "run_id": "e6f2a6e70267",
+        "run_id": "521f828df14b",
         "row_count": 30421,
         "min_trade_date": "2020-02-07",
         "max_trade_date": "2026-05-19",
@@ -676,7 +676,7 @@
       },
       {
         "source_table": "sector_state_daily",
-        "run_id": "d8122a6b1539",
+        "run_id": "2ee30def1674",
         "row_count": 1521,
         "min_trade_date": "2020-02-07",
         "max_trade_date": "2026-05-18",
@@ -685,7 +685,7 @@
       },
       {
         "source_table": "sector_state_daily",
-        "run_id": "2ee30def1674",
+        "run_id": "d8122a6b1539",
         "row_count": 1521,
         "min_trade_date": "2020-02-07",
         "max_trade_date": "2026-05-18",
@@ -703,7 +703,43 @@
       },
       {
         "source_table": "hsmm_model_runs",
-        "run_id": "hsmm_perf_smoke_prefix_single",
+        "run_id": "hsmm_perf_smoke_legacy",
+        "row_count": 1,
+        "min_trade_date": null,
+        "max_trade_date": null,
+        "feature_scope_id_sample": "all",
+        "universe_id_sample": null
+      },
+      {
+        "source_table": "hsmm_model_runs",
+        "run_id": "hsmm_rerun_cleanup_test",
+        "row_count": 1,
+        "min_trade_date": null,
+        "max_trade_date": null,
+        "feature_scope_id_sample": "all",
+        "universe_id_sample": null
+      },
+      {
+        "source_table": "hsmm_model_runs",
+        "run_id": "hsmm_lifecycle_primary_v1",
+        "row_count": 1,
+        "min_trade_date": null,
+        "max_trade_date": null,
+        "feature_scope_id_sample": "all",
+        "universe_id_sample": null
+      },
+      {
+        "source_table": "hsmm_model_runs",
+        "run_id": "hsmm_perf_smoke_optimized",
+        "row_count": 1,
+        "min_trade_date": null,
+        "max_trade_date": null,
+        "feature_scope_id_sample": "all",
+        "universe_id_sample": null
+      },
+      {
+        "source_table": "hsmm_model_runs",
+        "run_id": "hsmm_perf_profile_2026h1",
         "row_count": 1,
         "min_trade_date": null,
         "max_trade_date": null,
@@ -730,43 +766,7 @@
       },
       {
         "source_table": "hsmm_model_runs",
-        "run_id": "hsmm_perf_smoke_legacy",
-        "row_count": 1,
-        "min_trade_date": null,
-        "max_trade_date": null,
-        "feature_scope_id_sample": "all",
-        "universe_id_sample": null
-      },
-      {
-        "source_table": "hsmm_model_runs",
-        "run_id": "hsmm_lifecycle_primary_v1",
-        "row_count": 1,
-        "min_trade_date": null,
-        "max_trade_date": null,
-        "feature_scope_id_sample": "all",
-        "universe_id_sample": null
-      },
-      {
-        "source_table": "hsmm_model_runs",
-        "run_id": "hsmm_rerun_cleanup_test",
-        "row_count": 1,
-        "min_trade_date": null,
-        "max_trade_date": null,
-        "feature_scope_id_sample": "all",
-        "universe_id_sample": null
-      },
-      {
-        "source_table": "hsmm_model_runs",
-        "run_id": "hsmm_perf_smoke_optimized",
-        "row_count": 1,
-        "min_trade_date": null,
-        "max_trade_date": null,
-        "feature_scope_id_sample": "all",
-        "universe_id_sample": null
-      },
-      {
-        "source_table": "hsmm_model_runs",
-        "run_id": "hsmm_perf_profile_2026h1",
+        "run_id": "hsmm_perf_smoke_prefix_single",
         "row_count": 1,
         "min_trade_date": null,
         "max_trade_date": null,
@@ -793,6 +793,33 @@
       },
       {
         "source_table": "hsmm_model_checkpoints",
+        "run_id": "hsmm_lifecycle_p0_smoke_20260530",
+        "row_count": 2,
+        "min_trade_date": null,
+        "max_trade_date": null,
+        "feature_scope_id_sample": null,
+        "universe_id_sample": null
+      },
+      {
+        "source_table": "hsmm_model_checkpoints",
+        "run_id": "hsmm_lifecycle_smoke_fresh_v2",
+        "row_count": 2,
+        "min_trade_date": null,
+        "max_trade_date": null,
+        "feature_scope_id_sample": null,
+        "universe_id_sample": null
+      },
+      {
+        "source_table": "hsmm_model_checkpoints",
+        "run_id": "hsmm_perf_smoke_optimized",
+        "row_count": 2,
+        "min_trade_date": null,
+        "max_trade_date": null,
+        "feature_scope_id_sample": null,
+        "universe_id_sample": null
+      },
+      {
+        "source_table": "hsmm_model_checkpoints",
         "run_id": "hsmm_perf_smoke_legacy",
         "row_count": 2,
         "min_trade_date": null,
@@ -819,33 +846,6 @@
         "universe_id_sample": null
       },
       {
-        "source_table": "hsmm_model_checkpoints",
-        "run_id": "hsmm_perf_smoke_optimized",
-        "row_count": 2,
-        "min_trade_date": null,
-        "max_trade_date": null,
-        "feature_scope_id_sample": null,
-        "universe_id_sample": null
-      },
-      {
-        "source_table": "hsmm_model_checkpoints",
-        "run_id": "hsmm_lifecycle_p0_smoke_20260530",
-        "row_count": 2,
-        "min_trade_date": null,
-        "max_trade_date": null,
-        "feature_scope_id_sample": null,
-        "universe_id_sample": null
-      },
-      {
-        "source_table": "hsmm_model_checkpoints",
-        "run_id": "hsmm_lifecycle_smoke_fresh_v2",
-        "row_count": 2,
-        "min_trade_date": null,
-        "max_trade_date": null,
-        "feature_scope_id_sample": null,
-        "universe_id_sample": null
-      },
-      {
         "source_table": "hsmm_state_daily",
         "run_id": "hsmm_lifecycle_primary_v1",
         "row_count": 155118,
@@ -865,7 +865,7 @@
       },
       {
         "source_table": "hsmm_state_daily",
-        "run_id": "hsmm_lifecycle_p0_smoke_20260530",
+        "run_id": "hsmm_perf_smoke_optimized",
         "row_count": 7884,
         "min_trade_date": "2026-05-06",
         "max_trade_date": "2026-05-28",
@@ -892,7 +892,7 @@
       },
       {
         "source_table": "hsmm_state_daily",
-        "run_id": "hsmm_lifecycle_smoke_fresh_v2",
+        "run_id": "hsmm_lifecycle_p0_smoke_20260530",
         "row_count": 7884,
         "min_trade_date": "2026-05-06",
         "max_trade_date": "2026-05-28",
@@ -901,7 +901,7 @@
       },
       {
         "source_table": "hsmm_state_daily",
-        "run_id": "hsmm_perf_smoke_optimized",
+        "run_id": "hsmm_lifecycle_smoke_fresh_v2",
         "row_count": 7884,
         "min_trade_date": "2026-05-06",
         "max_trade_date": "2026-05-28",
@@ -937,24 +937,6 @@
       },
       {
         "source_table": "hsmm_state_episodes",
-        "run_id": "hsmm_lifecycle_p0_smoke_20260530",
-        "row_count": 2224,
-        "min_trade_date": null,
-        "max_trade_date": null,
-        "feature_scope_id_sample": null,
-        "universe_id_sample": null
-      },
-      {
-        "source_table": "hsmm_state_episodes",
-        "run_id": "hsmm_perf_smoke_prefix_single",
-        "row_count": 2224,
-        "min_trade_date": null,
-        "max_trade_date": null,
-        "feature_scope_id_sample": null,
-        "universe_id_sample": null
-      },
-      {
-        "source_table": "hsmm_state_episodes",
         "run_id": "hsmm_perf_smoke_legacy",
         "row_count": 2224,
         "min_trade_date": null,
@@ -974,6 +956,24 @@
       {
         "source_table": "hsmm_state_episodes",
         "run_id": "hsmm_perf_smoke_optimized",
+        "row_count": 2224,
+        "min_trade_date": null,
+        "max_trade_date": null,
+        "feature_scope_id_sample": null,
+        "universe_id_sample": null
+      },
+      {
+        "source_table": "hsmm_state_episodes",
+        "run_id": "hsmm_lifecycle_p0_smoke_20260530",
+        "row_count": 2224,
+        "min_trade_date": null,
+        "max_trade_date": null,
+        "feature_scope_id_sample": null,
+        "universe_id_sample": null
+      },
+      {
+        "source_table": "hsmm_state_episodes",
+        "run_id": "hsmm_perf_smoke_prefix_single",
         "row_count": 2224,
         "min_trade_date": null,
         "max_trade_date": null,

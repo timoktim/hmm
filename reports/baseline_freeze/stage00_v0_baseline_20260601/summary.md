@@ -4,7 +4,7 @@
 - work_package: STAGE00_WP_B_baseline_freeze
 - status: pass
 - verdict: BaselineFreezePassWithLocalDbInventory
-- created_at: 2026-06-01T12:48:53+00:00
+- created_at: 2026-06-01T13:11:26+00:00
 - external_fetch_attempted: no
 
 ## Environment
@@ -14,7 +14,7 @@
 - platform: macOS-26.4.1-arm64-arm-64bit
 - working_directory: /private/tmp/hmm-wp-b
 - is_git_repo: True
-- git_sha: a74a3567934b410c83ed166bef030df5719a35c3
+- git_sha: 2a93839aa449696b1299ae7444f4b4fe1eeb3896
 
 ## Local DB Usage
 
