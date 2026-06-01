@@ -8,6 +8,8 @@ from src.data_pipeline.storage import DuckDBStorage
 from src.evaluation.model_evaluation import evaluate_forward_returns, evaluate_state_stability, evaluate_strategy_comparison
 from src.ui.components.data_status_bar import render_data_status_bar
 from src.ui.components.model_workflow import render_model_workflow
+from src.ui.causal_boundary import require_causal_for_strategy
+from src.ui.evidence_badges import readiness_badge
 from src.ui.help_texts import display_value, rename_columns_for_display
 from src.ui.run_context import render_run_scope_status
 from src.ui.state_screener_page import walk_forward_cache_options_for_scope
@@ -88,12 +90,27 @@ def render_model_evaluation(storage: DuckDBStorage, universe_id: str | None = No
         st.caption("这里检验的是状态对未来收益分布是否有区分度，不是预测明天涨跌。")
 
     st.subheader("策略对照分析")
-    st.caption("对照策略使用相同回测范围；walk-forward 回测只使用信号日前可见数据。")
+    strategy_caches = walk_forward_cache_options_for_scope(storage, active_universe)
+    strategy_cache_id = None if strategy_caches.empty else str(strategy_caches.iloc[0]["cache_key"])
+    strategy_decision = require_causal_for_strategy(
+        {
+            "causal_cache_id": strategy_cache_id,
+            "evidence_level": "causal_walk_forward" if strategy_cache_id else "in_sample_explanation",
+            "readiness_status": "validated" if strategy_cache_id else "research_only",
+        }
+    )
+    strategy_badge = readiness_badge(strategy_decision)
+    st.caption(
+        "对照策略使用相同回测范围；只有存在 causal walk-forward cache 时才显示为可验证策略评估。"
+        f" 当前 readiness: {strategy_badge['label']}。"
+    )
+    if strategy_decision.action != "allow":
+        st.warning("缺少 causal walk-forward cache metadata，策略评估区降级为 research-only；不会显示为 causal 或 validated。")
     c1, c2, c3 = st.columns(3)
     top_n = c1.number_input("持有板块数量", min_value=1, max_value=20, value=5)
-    threshold = c2.slider("趋势上行概率阈值", 0.30, 0.90, 0.55, 0.05)
+    threshold = c2.slider("趋势状态置信度阈值", 0.30, 0.90, 0.55, 0.05)
     transaction_cost = c3.number_input("单边交易成本", min_value=0.0, max_value=0.01, value=0.001, step=0.0005, format="%.4f")
-    if st.button("运行策略对照评估"):
+    if st.button("运行策略对照评估", disabled=strategy_decision.action != "allow"):
         try:
             progress_bar = st.progress(0)
             progress_text = st.empty()

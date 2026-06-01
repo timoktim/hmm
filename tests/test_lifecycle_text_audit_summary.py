@@ -29,3 +29,18 @@ def test_text_audit_summary_zero_when_clean(tmp_path):
 
     assert summary["text_audit_error_count"] == 0
     assert summary["text_audit_warning_count"] == 0
+
+
+def test_text_audit_flags_non_negated_probability_claims(tmp_path):
+    ui_root = tmp_path / "ui"
+    ui_root.mkdir()
+    (ui_root / "state_screener_page.py").write_text(
+        'st.write("上涨概率")\nst.write("不是上涨概率")\n',
+        encoding="utf-8",
+    )
+
+    audit = build_ui_text_policy_audit(ui_root)
+
+    assert len(audit) == 1
+    assert audit.iloc[0]["matched_text"] == "上涨概率"
+    assert audit.iloc[0]["severity"] == "error"

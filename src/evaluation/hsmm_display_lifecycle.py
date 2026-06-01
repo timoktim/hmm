@@ -10,6 +10,7 @@ import numpy as np
 import pandas as pd
 
 from src.data_pipeline.storage import DuckDBStorage
+from src.ui.readiness_policy import MISLEADING_PROBABILITY_CLAIMS, find_misleading_probability_claims
 from src.evaluation.hsmm_exit_targets import build_exit_targets, parse_horizons
 
 
@@ -963,9 +964,24 @@ def build_ui_text_policy_audit(ui_root: str | Path = "src/ui") -> pd.DataFrame:
     root = Path(ui_root)
     rows: list[dict[str, object]] = []
     for path in sorted(root.rglob("*.py")):
+        if path.name in {"readiness_policy.py", "causal_boundary.py", "evidence_badges.py"}:
+            continue
         text = path.read_text(encoding="utf-8")
         for line_no, line in enumerate(text.splitlines(), start=1):
+            for finding in find_misleading_probability_claims([line]):
+                rows.append(
+                    {
+                        "file": str(path),
+                        "line_number": line_no,
+                        "matched_text": finding["phrase"],
+                        "severity": "error",
+                        "allowed_exception": False,
+                        "reason": "misleading probability claim in controlled UI text",
+                    }
+                )
             for term in FORBIDDEN_UI_TERMS:
+                if term in MISLEADING_PROBABILITY_CLAIMS:
+                    continue
                 if term not in line:
                     continue
                 is_lifecycle_page = path.name == "lifecycle_page.py"

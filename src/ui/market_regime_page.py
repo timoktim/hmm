@@ -14,6 +14,7 @@ from src.features.market_features import build_market_features, latest_market_in
 from src.models.market_hmm import latest_market_regime, market_regime_history, train_market_hmm
 from src.ui.components.data_status_bar import render_data_status_bar
 from src.ui.components.operation_result import render_operation_result
+from src.ui.causal_boundary import classify_state_source
 from src.ui.formatters import format_probability, format_probability_columns
 from src.ui.help_texts import HELP_TEXTS, PROBABILITY_LABELS, display_state_label, rename_columns_for_display
 from src.ui.state_colors import MARKET_STATE_BG_COLORS
@@ -195,11 +196,17 @@ def render_market_regime(storage: DuckDBStorage) -> None:
         used_breadth = bool(metrics.get("used_breadth", False))
         c1, c2, c3, c4, c5 = st.columns(5)
         c1.metric("当前状态", display_state_label(row["state_label"]))
-        c2.metric("风险偏好概率", format_probability(row["prob_risk_on"]))
-        c3.metric("中性震荡概率", format_probability(row["prob_neutral"]))
-        c4.metric("风险回避概率", format_probability(row["prob_risk_off"]))
+        c2.metric("风险偏好状态置信度", format_probability(row["prob_risk_on"]))
+        c3.metric("中性状态置信度", format_probability(row["prob_neutral"]))
+        c4.metric("风险回避状态置信度", format_probability(row["prob_risk_off"]))
         c5.metric("最新交易日", str(row["trade_date"]))
-        st.caption(f"模型训练区间：{row['train_start']} 至 {row['train_end']}；是否使用市场宽度：{'是' if used_breadth else '否'}")
+        state_source = classify_state_source(row.to_dict())
+        st.caption(
+            f"模型训练区间：{row['train_start']} 至 {row['train_end']}；"
+            f"是否使用市场宽度：{'是' if used_breadth else '否'}；state_source: {state_source}"
+        )
+        if state_source == "unknown_due_to_missing_metadata":
+            st.warning("当前大盘状态缺少 causal metadata，只能作为保守研究解释。")
         if metrics.get("index_coverage_warning"):
             st.warning(str(metrics["index_coverage_warning"]))
         if metrics.get("breadth_coverage_warning"):
@@ -331,8 +338,8 @@ def render_market_regime(storage: DuckDBStorage) -> None:
             st.plotly_chart(fig, width="stretch")
         probability_cols = ["prob_risk_on", "prob_neutral", "prob_risk_off"]
         prob_df = history[["trade_date", *probability_cols]].rename(columns={"trade_date": "交易日期", **PROBABILITY_LABELS})
-        fig_prob = px.line(prob_df, x="交易日期", y=[PROBABILITY_LABELS[c] for c in probability_cols], title="大盘状态概率")
-        fig_prob.update_layout(legend_title_text="状态概率", yaxis_tickformat=".0%")
+        fig_prob = px.line(prob_df, x="交易日期", y=[PROBABILITY_LABELS[c] for c in probability_cols], title="大盘状态置信度")
+        fig_prob.update_layout(legend_title_text="状态置信度", yaxis_tickformat=".0%")
         st.plotly_chart(fig_prob, width="stretch")
 
     st.subheader("状态转移矩阵")

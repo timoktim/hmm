@@ -414,7 +414,7 @@ def test_ui_column_rename_mapping():
 
     assert "板块类型" in renamed.columns
     assert "板块名称" in renamed.columns
-    assert "趋势上行概率" in renamed.columns
+    assert "趋势状态置信度" in renamed.columns
     assert "个股评分" in renamed.columns
     assert renamed.loc[0, "板块类型"] == "行业"
     assert renamed.loc[0, "当前状态"] == "风险偏好"

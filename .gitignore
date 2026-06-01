@@ -19,5 +19,8 @@ reports/**
 !reports/evidence_registry/
 !reports/evidence_registry/*.md
 !reports/evidence_registry/*.json
+!reports/ui_readiness/
+!reports/ui_readiness/*.md
+!reports/ui_readiness/*.json
 
 *.zip

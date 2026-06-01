@@ -25,7 +25,7 @@ def render_backtest(storage: DuckDBStorage, universe_id: str | None = None) -> N
     render_data_status_bar(storage, run_id=run_id, universe_id=active_universe, walk_forward_causal=True)
     st.info("大盘状态过滤尚未因果接入回测，本页不展示可操作开关，避免误解为已经影响结果。")
     st.subheader("基础参数")
-    threshold = st.slider("趋势上行概率阈值", 0.30, 0.90, 0.55, 0.05, help=HELP_TEXTS["trend_up_threshold"])
+    threshold = st.slider("趋势状态置信度阈值", 0.30, 0.90, 0.55, 0.05, help=HELP_TEXTS["trend_up_threshold"])
     top_n = st.number_input("持有板块数量", min_value=1, max_value=20, value=5, help=HELP_TEXTS["top_n"])
     rebalance_days = st.number_input("调仓间隔（交易日）", min_value=1, max_value=30, value=5, help=HELP_TEXTS["rebalance_every"])
     n_states = st.number_input("HMM 隐藏状态数", min_value=2, max_value=6, value=3, help="板块模型将每个板块划分为几个隐藏状态。默认 3 个状态：趋势上行、中性震荡、风险回避。")

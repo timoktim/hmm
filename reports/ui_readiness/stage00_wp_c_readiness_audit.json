@@ -1,0 +1,17 @@
+{
+  "wp": "STAGE00_WP_C_ui_readiness_causal_boundary",
+  "generated_at": "2026-06-01T11:47:37.746721+00:00",
+  "status": "policy_loaded",
+  "db_path": "data/db/a_share_hmm.duckdb",
+  "used_db": true,
+  "external_data_fetch": false,
+  "policy_source": "builtin_conservative_table_missing",
+  "numeric_p_exit_displayed": false,
+  "causal_in_sample_mix_found": false,
+  "notes": [
+    "Stage 00 audit is read-only.",
+    "Numeric p_exit is hidden unless a future policy explicitly allows validated usable probability.",
+    "No external data was fetched."
+  ],
+  "audit_lifecycle": true
+}

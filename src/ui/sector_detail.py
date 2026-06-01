@@ -15,7 +15,7 @@ from src.features.stock_features import add_a_share_limit_flags
 from src.models.inference import sector_state_history, transition_matrix
 from src.scoring.stock_filter import filter_sector_stocks
 from src.ui.components.data_status_bar import render_data_status_bar
-from src.ui.formatters import add_next_state_probability_columns, format_probability, format_probability_columns, next_state_probability_display, parse_next_state_probs
+from src.ui.formatters import format_probability, format_probability_columns
 from src.ui.help_texts import display_state_label, rename_columns_for_display
 from src.ui.run_context import render_run_scope_status
 from src.ui.state_colors import SECTOR_STATE_BG_COLORS, SECTOR_STATE_COLORS
@@ -209,23 +209,18 @@ def render_sector_detail(storage: DuckDBStorage, universe_id: str | None = None)
             latest = history.iloc[-1]
             c1, c2, c3 = st.columns(3)
             c1.metric("当前状态", display_state_label(latest["state_label"]))
-            c2.metric("趋势上行概率", format_probability(latest["prob_trend_up"]))
-            c3.metric("风险回避概率", format_probability(latest["prob_risk_off"]))
+            c2.metric("趋势状态置信度", format_probability(latest["prob_trend_up"]))
+            c3.metric("风险回避状态置信度", format_probability(latest["prob_risk_off"]))
             state_source = latest.get("state_source", "in_sample_display")
             if state_source == "in_sample_display":
                 st.warning("当前状态来源为训练样本内展示，仅用于观察模型拟合，不是因果回测状态。")
             else:
                 st.info("当前状态来源为因果 walk-forward。")
-            st.markdown("**下一状态概率**")
-            st.caption("这是状态迁移概率，不是明天涨跌概率。")
-            next_probs = parse_next_state_probs(latest.get("next_state_probs_json"), model_type="sector")
-            np_cols = st.columns(3)
-            for idx, (label, value) in enumerate(next_state_probability_display(next_probs, model_type="sector")):
-                np_cols[idx].metric(f"下一{label}", value)
-            history_display = add_next_state_probability_columns(history.tail(60), model_type="sector")
+            st.caption("下一状态 JSON 属于内部转移矩阵字段；Stage 00 不在 UI 中展示为预测概率。")
+            history_display = history.tail(60).drop(columns=["next_state_probs_json"], errors="ignore")
             history_display = format_probability_columns(
                 history_display,
-                ["prob_trend_up", "prob_neutral", "prob_risk_off", "next_prob_trend_up", "next_prob_neutral", "next_prob_risk_off"],
+                ["prob_trend_up", "prob_neutral", "prob_risk_off"],
             )
             st.dataframe(rename_columns_for_display(history_display), width="stretch")
 

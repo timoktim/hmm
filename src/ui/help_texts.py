@@ -2,7 +2,7 @@ from __future__ import annotations
 
 
 HELP_TEXTS = {
-    "trend_up_threshold": "只有趋势上行概率高于该阈值的板块才会进入候选。阈值越高，筛选越严格，但可能错过早期机会。",
+    "trend_up_threshold": "只有趋势状态置信度高于该阈值的板块才会进入候选。阈值越高，筛选越严格，但可能错过早期机会。",
     "top_n": "每次调仓时最多持有的板块数量。数量越少，组合越集中；数量越多，组合越分散。",
     "rebalance_every": "每隔多少个交易日重新选择板块。间隔越短，反应越快，但交易成本更高。",
     "train_window": "滚动训练时向前使用多少个交易日的数据。窗口越长，模型越稳定；窗口越短，对近期变化更敏感。",
@@ -31,9 +31,9 @@ COLUMN_LABELS = {
     "sector_name": "板块名称",
     "state_label": "当前状态",
     "state_source": "状态来源",
-    "prob_trend_up": "趋势上行概率",
-    "prob_neutral": "中性震荡概率",
-    "prob_risk_off": "风险回避概率",
+    "prob_trend_up": "趋势状态置信度",
+    "prob_neutral": "中性状态置信度",
+    "prob_risk_off": "风险回避状态置信度",
     "sector_score": "板块评分",
     "sector_tag": "板块标签",
     "feature_scope_id": "特征作用域",
@@ -43,7 +43,7 @@ COLUMN_LABELS = {
     "vol_20d": "20日波动率",
     "drawdown_20d": "20日回撤",
     "ma20_slope": "20日均线斜率",
-    "next_state_probs_json": "下一状态概率",
+    "next_state_probs_json": "下一状态置信度 JSON",
     "score": "个股评分",
     "rs_vs_sector_20d": "相对板块强弱",
     "rs_vs_index_20d": "相对大盘强弱",
@@ -125,9 +125,9 @@ COLUMN_LABELS = {
     "ma20_valid_count": "均线有效股票数",
     "coverage_ratio": "覆盖率",
     "breadth_mode": "宽度模式",
-    "next_prob_trend_up": "下一趋势上行概率",
-    "next_prob_neutral": "下一中性震荡概率",
-    "next_prob_risk_off": "下一风险回避概率",
+    "next_prob_trend_up": "下一趋势状态置信度",
+    "next_prob_neutral": "下一中性状态置信度",
+    "next_prob_risk_off": "下一风险回避状态置信度",
     "next_prob_risk_on": "下一风险偏好概率",
     "gap_1d": "跳空幅度",
     "intraday_ret": "日内收益",
@@ -162,9 +162,9 @@ COLUMN_LABELS = {
     "trading_days": "交易日数量",
     "calendar_days": "自然日数量",
     "segment_return": "该段收益",
-    "avg_prob_trend_up": "平均趋势上行概率",
-    "avg_prob_neutral": "平均中性震荡概率",
-    "avg_prob_risk_off": "平均风险回避概率",
+    "avg_prob_trend_up": "平均趋势状态置信度",
+    "avg_prob_neutral": "平均中性状态置信度",
+    "avg_prob_risk_off": "平均风险回避状态置信度",
     "prev_state_label": "上一状态",
     "next_state_label": "下一状态",
     "missing_recent": "缺失最近行情",
@@ -206,8 +206,8 @@ VALUE_LABELS = {
 PROBABILITY_LABELS = {
     "prob_risk_on": "风险偏好概率",
     "prob_neutral": "中性震荡概率",
-    "prob_risk_off": "风险回避概率",
-    "prob_trend_up": "趋势上行概率",
+    "prob_risk_off": "风险回避状态置信度",
+    "prob_trend_up": "趋势状态置信度",
 }
 
 
