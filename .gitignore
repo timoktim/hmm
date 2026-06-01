@@ -31,5 +31,8 @@ reports/**
 !reports/hmm_confidence/
 !reports/hmm_confidence/*.md
 !reports/hmm_confidence/*.json
+!reports/hmm_label_alignment/
+!reports/hmm_label_alignment/*.md
+!reports/hmm_label_alignment/*.json
 
 *.zip
