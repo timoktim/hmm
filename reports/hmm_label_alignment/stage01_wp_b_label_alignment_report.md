@@ -1,7 +1,7 @@
 # Stage 01 WP-B HMM Label Alignment Report
 
 - index_id: STAGE01-WP-B-v1
-- generated_at: 2026-06-01T16:57:44Z
+- generated_at: 2026-06-01T18:05:22Z
 - status: pass
 - db_path: data/db/a_share_hmm.duckdb
 - db_used: true
