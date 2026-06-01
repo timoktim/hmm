@@ -25,8 +25,8 @@ date coverage: 2020-02-07 .. 2026-05-28
 
 - dwell_readiness_status: research_only
 - display_action: research_only
-- confidence_integration_status: unavailable
-- alignment_integration_status: available_table_without_run_id
+- confidence_integration_status: available_confidence
+- alignment_integration_status: available_alignment
 - causal_cache_available: False
 
 ## Threshold Defaults
@@ -45,5 +45,4 @@ date coverage: 2020-02-07 .. 2026-05-28
 - implemented WP-B label alignment: no
 
 ## Warnings
-- hmm_confidence_low_or_unavailable
 - missing_causal_cache_id

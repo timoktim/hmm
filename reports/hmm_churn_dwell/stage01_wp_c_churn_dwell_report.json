@@ -2,7 +2,7 @@
   "index_id": "STAGE01-WP-C-v1",
   "work_package": "STAGE01_WP_C_hmm_churn_dwell_ui_readiness",
   "version": "v1",
-  "generated_at": "2026-06-01T17:10:52+00:00",
+  "generated_at": "2026-06-01T18:11:43+00:00",
   "status": "pass",
   "requested_run_id": "latest",
   "run_id": "bea7ff20106a",
@@ -16,8 +16,8 @@
   "churn_dwell_rows_generated": 42210,
   "dwell_readiness_status": "research_only",
   "display_action": "research_only",
-  "confidence_integration_status": "unavailable",
-  "alignment_integration_status": "available_table_without_run_id",
+  "confidence_integration_status": "available_confidence",
+  "alignment_integration_status": "available_alignment",
   "causal_cache_available": false,
   "external_data_fetch": false,
   "no_fetch_mode": true,
@@ -47,7 +47,6 @@
     "summary_rows_written": 1
   },
   "warnings": [
-    "hmm_confidence_low_or_unavailable",
     "missing_causal_cache_id"
   ],
   "row_count": 584981,
@@ -64,5 +63,5 @@
   "episode_count": 42210,
   "fragmentation_score": 0.20961,
   "churn_bucket": "low",
-  "created_at": "2026-06-01T17:10:39+00:00"
+  "created_at": "2026-06-01T18:11:31+00:00"
 }

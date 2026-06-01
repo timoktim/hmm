@@ -12,6 +12,7 @@ from src.evaluation.hmm_churn_dwell import (
     classify_churn_bucket,
     compute_churn_dwell,
     generate_hmm_churn_dwell_report,
+    inspect_alignment_integration,
 )
 
 
@@ -167,3 +168,38 @@ def test_cli_works_on_minimal_temporary_duckdb(tmp_path):
         summary_count = con.execute("SELECT COUNT(*) FROM hmm_churn_dwell_run_summary").fetchone()[0]
     assert sequence_count == 2
     assert summary_count == 1
+
+
+def test_alignment_integration_reads_wp_b_base_run_id_schema(tmp_path):
+    db_path = tmp_path / "alignment.duckdb"
+    with duckdb.connect(str(db_path)) as con:
+        con.execute(
+            """
+            CREATE TABLE hmm_label_alignment_audit (
+              audit_id TEXT PRIMARY KEY,
+              base_run_id TEXT NOT NULL,
+              compare_run_id TEXT NOT NULL,
+              base_state_key TEXT NOT NULL,
+              matched_state_key TEXT,
+              match_score DOUBLE,
+              state_signature_distance DOUBLE,
+              label_preserved BOOLEAN,
+              ambiguous_match BOOLEAN,
+              label_drift_severity TEXT,
+              alignment_method TEXT,
+              coverage_status TEXT,
+              created_at TIMESTAMP NOT NULL
+            )
+            """
+        )
+        con.execute(
+            """
+            INSERT INTO hmm_label_alignment_audit VALUES (
+              'audit-1', 'run-1', 'run-0', 'state_id:0', 'state_id:0',
+              1.0, 0.0, true, false, 'none', 'hungarian', 'ok', now()
+            )
+            """
+        )
+
+        assert inspect_alignment_integration(con, "run-1") == "available_alignment"
+        assert inspect_alignment_integration(con, "missing-run") == "missing_for_run"

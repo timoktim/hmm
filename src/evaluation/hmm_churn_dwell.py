@@ -471,7 +471,17 @@ def inspect_alignment_integration(con: duckdb.DuckDBPyConnection, run_id: str) -
         return "unavailable"
     columns = set(table_columns(con, "hmm_label_alignment_audit"))
     if "run_id" not in columns:
-        return "available_table_without_run_id"
+        if "base_run_id" not in columns:
+            return "available_table_without_run_id"
+        rows = con.execute(
+            "SELECT * FROM hmm_label_alignment_audit WHERE base_run_id = ? LIMIT 20",
+            [run_id],
+        ).fetchdf()
+        return _integration_status_from_rows(
+            rows,
+            low_tokens={"unstable", "misaligned", "low_stability", "fail", "failed", "blocked"},
+            ok_status="available_alignment",
+        )
     rows = con.execute("SELECT * FROM hmm_label_alignment_audit WHERE run_id = ? LIMIT 20", [run_id]).fetchdf()
     return _integration_status_from_rows(
         rows,
