@@ -1,0 +1,7 @@
+[tool.pytest.ini_options]
+pythonpath = ["."]
+markers = [
+  "slow: slower integration-style tests that train HMM/backtest end to end",
+]
+timeout = 120
+timeout_method = "thread"
