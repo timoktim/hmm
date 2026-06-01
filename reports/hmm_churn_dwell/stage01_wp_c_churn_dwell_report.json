@@ -1,0 +1,66 @@
+{
+  "index_id": "STAGE01-WP-C-v1",
+  "work_package": "STAGE01_WP_C_hmm_churn_dwell_ui_readiness",
+  "version": "v1",
+  "generated_at": "2026-06-01T15:27:09+00:00",
+  "status": "partial",
+  "requested_run_id": "latest",
+  "run_id": "latest",
+  "resolved_run_id_source": "db_missing",
+  "report_path": "reports/hmm_churn_dwell/stage01_wp_c_churn_dwell_report.md",
+  "summary_json_path": "reports/hmm_churn_dwell/stage01_wp_c_churn_dwell_report.json",
+  "db_path": "data/db/a_share_hmm.duckdb",
+  "db_found": false,
+  "db_used": false,
+  "state_rows_found": false,
+  "churn_dwell_rows_generated": 0,
+  "dwell_readiness_status": "blocked",
+  "display_action": "blocked",
+  "confidence_integration_status": "unavailable",
+  "alignment_integration_status": "unavailable",
+  "causal_cache_available": null,
+  "external_data_fetch": false,
+  "no_fetch_mode": true,
+  "training_algorithm_modified": false,
+  "implemented_wp_a_confidence": false,
+  "implemented_wp_b_label_alignment": false,
+  "thresholds": {
+    "low": {
+      "transition_rate_1d_max": 0.1,
+      "single_day_episode_share_max": 0.15
+    },
+    "medium": {
+      "transition_rate_1d_max": 0.2,
+      "single_day_episode_share_max": 0.3
+    },
+    "high": {
+      "transition_rate_1d_max": 0.35,
+      "single_day_episode_share_max": 0.5
+    }
+  },
+  "db_write_result": {
+    "db_tables_written": [],
+    "sequence_rows_written": 0,
+    "summary_rows_written": 0
+  },
+  "warnings": [
+    "database file not found: data/db/a_share_hmm.duckdb",
+    "hmm_confidence_low_or_unavailable",
+    "missing_or_insufficient_hmm_state_sequence"
+  ],
+  "row_count": 0,
+  "sector_count": 0,
+  "min_trade_date": null,
+  "max_trade_date": null,
+  "transition_count": 0,
+  "transition_rate_1d": null,
+  "mean_dwell_days": null,
+  "median_dwell_days": null,
+  "p10_dwell_days": null,
+  "p90_dwell_days": null,
+  "single_day_episode_share": null,
+  "episode_count": 0,
+  "fragmentation_score": null,
+  "churn_bucket": "unknown",
+  "created_at": "2026-06-01T15:27:09+00:00"
+}
