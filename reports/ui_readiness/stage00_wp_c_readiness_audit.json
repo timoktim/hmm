@@ -1,6 +1,6 @@
 {
   "wp": "STAGE00_WP_C_ui_readiness_causal_boundary",
-  "generated_at": "2026-06-01T11:47:37.746721+00:00",
+  "generated_at": "2026-06-01T13:13:10.337293+00:00",
   "status": "policy_loaded",
   "db_path": "data/db/a_share_hmm.duckdb",
   "used_db": true,
