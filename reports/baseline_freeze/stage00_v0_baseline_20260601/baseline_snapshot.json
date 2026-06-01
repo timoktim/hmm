@@ -1,0 +1,1154 @@
+{
+  "index_id": "STAGE00-WP-B-v1",
+  "work_package": "STAGE00_WP_B_baseline_freeze",
+  "version": "v1",
+  "created_at": "2026-06-01T11:43:22+00:00",
+  "external_fetch_attempted": false,
+  "no_fetch_mode": true,
+  "status": "partial",
+  "summary_verdict": "BaselineFreezePartialDueToMissingArtifacts",
+  "environment": {
+    "python_version": "3.12.13",
+    "duckdb_version": "1.5.3",
+    "platform": "macOS-26.4.1-arm64-arm-64bit",
+    "working_directory": "/Users/tianxiwang/Documents/Codex/2026-05-19/files-mentioned-by-the-user-a/a_share_hmm_analyzer_macos/a_share_hmm_analyzer",
+    "is_git_repo": false,
+    "git_sha": "unknown",
+    "requirements": [
+      {
+        "path": "requirements.txt",
+        "sha256": "ba46b01c1d06dbee3bfc9f1c1a30a094770b3dfde7b367e2ac71d5a163728d63",
+        "size_bytes": 309
+      },
+      {
+        "path": "pyproject.toml",
+        "sha256": "d7f881402f5f0888203f6a74185f17f712f1b5352d807d1c2c6ccc234b1cd7c0",
+        "size_bytes": 176
+      }
+    ],
+    "package_list": [],
+    "package_list_note": "omitted because dependency file hashes are recorded",
+    "created_at": "2026-06-01T11:43:22+00:00"
+  },
+  "database": {
+    "db_path": "/Users/tianxiwang/Documents/Codex/2026-05-19/files-mentioned-by-the-user-a/a_share_hmm_analyzer_macos/a_share_hmm_analyzer/data/db/a_share_hmm.duckdb",
+    "db_available": true,
+    "db_found": true,
+    "db_file_size": 760492032,
+    "duckdb_opened_read_only": true,
+    "duckdb_version": "1.5.3",
+    "db_open_error": null,
+    "table_profiles": [
+      {
+        "table_name": "model_runs",
+        "exists": true,
+        "row_count": 25,
+        "min_trade_date": null,
+        "max_trade_date": null,
+        "distinct_run_count": 25,
+        "distinct_sector_count": null,
+        "feature_scope_id_sample": [
+          "all",
+          "universe:universe:2026关注_b29c353d:with_custom"
+        ],
+        "universe_id_sample": [
+          "universe:2026关注_b29c353d"
+        ],
+        "notes": [
+          "no date column found for min_trade_date/max_trade_date",
+          "no sector column found for distinct_sector_count"
+        ]
+      },
+      {
+        "table_name": "sector_state_daily",
+        "exists": true,
+        "row_count": 2655935,
+        "min_trade_date": "2020-02-07",
+        "max_trade_date": "2026-05-28",
+        "distinct_run_count": 25,
+        "distinct_sector_count": 464,
+        "feature_scope_id_sample": [],
+        "universe_id_sample": [],
+        "notes": []
+      },
+      {
+        "table_name": "walk_forward_cache_runs",
+        "exists": true,
+        "row_count": 7,
+        "min_trade_date": null,
+        "max_trade_date": null,
+        "distinct_run_count": null,
+        "distinct_sector_count": null,
+        "feature_scope_id_sample": [
+          "all"
+        ],
+        "universe_id_sample": [],
+        "notes": [
+          "no date column found for min_trade_date/max_trade_date",
+          "no run id column found for distinct_run_count",
+          "no sector column found for distinct_sector_count"
+        ]
+      },
+      {
+        "table_name": "walk_forward_state_cache",
+        "exists": true,
+        "row_count": 226810,
+        "min_trade_date": "2020-03-20",
+        "max_trade_date": "2026-05-27",
+        "distinct_run_count": null,
+        "distinct_sector_count": 464,
+        "feature_scope_id_sample": [],
+        "universe_id_sample": [],
+        "notes": [
+          "no run id column found for distinct_run_count"
+        ]
+      },
+      {
+        "table_name": "hsmm_model_runs",
+        "exists": true,
+        "row_count": 8,
+        "min_trade_date": null,
+        "max_trade_date": null,
+        "distinct_run_count": 8,
+        "distinct_sector_count": null,
+        "feature_scope_id_sample": [
+          "all"
+        ],
+        "universe_id_sample": [],
+        "notes": [
+          "no date column found for min_trade_date/max_trade_date",
+          "no sector column found for distinct_sector_count"
+        ]
+      },
+      {
+        "table_name": "hsmm_model_checkpoints",
+        "exists": true,
+        "row_count": 36,
+        "min_trade_date": null,
+        "max_trade_date": null,
+        "distinct_run_count": 8,
+        "distinct_sector_count": null,
+        "feature_scope_id_sample": [],
+        "universe_id_sample": [],
+        "notes": [
+          "no date column found for min_trade_date/max_trade_date",
+          "no sector column found for distinct_sector_count"
+        ]
+      },
+      {
+        "table_name": "hsmm_state_daily",
+        "exists": true,
+        "row_count": 244532,
+        "min_trade_date": "2025-01-02",
+        "max_trade_date": "2026-05-28",
+        "distinct_run_count": 8,
+        "distinct_sector_count": 464,
+        "feature_scope_id_sample": [
+          "all"
+        ],
+        "universe_id_sample": [],
+        "notes": []
+      },
+      {
+        "table_name": "hsmm_state_episodes",
+        "exists": true,
+        "row_count": 56806,
+        "min_trade_date": null,
+        "max_trade_date": null,
+        "distinct_run_count": 8,
+        "distinct_sector_count": 464,
+        "feature_scope_id_sample": [],
+        "universe_id_sample": [],
+        "notes": [
+          "no date column found for min_trade_date/max_trade_date"
+        ]
+      },
+      {
+        "table_name": "hsmm_display_label_episodes",
+        "exists": true,
+        "row_count": 29199,
+        "min_trade_date": null,
+        "max_trade_date": null,
+        "distinct_run_count": 1,
+        "distinct_sector_count": 464,
+        "feature_scope_id_sample": [],
+        "universe_id_sample": [],
+        "notes": [
+          "no date column found for min_trade_date/max_trade_date"
+        ]
+      },
+      {
+        "table_name": "hsmm_lifecycle_ui_daily",
+        "exists": true,
+        "row_count": 557104,
+        "min_trade_date": "2025-01-02",
+        "max_trade_date": "2026-05-28",
+        "distinct_run_count": 1,
+        "distinct_sector_count": 464,
+        "feature_scope_id_sample": [],
+        "universe_id_sample": [],
+        "notes": []
+      },
+      {
+        "table_name": "hsmm_lifecycle_duration_profile",
+        "exists": true,
+        "row_count": 8,
+        "min_trade_date": "2025-10-31",
+        "max_trade_date": "2026-05-28",
+        "distinct_run_count": 1,
+        "distinct_sector_count": null,
+        "feature_scope_id_sample": [],
+        "universe_id_sample": [],
+        "notes": [
+          "no sector column found for distinct_sector_count"
+        ]
+      },
+      {
+        "table_name": "hsmm_next_state_tendency_profile",
+        "exists": true,
+        "row_count": 96,
+        "min_trade_date": "2025-10-31",
+        "max_trade_date": "2026-05-28",
+        "distinct_run_count": 1,
+        "distinct_sector_count": null,
+        "feature_scope_id_sample": [],
+        "universe_id_sample": [],
+        "notes": [
+          "no sector column found for distinct_sector_count"
+        ]
+      },
+      {
+        "table_name": "market_breadth_daily",
+        "exists": true,
+        "row_count": 3092,
+        "min_trade_date": "2020-01-02",
+        "max_trade_date": "2026-05-26",
+        "distinct_run_count": null,
+        "distinct_sector_count": null,
+        "feature_scope_id_sample": [],
+        "universe_id_sample": [],
+        "notes": [
+          "no run id column found for distinct_run_count",
+          "no sector column found for distinct_sector_count"
+        ]
+      },
+      {
+        "table_name": "sector_features",
+        "exists": true,
+        "row_count": 632756,
+        "min_trade_date": "2020-01-02",
+        "max_trade_date": "2026-05-28",
+        "distinct_run_count": null,
+        "distinct_sector_count": 465,
+        "feature_scope_id_sample": [
+          "all",
+          "universe:universe:2026关注_b29c353d:with_custom"
+        ],
+        "universe_id_sample": [],
+        "notes": [
+          "no run id column found for distinct_run_count"
+        ]
+      }
+    ],
+    "run_inventory": [
+      {
+        "source_table": "model_runs",
+        "run_id": "7f67cc2b67dc",
+        "row_count": 1,
+        "min_trade_date": null,
+        "max_trade_date": null,
+        "feature_scope_id_sample": "all",
+        "universe_id_sample": null
+      },
+      {
+        "source_table": "model_runs",
+        "run_id": "521f828df14b",
+        "row_count": 1,
+        "min_trade_date": null,
+        "max_trade_date": null,
+        "feature_scope_id_sample": "all",
+        "universe_id_sample": null
+      },
+      {
+        "source_table": "model_runs",
+        "run_id": "5f79a9cf3610",
+        "row_count": 1,
+        "min_trade_date": null,
+        "max_trade_date": null,
+        "feature_scope_id_sample": "all",
+        "universe_id_sample": null
+      },
+      {
+        "source_table": "model_runs",
+        "run_id": "559265f259e0",
+        "row_count": 1,
+        "min_trade_date": null,
+        "max_trade_date": null,
+        "feature_scope_id_sample": "all",
+        "universe_id_sample": null
+      },
+      {
+        "source_table": "model_runs",
+        "run_id": "c7c7cafcd987",
+        "row_count": 1,
+        "min_trade_date": null,
+        "max_trade_date": null,
+        "feature_scope_id_sample": "all",
+        "universe_id_sample": "universe:2026关注_b29c353d"
+      },
+      {
+        "source_table": "model_runs",
+        "run_id": "51a625987d93",
+        "row_count": 1,
+        "min_trade_date": null,
+        "max_trade_date": null,
+        "feature_scope_id_sample": "universe:universe:2026关注_b29c353d:with_custom",
+        "universe_id_sample": "universe:2026关注_b29c353d"
+      },
+      {
+        "source_table": "model_runs",
+        "run_id": "3ffd4aa4e63c",
+        "row_count": 1,
+        "min_trade_date": null,
+        "max_trade_date": null,
+        "feature_scope_id_sample": "all",
+        "universe_id_sample": null
+      },
+      {
+        "source_table": "model_runs",
+        "run_id": "e6f2a6e70267",
+        "row_count": 1,
+        "min_trade_date": null,
+        "max_trade_date": null,
+        "feature_scope_id_sample": "all",
+        "universe_id_sample": "universe:2026关注_b29c353d"
+      },
+      {
+        "source_table": "model_runs",
+        "run_id": "5e429b990c71",
+        "row_count": 1,
+        "min_trade_date": null,
+        "max_trade_date": null,
+        "feature_scope_id_sample": "all",
+        "universe_id_sample": null
+      },
+      {
+        "source_table": "model_runs",
+        "run_id": "d8122a6b1539",
+        "row_count": 1,
+        "min_trade_date": null,
+        "max_trade_date": null,
+        "feature_scope_id_sample": "all",
+        "universe_id_sample": null
+      },
+      {
+        "source_table": "model_runs",
+        "run_id": "2ee30def1674",
+        "row_count": 1,
+        "min_trade_date": null,
+        "max_trade_date": null,
+        "feature_scope_id_sample": "all",
+        "universe_id_sample": null
+      },
+      {
+        "source_table": "model_runs",
+        "run_id": "37bc5fb5007f",
+        "row_count": 1,
+        "min_trade_date": null,
+        "max_trade_date": null,
+        "feature_scope_id_sample": "all",
+        "universe_id_sample": null
+      },
+      {
+        "source_table": "model_runs",
+        "run_id": "229c00a04097",
+        "row_count": 1,
+        "min_trade_date": null,
+        "max_trade_date": null,
+        "feature_scope_id_sample": "all",
+        "universe_id_sample": null
+      },
+      {
+        "source_table": "model_runs",
+        "run_id": "3976f04da5bb",
+        "row_count": 1,
+        "min_trade_date": null,
+        "max_trade_date": null,
+        "feature_scope_id_sample": "all",
+        "universe_id_sample": null
+      },
+      {
+        "source_table": "model_runs",
+        "run_id": "b8c07fa771e5",
+        "row_count": 1,
+        "min_trade_date": null,
+        "max_trade_date": null,
+        "feature_scope_id_sample": "all",
+        "universe_id_sample": null
+      },
+      {
+        "source_table": "model_runs",
+        "run_id": "bea7ff20106a",
+        "row_count": 1,
+        "min_trade_date": null,
+        "max_trade_date": null,
+        "feature_scope_id_sample": "all",
+        "universe_id_sample": null
+      },
+      {
+        "source_table": "model_runs",
+        "run_id": "cde041235b12",
+        "row_count": 1,
+        "min_trade_date": null,
+        "max_trade_date": null,
+        "feature_scope_id_sample": "all",
+        "universe_id_sample": "universe:2026关注_b29c353d"
+      },
+      {
+        "source_table": "model_runs",
+        "run_id": "8c4e7ea2ac80",
+        "row_count": 1,
+        "min_trade_date": null,
+        "max_trade_date": null,
+        "feature_scope_id_sample": "universe:universe:2026关注_b29c353d:with_custom",
+        "universe_id_sample": "universe:2026关注_b29c353d"
+      },
+      {
+        "source_table": "model_runs",
+        "run_id": "e94e98642e49",
+        "row_count": 1,
+        "min_trade_date": null,
+        "max_trade_date": null,
+        "feature_scope_id_sample": "universe:universe:2026关注_b29c353d:with_custom",
+        "universe_id_sample": "universe:2026关注_b29c353d"
+      },
+      {
+        "source_table": "model_runs",
+        "run_id": "c7635a6cec46",
+        "row_count": 1,
+        "min_trade_date": null,
+        "max_trade_date": null,
+        "feature_scope_id_sample": "all",
+        "universe_id_sample": null
+      },
+      {
+        "source_table": "model_runs",
+        "run_id": "2b300d88e8d1",
+        "row_count": 1,
+        "min_trade_date": null,
+        "max_trade_date": null,
+        "feature_scope_id_sample": "all",
+        "universe_id_sample": "universe:2026关注_b29c353d"
+      },
+      {
+        "source_table": "model_runs",
+        "run_id": "1e8e3264c723",
+        "row_count": 1,
+        "min_trade_date": null,
+        "max_trade_date": null,
+        "feature_scope_id_sample": "all",
+        "universe_id_sample": null
+      },
+      {
+        "source_table": "model_runs",
+        "run_id": "372c17e6f518",
+        "row_count": 1,
+        "min_trade_date": null,
+        "max_trade_date": null,
+        "feature_scope_id_sample": "universe:universe:2026关注_b29c353d:with_custom",
+        "universe_id_sample": "universe:2026关注_b29c353d"
+      },
+      {
+        "source_table": "model_runs",
+        "run_id": "0045947bb002",
+        "row_count": 1,
+        "min_trade_date": null,
+        "max_trade_date": null,
+        "feature_scope_id_sample": "all",
+        "universe_id_sample": null
+      },
+      {
+        "source_table": "model_runs",
+        "run_id": "b59117f64b8e",
+        "row_count": 1,
+        "min_trade_date": null,
+        "max_trade_date": null,
+        "feature_scope_id_sample": "all",
+        "universe_id_sample": null
+      },
+      {
+        "source_table": "sector_state_daily",
+        "run_id": "bea7ff20106a",
+        "row_count": 584981,
+        "min_trade_date": "2020-02-07",
+        "max_trade_date": "2026-05-28",
+        "feature_scope_id_sample": null,
+        "universe_id_sample": null
+      },
+      {
+        "source_table": "sector_state_daily",
+        "run_id": "b59117f64b8e",
+        "row_count": 584981,
+        "min_trade_date": "2020-02-07",
+        "max_trade_date": "2026-05-28",
+        "feature_scope_id_sample": null,
+        "universe_id_sample": null
+      },
+      {
+        "source_table": "sector_state_daily",
+        "run_id": "1e8e3264c723",
+        "row_count": 584680,
+        "min_trade_date": "2020-02-07",
+        "max_trade_date": "2026-05-25",
+        "feature_scope_id_sample": null,
+        "universe_id_sample": null
+      },
+      {
+        "source_table": "sector_state_daily",
+        "run_id": "3976f04da5bb",
+        "row_count": 137250,
+        "min_trade_date": "2020-02-07",
+        "max_trade_date": "2026-05-22",
+        "feature_scope_id_sample": null,
+        "universe_id_sample": null
+      },
+      {
+        "source_table": "sector_state_daily",
+        "run_id": "229c00a04097",
+        "row_count": 77571,
+        "min_trade_date": "2020-02-07",
+        "max_trade_date": "2026-05-18",
+        "feature_scope_id_sample": null,
+        "universe_id_sample": null
+      },
+      {
+        "source_table": "sector_state_daily",
+        "run_id": "b8c07fa771e5",
+        "row_count": 77571,
+        "min_trade_date": "2020-02-07",
+        "max_trade_date": "2026-05-18",
+        "feature_scope_id_sample": null,
+        "universe_id_sample": null
+      },
+      {
+        "source_table": "sector_state_daily",
+        "run_id": "5e429b990c71",
+        "row_count": 77571,
+        "min_trade_date": "2020-02-07",
+        "max_trade_date": "2026-05-18",
+        "feature_scope_id_sample": null,
+        "universe_id_sample": null
+      },
+      {
+        "source_table": "sector_state_daily",
+        "run_id": "3ffd4aa4e63c",
+        "row_count": 47151,
+        "min_trade_date": "2020-02-07",
+        "max_trade_date": "2026-05-18",
+        "feature_scope_id_sample": null,
+        "universe_id_sample": null
+      },
+      {
+        "source_table": "sector_state_daily",
+        "run_id": "37bc5fb5007f",
+        "row_count": 47151,
+        "min_trade_date": "2020-02-07",
+        "max_trade_date": "2026-05-18",
+        "feature_scope_id_sample": null,
+        "universe_id_sample": null
+      },
+      {
+        "source_table": "sector_state_daily",
+        "run_id": "0045947bb002",
+        "row_count": 47151,
+        "min_trade_date": "2020-02-07",
+        "max_trade_date": "2026-05-18",
+        "feature_scope_id_sample": null,
+        "universe_id_sample": null
+      },
+      {
+        "source_table": "sector_state_daily",
+        "run_id": "559265f259e0",
+        "row_count": 47151,
+        "min_trade_date": "2020-02-07",
+        "max_trade_date": "2026-05-18",
+        "feature_scope_id_sample": null,
+        "universe_id_sample": null
+      },
+      {
+        "source_table": "sector_state_daily",
+        "run_id": "5f79a9cf3610",
+        "row_count": 47151,
+        "min_trade_date": "2020-02-07",
+        "max_trade_date": "2026-05-18",
+        "feature_scope_id_sample": null,
+        "universe_id_sample": null
+      },
+      {
+        "source_table": "sector_state_daily",
+        "run_id": "372c17e6f518",
+        "row_count": 30520,
+        "min_trade_date": "2020-02-07",
+        "max_trade_date": "2026-05-25",
+        "feature_scope_id_sample": null,
+        "universe_id_sample": null
+      },
+      {
+        "source_table": "sector_state_daily",
+        "run_id": "8c4e7ea2ac80",
+        "row_count": 30500,
+        "min_trade_date": "2020-02-07",
+        "max_trade_date": "2026-05-22",
+        "feature_scope_id_sample": null,
+        "universe_id_sample": null
+      },
+      {
+        "source_table": "sector_state_daily",
+        "run_id": "e94e98642e49",
+        "row_count": 30500,
+        "min_trade_date": "2020-02-07",
+        "max_trade_date": "2026-05-22",
+        "feature_scope_id_sample": null,
+        "universe_id_sample": null
+      },
+      {
+        "source_table": "sector_state_daily",
+        "run_id": "cde041235b12",
+        "row_count": 30500,
+        "min_trade_date": "2020-02-07",
+        "max_trade_date": "2026-05-22",
+        "feature_scope_id_sample": null,
+        "universe_id_sample": null
+      },
+      {
+        "source_table": "sector_state_daily",
+        "run_id": "51a625987d93",
+        "row_count": 30500,
+        "min_trade_date": "2020-02-07",
+        "max_trade_date": "2026-05-22",
+        "feature_scope_id_sample": null,
+        "universe_id_sample": null
+      },
+      {
+        "source_table": "sector_state_daily",
+        "run_id": "2b300d88e8d1",
+        "row_count": 30480,
+        "min_trade_date": "2020-02-07",
+        "max_trade_date": "2026-05-21",
+        "feature_scope_id_sample": null,
+        "universe_id_sample": null
+      },
+      {
+        "source_table": "sector_state_daily",
+        "run_id": "c7c7cafcd987",
+        "row_count": 30439,
+        "min_trade_date": "2020-02-07",
+        "max_trade_date": "2026-05-21",
+        "feature_scope_id_sample": null,
+        "universe_id_sample": null
+      },
+      {
+        "source_table": "sector_state_daily",
+        "run_id": "e6f2a6e70267",
+        "row_count": 30421,
+        "min_trade_date": "2020-02-07",
+        "max_trade_date": "2026-05-19",
+        "feature_scope_id_sample": null,
+        "universe_id_sample": null
+      },
+      {
+        "source_table": "sector_state_daily",
+        "run_id": "521f828df14b",
+        "row_count": 30421,
+        "min_trade_date": "2020-02-07",
+        "max_trade_date": "2026-05-19",
+        "feature_scope_id_sample": null,
+        "universe_id_sample": null
+      },
+      {
+        "source_table": "sector_state_daily",
+        "run_id": "c7635a6cec46",
+        "row_count": 16731,
+        "min_trade_date": "2020-02-07",
+        "max_trade_date": "2026-05-18",
+        "feature_scope_id_sample": null,
+        "universe_id_sample": null
+      },
+      {
+        "source_table": "sector_state_daily",
+        "run_id": "2ee30def1674",
+        "row_count": 1521,
+        "min_trade_date": "2020-02-07",
+        "max_trade_date": "2026-05-18",
+        "feature_scope_id_sample": null,
+        "universe_id_sample": null
+      },
+      {
+        "source_table": "sector_state_daily",
+        "run_id": "d8122a6b1539",
+        "row_count": 1521,
+        "min_trade_date": "2020-02-07",
+        "max_trade_date": "2026-05-18",
+        "feature_scope_id_sample": null,
+        "universe_id_sample": null
+      },
+      {
+        "source_table": "sector_state_daily",
+        "run_id": "7f67cc2b67dc",
+        "row_count": 1521,
+        "min_trade_date": "2020-02-07",
+        "max_trade_date": "2026-05-18",
+        "feature_scope_id_sample": null,
+        "universe_id_sample": null
+      },
+      {
+        "source_table": "hsmm_model_runs",
+        "run_id": "hsmm_lifecycle_p0_smoke_20260530",
+        "row_count": 1,
+        "min_trade_date": null,
+        "max_trade_date": null,
+        "feature_scope_id_sample": "all",
+        "universe_id_sample": null
+      },
+      {
+        "source_table": "hsmm_model_runs",
+        "run_id": "hsmm_lifecycle_smoke_fresh_v2",
+        "row_count": 1,
+        "min_trade_date": null,
+        "max_trade_date": null,
+        "feature_scope_id_sample": "all",
+        "universe_id_sample": null
+      },
+      {
+        "source_table": "hsmm_model_runs",
+        "run_id": "hsmm_perf_smoke_optimized",
+        "row_count": 1,
+        "min_trade_date": null,
+        "max_trade_date": null,
+        "feature_scope_id_sample": "all",
+        "universe_id_sample": null
+      },
+      {
+        "source_table": "hsmm_model_runs",
+        "run_id": "hsmm_perf_profile_2026h1",
+        "row_count": 1,
+        "min_trade_date": null,
+        "max_trade_date": null,
+        "feature_scope_id_sample": "all",
+        "universe_id_sample": null
+      },
+      {
+        "source_table": "hsmm_model_runs",
+        "run_id": "hsmm_perf_smoke_legacy",
+        "row_count": 1,
+        "min_trade_date": null,
+        "max_trade_date": null,
+        "feature_scope_id_sample": "all",
+        "universe_id_sample": null
+      },
+      {
+        "source_table": "hsmm_model_runs",
+        "run_id": "hsmm_rerun_cleanup_test",
+        "row_count": 1,
+        "min_trade_date": null,
+        "max_trade_date": null,
+        "feature_scope_id_sample": "all",
+        "universe_id_sample": null
+      },
+      {
+        "source_table": "hsmm_model_runs",
+        "run_id": "hsmm_lifecycle_primary_v1",
+        "row_count": 1,
+        "min_trade_date": null,
+        "max_trade_date": null,
+        "feature_scope_id_sample": "all",
+        "universe_id_sample": null
+      },
+      {
+        "source_table": "hsmm_model_runs",
+        "run_id": "hsmm_perf_smoke_prefix_single",
+        "row_count": 1,
+        "min_trade_date": null,
+        "max_trade_date": null,
+        "feature_scope_id_sample": "all",
+        "universe_id_sample": null
+      },
+      {
+        "source_table": "hsmm_model_checkpoints",
+        "run_id": "hsmm_lifecycle_primary_v1",
+        "row_count": 18,
+        "min_trade_date": null,
+        "max_trade_date": null,
+        "feature_scope_id_sample": null,
+        "universe_id_sample": null
+      },
+      {
+        "source_table": "hsmm_model_checkpoints",
+        "run_id": "hsmm_perf_profile_2026h1",
+        "row_count": 6,
+        "min_trade_date": null,
+        "max_trade_date": null,
+        "feature_scope_id_sample": null,
+        "universe_id_sample": null
+      },
+      {
+        "source_table": "hsmm_model_checkpoints",
+        "run_id": "hsmm_perf_smoke_optimized",
+        "row_count": 2,
+        "min_trade_date": null,
+        "max_trade_date": null,
+        "feature_scope_id_sample": null,
+        "universe_id_sample": null
+      },
+      {
+        "source_table": "hsmm_model_checkpoints",
+        "run_id": "hsmm_lifecycle_p0_smoke_20260530",
+        "row_count": 2,
+        "min_trade_date": null,
+        "max_trade_date": null,
+        "feature_scope_id_sample": null,
+        "universe_id_sample": null
+      },
+      {
+        "source_table": "hsmm_model_checkpoints",
+        "run_id": "hsmm_perf_smoke_prefix_single",
+        "row_count": 2,
+        "min_trade_date": null,
+        "max_trade_date": null,
+        "feature_scope_id_sample": null,
+        "universe_id_sample": null
+      },
+      {
+        "source_table": "hsmm_model_checkpoints",
+        "run_id": "hsmm_perf_smoke_legacy",
+        "row_count": 2,
+        "min_trade_date": null,
+        "max_trade_date": null,
+        "feature_scope_id_sample": null,
+        "universe_id_sample": null
+      },
+      {
+        "source_table": "hsmm_model_checkpoints",
+        "run_id": "hsmm_lifecycle_smoke_fresh_v2",
+        "row_count": 2,
+        "min_trade_date": null,
+        "max_trade_date": null,
+        "feature_scope_id_sample": null,
+        "universe_id_sample": null
+      },
+      {
+        "source_table": "hsmm_model_checkpoints",
+        "run_id": "hsmm_rerun_cleanup_test",
+        "row_count": 2,
+        "min_trade_date": null,
+        "max_trade_date": null,
+        "feature_scope_id_sample": null,
+        "universe_id_sample": null
+      },
+      {
+        "source_table": "hsmm_state_daily",
+        "run_id": "hsmm_lifecycle_primary_v1",
+        "row_count": 155118,
+        "min_trade_date": "2025-01-02",
+        "max_trade_date": "2026-05-28",
+        "feature_scope_id_sample": "all",
+        "universe_id_sample": null
+      },
+      {
+        "source_table": "hsmm_state_daily",
+        "run_id": "hsmm_perf_profile_2026h1",
+        "row_count": 43502,
+        "min_trade_date": "2026-01-05",
+        "max_trade_date": "2026-05-28",
+        "feature_scope_id_sample": "all",
+        "universe_id_sample": null
+      },
+      {
+        "source_table": "hsmm_state_daily",
+        "run_id": "hsmm_lifecycle_p0_smoke_20260530",
+        "row_count": 7884,
+        "min_trade_date": "2026-05-06",
+        "max_trade_date": "2026-05-28",
+        "feature_scope_id_sample": "all",
+        "universe_id_sample": null
+      },
+      {
+        "source_table": "hsmm_state_daily",
+        "run_id": "hsmm_perf_smoke_prefix_single",
+        "row_count": 7884,
+        "min_trade_date": "2026-05-06",
+        "max_trade_date": "2026-05-28",
+        "feature_scope_id_sample": "all",
+        "universe_id_sample": null
+      },
+      {
+        "source_table": "hsmm_state_daily",
+        "run_id": "hsmm_perf_smoke_legacy",
+        "row_count": 7884,
+        "min_trade_date": "2026-05-06",
+        "max_trade_date": "2026-05-28",
+        "feature_scope_id_sample": "all",
+        "universe_id_sample": null
+      },
+      {
+        "source_table": "hsmm_state_daily",
+        "run_id": "hsmm_lifecycle_smoke_fresh_v2",
+        "row_count": 7884,
+        "min_trade_date": "2026-05-06",
+        "max_trade_date": "2026-05-28",
+        "feature_scope_id_sample": "all",
+        "universe_id_sample": null
+      },
+      {
+        "source_table": "hsmm_state_daily",
+        "run_id": "hsmm_perf_smoke_optimized",
+        "row_count": 7884,
+        "min_trade_date": "2026-05-06",
+        "max_trade_date": "2026-05-28",
+        "feature_scope_id_sample": "all",
+        "universe_id_sample": null
+      },
+      {
+        "source_table": "hsmm_state_daily",
+        "run_id": "hsmm_rerun_cleanup_test",
+        "row_count": 6492,
+        "min_trade_date": "2026-05-11",
+        "max_trade_date": "2026-05-28",
+        "feature_scope_id_sample": "all",
+        "universe_id_sample": null
+      },
+      {
+        "source_table": "hsmm_state_episodes",
+        "run_id": "hsmm_lifecycle_primary_v1",
+        "row_count": 32487,
+        "min_trade_date": null,
+        "max_trade_date": null,
+        "feature_scope_id_sample": null,
+        "universe_id_sample": null
+      },
+      {
+        "source_table": "hsmm_state_episodes",
+        "run_id": "hsmm_perf_profile_2026h1",
+        "row_count": 11135,
+        "min_trade_date": null,
+        "max_trade_date": null,
+        "feature_scope_id_sample": null,
+        "universe_id_sample": null
+      },
+      {
+        "source_table": "hsmm_state_episodes",
+        "run_id": "hsmm_lifecycle_smoke_fresh_v2",
+        "row_count": 2224,
+        "min_trade_date": null,
+        "max_trade_date": null,
+        "feature_scope_id_sample": null,
+        "universe_id_sample": null
+      },
+      {
+        "source_table": "hsmm_state_episodes",
+        "run_id": "hsmm_lifecycle_p0_smoke_20260530",
+        "row_count": 2224,
+        "min_trade_date": null,
+        "max_trade_date": null,
+        "feature_scope_id_sample": null,
+        "universe_id_sample": null
+      },
+      {
+        "source_table": "hsmm_state_episodes",
+        "run_id": "hsmm_perf_smoke_optimized",
+        "row_count": 2224,
+        "min_trade_date": null,
+        "max_trade_date": null,
+        "feature_scope_id_sample": null,
+        "universe_id_sample": null
+      },
+      {
+        "source_table": "hsmm_state_episodes",
+        "run_id": "hsmm_perf_smoke_prefix_single",
+        "row_count": 2224,
+        "min_trade_date": null,
+        "max_trade_date": null,
+        "feature_scope_id_sample": null,
+        "universe_id_sample": null
+      },
+      {
+        "source_table": "hsmm_state_episodes",
+        "run_id": "hsmm_perf_smoke_legacy",
+        "row_count": 2224,
+        "min_trade_date": null,
+        "max_trade_date": null,
+        "feature_scope_id_sample": null,
+        "universe_id_sample": null
+      },
+      {
+        "source_table": "hsmm_state_episodes",
+        "run_id": "hsmm_rerun_cleanup_test",
+        "row_count": 2064,
+        "min_trade_date": null,
+        "max_trade_date": null,
+        "feature_scope_id_sample": null,
+        "universe_id_sample": null
+      },
+      {
+        "source_table": "hsmm_display_label_episodes",
+        "run_id": "hsmm_lifecycle_primary_v1",
+        "row_count": 29199,
+        "min_trade_date": null,
+        "max_trade_date": null,
+        "feature_scope_id_sample": null,
+        "universe_id_sample": null
+      },
+      {
+        "source_table": "hsmm_lifecycle_ui_daily",
+        "run_id": "hsmm_lifecycle_primary_v1",
+        "row_count": 557104,
+        "min_trade_date": "2025-01-02",
+        "max_trade_date": "2026-05-28",
+        "feature_scope_id_sample": null,
+        "universe_id_sample": null
+      },
+      {
+        "source_table": "hsmm_lifecycle_duration_profile",
+        "run_id": "hsmm_lifecycle_primary_v1",
+        "row_count": 8,
+        "min_trade_date": "2025-10-31",
+        "max_trade_date": "2026-05-28",
+        "feature_scope_id_sample": null,
+        "universe_id_sample": null
+      },
+      {
+        "source_table": "hsmm_next_state_tendency_profile",
+        "run_id": "hsmm_lifecycle_primary_v1",
+        "row_count": 96,
+        "min_trade_date": "2025-10-31",
+        "max_trade_date": "2026-05-28",
+        "feature_scope_id_sample": null,
+        "universe_id_sample": null
+      }
+    ],
+    "v0_fact_checks": {
+      "reference_notes": {
+        "hsmm_run_id": "hsmm_lifecycle_primary_v1",
+        "full_run_lifecycle_rows_reference": 155118,
+        "date_range_reference": [
+          "2025-01-02",
+          "2026-05-28"
+        ],
+        "sector_count_reference": 464,
+        "trade_day_count_reference": 337,
+        "duplicate_sector_date_reference": 0,
+        "future_episode_leakage_reference": 0,
+        "raw_score_used_violation_reference": 0
+      },
+      "hsmm_lifecycle_ui_daily": {
+        "run_id": "hsmm_lifecycle_primary_v1",
+        "profile_mode": "latest_asof",
+        "state_date_policy": "full_run",
+        "row_count_for_run": 155118,
+        "min_trade_date_for_run": "2025-01-02",
+        "max_trade_date_for_run": "2026-05-28",
+        "sector_count_for_run": 464,
+        "trade_day_count_for_run": 337,
+        "duplicate_sector_date_keys": 0,
+        "raw_score_used_violation_count": 0
+      }
+    }
+  },
+  "artifact_inventory": [
+    {
+      "path": "reports/signal_validation/primary_20260529_main/summary.md",
+      "exists": true,
+      "kind": "hmm_signal_validation",
+      "size_bytes": 12846
+    },
+    {
+      "path": "OVERALL_EVALUATION_20260530.md",
+      "exists": true,
+      "kind": "hmm_signal_validation",
+      "size_bytes": 6366
+    },
+    {
+      "path": "EVALUATION_README.md",
+      "exists": true,
+      "kind": "hmm_signal_validation",
+      "size_bytes": 5551
+    },
+    {
+      "path": "HSMM_LIFECYCLE_UI_V0_HARDENING_TEST_RESULTS_20260601.md",
+      "exists": false,
+      "kind": "hsmm_lifecycle",
+      "size_bytes": null
+    },
+    {
+      "path": "HSMM_DISPLAY_LIFECYCLE_EVALUATION_20260601.md",
+      "exists": true,
+      "kind": "hsmm_lifecycle",
+      "size_bytes": 2649
+    },
+    {
+      "path": "HSMM_PROBABILITY_VALIDITY_EVALUATION_20260531.md",
+      "exists": true,
+      "kind": "hsmm_lifecycle",
+      "size_bytes": 3610
+    },
+    {
+      "path": "reports/hsmm_display_lifecycle/hsmm_lifecycle_primary_v1_latest_asof_full_run",
+      "exists": true,
+      "kind": "hsmm_lifecycle",
+      "size_bytes": null
+    },
+    {
+      "path": "reports/hsmm_display_lifecycle/hsmm_lifecycle_primary_v1_latest_asof_20251031_cutoff_only",
+      "exists": true,
+      "kind": "hsmm_lifecycle",
+      "size_bytes": null
+    }
+  ],
+  "missing_artifacts": [
+    "HSMM_LIFECYCLE_UI_V0_HARDENING_TEST_RESULTS_20260601.md"
+  ],
+  "boundaries": {
+    "hmm": {
+      "positioning": "causal nowcast / state context / weak auxiliary signal",
+      "not_accepted_as": "standalone trading decision engine",
+      "default_evidence_level": "internal_diagnostic or research_only",
+      "validated_signal": false
+    },
+    "hsmm_lifecycle": {
+      "state_age": "displayable as internal diagnostic",
+      "state_phase": "displayable as internal diagnostic",
+      "exit_tendency": "low/medium/high ordinal tendency only; internal diagnostic",
+      "numeric_p_exit": "hidden unless usable_probability/readiness passes",
+      "next_state_tendency": "realized-profile tendency, not predicted probability",
+      "ranking_or_trading_recommendation": false
+    },
+    "ui_readiness": {
+      "sample_in_states": "historical explanation only",
+      "causal_walk_forward_required_for_strategy": true,
+      "probability_display": "restricted by readiness and evidence level"
+    },
+    "sample_in_vs_causal": {
+      "sample_in": "descriptive historical explanation only",
+      "causal_walk_forward": "required before strategy/backtest claims"
+    }
+  },
+  "validation_commands": [
+    {
+      "command": null,
+      "returncode": null,
+      "result": "not_run",
+      "reason": "--run-tests no"
+    }
+  ],
+  "local_db_usage": {
+    "db_found": true,
+    "db_path": "/Users/tianxiwang/Documents/Codex/2026-05-19/files-mentioned-by-the-user-a/a_share_hmm_analyzer_macos/a_share_hmm_analyzer/data/db/a_share_hmm.duckdb",
+    "db_file_size": 760492032,
+    "duckdb_opened_read_only": true,
+    "external_fetch_attempted": false
+  },
+  "evidence_registration": {
+    "registered": false,
+    "reason": "wp_a_registry_tables_missing"
+  }
+}
