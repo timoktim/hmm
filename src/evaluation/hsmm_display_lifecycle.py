@@ -402,10 +402,17 @@ def _exit_tendency_long(
     horizons: tuple[int, ...],
     probability_status: pd.DataFrame,
     config: LifecycleDisplayConfig,
+    profile_cutoff_date: str | pd.Timestamp | None = None,
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame]:
     if states.empty:
         return pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
-    targets = build_exit_targets(states, episodes, horizons=horizons, exit_types=("display_label",))
+    targets = build_exit_targets(
+        states,
+        episodes,
+        horizons=horizons,
+        exit_types=("display_label",),
+        asof_cutoff_date=profile_cutoff_date,
+    )
     if targets.empty:
         return pd.DataFrame(), pd.DataFrame(), pd.DataFrame()
     targets["age_bucket"] = targets["display_state_age_days"].apply(lambda x: age_bucket(x, config.age_buckets))
@@ -416,15 +423,7 @@ def _exit_tendency_long(
         right_on=["run_id", "sector_code"],
         how="inner",
     ) if False else targets
-    cutoff_dates = set(pd.to_datetime(profile_episodes["episode_end_date"]).dt.date) if not profile_episodes.empty else set()
-    if cutoff_dates:
-        eligible = targets[
-            (targets["is_right_censored_for_horizon"] == False)  # noqa: E712
-            & targets["actual_exit"].notna()
-            & pd.to_datetime(targets["trade_date"]).dt.date.le(max(cutoff_dates))
-        ].copy()
-    else:
-        eligible = targets.iloc[0:0].copy()
+    eligible = targets[targets["target_observation_status"].isin(["observed_positive", "observed_negative"])].copy()
 
     bucket = (
         eligible.groupby(["state_label", "age_bucket", "horizon_days"], observed=True)
@@ -744,7 +743,16 @@ def build_lifecycle_ui_frame(
         for label, age in zip(context["state_label"], context["display_state_age_days"], strict=False)
     ]
     probability_status = probability_status if probability_status is not None else pd.DataFrame()
-    exit_long, exit_profile, exit_distribution = _exit_tendency_long(context, ui_episodes, profile_episodes, duration_profile, horizons, probability_status, config)
+    exit_long, exit_profile, exit_distribution = _exit_tendency_long(
+        context,
+        ui_episodes,
+        profile_episodes,
+        duration_profile,
+        horizons,
+        probability_status,
+        config,
+        profile_cutoff_date=cutoff,
+    )
     next_profiles = compute_next_state_tendency_profiles(profile_episodes, duration_profile, config)
     next_label = next_profiles["by_label"]
     next_phase = next_profiles["by_phase"]
