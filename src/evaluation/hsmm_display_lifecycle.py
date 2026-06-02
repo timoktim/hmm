@@ -373,6 +373,8 @@ def _raw_basis(status: object) -> str:
         return "raw_rank_used_allowed"
     if value in {"raw_only", "ordinal_only"}:
         return "raw_rank_used_as_ordinal"
+    if value == "tail_censored":
+        return "tail_censored_beyond_duration_support"
     if value == "invalid":
         return "raw_rank_excluded_invalid"
     if value == "insufficient_sample":
@@ -485,10 +487,19 @@ def _exit_tendency_long(
         if raw_col in states.columns:
             raw_rank = states[["sector_code", "trade_date", "state_label", raw_col]].copy()
             raw_rank["trade_date"] = pd.to_datetime(raw_rank["trade_date"])
+            raw_rank["raw_exit_score_value"] = pd.to_numeric(raw_rank[raw_col], errors="coerce")
             raw_rank["raw_exit_rank_score_unmasked"] = raw_rank.groupby("state_label")[raw_col].rank(pct=True)
-            h = h.merge(raw_rank[["sector_code", "trade_date", "raw_exit_rank_score_unmasked"]], on=["sector_code", "trade_date"], how="left")
+            h = h.merge(raw_rank[["sector_code", "trade_date", "raw_exit_score_value", "raw_exit_rank_score_unmasked"]], on=["sector_code", "trade_date"], how="left")
         else:
+            h["raw_exit_score_value"] = np.nan
             h["raw_exit_rank_score_unmasked"] = np.nan
+        if "duration_percentile" in h.columns:
+            model_duration_percentile = pd.to_numeric(h["duration_percentile"], errors="coerce")
+        else:
+            model_duration_percentile = pd.Series(np.nan, index=h.index)
+        h["tail_censored"] = model_duration_percentile.ge(1.0) & h["raw_exit_score_value"].isna()
+        h.loc[h["tail_censored"], "probability_status"] = "tail_censored"
+        h.loc[h["tail_censored"], "raw_score_allowed"] = False
         h["raw_score_used"] = h["raw_score_allowed"] & h["raw_exit_rank_score_unmasked"].notna()
         h["raw_exit_rank_score"] = np.where(h["raw_score_used"], h["raw_exit_rank_score_unmasked"], np.nan)
         h = h.merge(
@@ -523,6 +534,8 @@ def _exit_tendency_long(
         h.loc[age_score.isna() | empirical_score.isna(), "exit_tendency_score"] = np.nan
         h["raw_basis"] = h["probability_status"].map(_raw_basis)
         h["exit_tendency_basis"] = "age_percentile+empirical_exit_rate+" + h["raw_basis"].astype(str)
+        h.loc[h["tail_censored"], "exit_tendency_score"] = np.nan
+        h.loc[h["tail_censored"], "exit_tendency_basis"] = "tail_censored_beyond_duration_support"
         tendency_parts = [
             _score_to_relative_tendency(group, config)
             for _, group in h.groupby(["state_label", "horizon_days"], observed=True)
@@ -531,6 +544,7 @@ def _exit_tendency_long(
             h["exit_tendency"] = pd.concat(tendency_parts).reindex(h.index).fillna("unavailable")
         else:
             h["exit_tendency"] = "unavailable"
+        h.loc[h["tail_censored"], "exit_tendency"] = "unavailable"
         long_rows.append(
             h[
                 [

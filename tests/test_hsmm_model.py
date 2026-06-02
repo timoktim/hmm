@@ -40,7 +40,8 @@ def test_duration_probabilities_are_stable_and_monotonic():
         assert model.p_exit_h(state_id, 3, 5) >= model.p_exit_h(state_id, 3, 1)
         assert model.p_exit_h(state_id, 3, 10) >= model.p_exit_h(state_id, 3, 5)
         assert model.expected_remaining_days(state_id, 3) >= 0
-        assert model.p_exit_h(state_id, model.max_duration + 5, 1) == 1.0
+        assert np.isnan(model.p_exit_h(state_id, model.max_duration + 5, 1))
+        assert model.duration_percentile_status(state_id, model.max_duration) == "beyond_support"
         assert model.expected_remaining_days(state_id, model.max_duration + 5) == 0.0
 
 
@@ -64,7 +65,7 @@ def test_hsmm_p_stay_plus_exit_equals_one_and_expected_remaining_is_conditional(
     p_exit = model.p_exit_h(0, age=3, horizon=1)
     assert np.isclose((1.0 - p_exit) + p_exit, 1.0)
     assert np.isclose(model.expected_remaining_days(0, age=3), 0.5)
-    assert model.p_exit_h(0, age=6, horizon=1) == 1.0
+    assert np.isnan(model.p_exit_h(0, age=6, horizon=1))
 
 
 def test_synthetic_data_recovers_different_duration_profiles():
