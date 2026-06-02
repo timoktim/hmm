@@ -309,11 +309,18 @@ class DiscreteDurationGaussianHSMM:
             return 1.0
         return float(pmf[:age].sum())
 
+    def duration_percentile_status(self, state_id: int, age: int) -> str:
+        if age >= self.max_duration:
+            return "beyond_support"
+        if age <= 0:
+            return "unknown"
+        return "within_support"
+
     def p_exit_h(self, state_id: int, age: int, horizon: int) -> float:
         pmf = self.duration_pmf_[state_id]
         support = np.arange(1, self.max_duration + 1)
         if age > self.max_duration:
-            return 1.0
+            return np.nan
         survival = pmf[support >= max(age, 1)].sum()
         if survival <= EPS:
             return np.nan
