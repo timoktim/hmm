@@ -60,6 +60,7 @@ class HSMMWalkForwardConfig:
     persist_incremental: bool = False
     resume: bool = False
     checkpoint_write_mode: str = "end"
+    overwrite: bool = False
 
 
 def params_hash(payload: dict[str, object]) -> str:
@@ -69,7 +70,7 @@ def params_hash(payload: dict[str, object]) -> str:
 
 def _config_hash_payload(config: HSMMWalkForwardConfig, feature_scope_id: str, feature_scope_type: str) -> dict[str, object]:
     payload = asdict(config)
-    for key in ["run_id", "notes", "db_path"]:
+    for key in ["run_id", "notes", "db_path", "overwrite"]:
         payload.pop(key, None)
     payload["feature_scope_id"] = feature_scope_id
     payload["feature_scope_type"] = feature_scope_type
@@ -85,15 +86,9 @@ def _resolve_run_id(config: HSMMWalkForwardConfig) -> str:
     return f"hsmm_v1_{scope}_{stamp}"
 
 
-def clear_hsmm_run(storage: DuckDBStorage, run_id: str) -> None:
+def clear_hsmm_run(storage: DuckDBStorage, run_id: str) -> dict[str, object]:
     """Remove every persisted artifact for a HSMM run before rerunning it."""
-    with storage.connect() as con:
-        con.execute("DELETE FROM hsmm_state_daily WHERE run_id = ?", [run_id])
-        con.execute("DELETE FROM hsmm_state_episodes WHERE run_id = ?", [run_id])
-        con.execute("DELETE FROM hsmm_model_checkpoints WHERE run_id = ?", [run_id])
-        con.execute("DELETE FROM hsmm_run_performance WHERE run_id = ?", [run_id])
-        con.execute("DELETE FROM hsmm_parameters WHERE run_id = ?", [run_id])
-        con.execute("DELETE FROM hsmm_model_runs WHERE run_id = ?", [run_id])
+    return storage.clear_hsmm_run_cascade(run_id)
 
 
 def _hsmm_run_metadata_frame(
@@ -768,8 +763,13 @@ def run_hsmm_walk_forward(
             "run_hash": params_hash({**_config_hash_payload(config, feature_scope_id, feature_scope_type), "run_id": run_id}),
         }
 
-    if not config.append and not config.resume:
-        clear_hsmm_run(storage, run_id)
+    existing_run = storage.read_df("SELECT run_status FROM hsmm_model_runs WHERE run_id = ? LIMIT 1", [run_id])
+    existing_status = None if existing_run.empty else str(existing_run.loc[0, "run_status"] or "completed")
+    if existing_status == "completed" and not config.overwrite:
+        raise ValueError(f"HSMM run_id already completed: {run_id}. Use overwrite=True to rerun and cascade-clean stale rows.")
+    cleanup_summary: dict[str, object] | None = None
+    if config.overwrite or (not config.append and not config.resume):
+        cleanup_summary = clear_hsmm_run(storage, run_id)
 
     rows: list[dict[str, object]] = []
     checkpoint_rows: list[dict[str, object]] = []
@@ -1022,6 +1022,7 @@ def run_hsmm_walk_forward(
             "performance": performance_df,
             "config_hash": hash_value,
             "run_hash": run_hash,
+            "cleanup_summary": cleanup_summary,
         }
     except Exception as exc:
         failure_states = pd.DataFrame(rows)
@@ -1080,6 +1081,7 @@ def main() -> None:
     parser.add_argument("--persist-incremental", action="store_true")
     parser.add_argument("--resume", action="store_true")
     parser.add_argument("--checkpoint-write-mode", default="end", choices=["end", "incremental"])
+    parser.add_argument("--overwrite", action="store_true")
     args = parser.parse_args()
 
     def _print_progress(current: int, total: int, trade_date: pd.Timestamp, stage: str) -> None:
@@ -1116,6 +1118,7 @@ def main() -> None:
             persist_incremental=args.persist_incremental,
             resume=args.resume,
             checkpoint_write_mode=args.checkpoint_write_mode,
+            overwrite=args.overwrite,
         ),
         progress_callback=_print_progress,
     )

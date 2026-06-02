@@ -955,6 +955,55 @@ def build_lifecycle_ui_daily(storage: DuckDBStorage, run_id: str, horizons: tupl
     return ui
 
 
+def _clear_lifecycle_profile_outputs(
+    storage: DuckDBStorage,
+    *,
+    run_id: str,
+    profile_mode: str,
+    profile_cutoff_date: object,
+    state_date_policy: str,
+) -> dict[str, int]:
+    cutoff = pd.to_datetime(profile_cutoff_date, errors="coerce")
+    if pd.isna(cutoff):
+        return {}
+    cutoff_date = cutoff.date()
+    statements = [
+        (
+            "hsmm_display_label_episodes",
+            "run_id = ?",
+            [run_id],
+        ),
+        (
+            "hsmm_lifecycle_ui_daily",
+            "run_id = ? AND profile_mode = ? AND profile_cutoff_date = ? AND state_date_policy = ?",
+            [run_id, profile_mode, cutoff_date, state_date_policy],
+        ),
+        (
+            "hsmm_lifecycle_profile_metadata",
+            "run_id = ? AND profile_mode = ? AND profile_cutoff_date = ? AND state_date_policy = ?",
+            [run_id, profile_mode, cutoff_date, state_date_policy],
+        ),
+        (
+            "hsmm_lifecycle_duration_profile",
+            "run_id = ? AND profile_mode = ? AND profile_cutoff_date = ?",
+            [run_id, profile_mode, cutoff_date],
+        ),
+        (
+            "hsmm_next_state_tendency_profile",
+            "run_id = ? AND profile_mode = ? AND profile_cutoff_date = ?",
+            [run_id, profile_mode, cutoff_date],
+        ),
+    ]
+    deleted: dict[str, int] = {}
+    with storage.connect() as con:
+        for table, where_sql, params in statements:
+            before = int(con.execute(f"SELECT COUNT(*) FROM {table} WHERE {where_sql}", params).fetchone()[0])
+            con.execute(f"DELETE FROM {table} WHERE {where_sql}", params)
+            after = int(con.execute(f"SELECT COUNT(*) FROM {table} WHERE {where_sql}", params).fetchone()[0])
+            deleted[table] = before - after
+    return deleted
+
+
 def build_ui_field_policy() -> pd.DataFrame:
     rows = [
         ("state_label", True, "show", "状态标签不是交易信号"),
@@ -1218,6 +1267,13 @@ def write_lifecycle_ui_outputs(
     metadata_for_db["horizons"] = json.dumps(metadata.get("horizons", []), ensure_ascii=False)
     metadata_for_db["state_labels"] = json.dumps(metadata.get("state_labels", []), ensure_ascii=False)
     metadata_df = pd.DataFrame([metadata_for_db])
+    lifecycle_cleanup_summary = _clear_lifecycle_profile_outputs(
+        storage,
+        run_id=run_id,
+        profile_mode=str(metadata["profile_mode"]),
+        profile_cutoff_date=metadata["profile_cutoff_date"],
+        state_date_policy=str(metadata["state_date_policy"]),
+    )
     if not episodes.empty:
         storage.upsert_df("hsmm_display_label_episodes", episodes, ["run_id", "sector_code", "episode_id"])
     if not ui.empty:
@@ -1267,6 +1323,7 @@ def write_lifecycle_ui_outputs(
         "ui_field_policy": policy,
         "ui_text_policy_audit": text_audit,
         "metadata": metadata,
+        "lifecycle_cleanup_summary": lifecycle_cleanup_summary,
     }
 
 
