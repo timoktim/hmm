@@ -27,7 +27,7 @@ Logical root: docs/
 | STAGE02-WP-A-v1 | 02 | A | archived | v1 | docs/work_packages/stage_02/STAGE02_WP_A_causal_cache_contract_audit.md | Codex A | accepted |
 | STAGE02-WP-B-v1 | 02 | B | archived | v1 | docs/work_packages/stage_02/STAGE02_WP_B_ci_validation_artifact_skeleton.md | Codex B | accepted |
 | STAGE02-WP-C-v1 | 02 | C | archived | v1 | docs/work_packages/stage_02/STAGE02_WP_C_readiness_gate_integration.md | Codex C | accepted |
-| STAGE02-WP-D-v1 | 02 | D | active | v1 | docs/work_packages/stage_02/STAGE02_WP_D_final_integration_acceptance.md | Codex Integration | pending |
+| STAGE02-WP-D-v1 | 02 | D | archived | v1 | docs/work_packages/stage_02/STAGE02_WP_D_final_integration_acceptance.md | Codex Integration | accepted |
 
 ## Current Stage 02 Focus
 
@@ -71,3 +71,4 @@ Each Codex thread must report:
 |---|---|---|
 | 2026-06-02 | Stage 02 WP-A/WP-B accepted and WP-C activated. | ChatGPT |
 | 2026-06-02 | Stage 02 WP-C accepted and WP-D final acceptance activated. | ChatGPT |
+| 2026-06-02 | Stage 02 WP-D final integration accepted Stage 02 with tracked risks. | Codex |

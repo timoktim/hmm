@@ -1,0 +1,161 @@
+{
+  "index_id": "STAGE02-WP-D-v1",
+  "status": "pass",
+  "final_verdict": "Stage02PassWithTrackedRisks",
+  "branch": "stage02/wp-d-final-integration-acceptance",
+  "generated_at": "2026-06-02",
+  "base_main_head": "6a23696",
+  "merged_prs_checked": [
+    {
+      "pr": 9,
+      "wp": "STAGE02-WP-B-v1",
+      "merged": true,
+      "merge_commit": "62f6264",
+      "head_commit": "a5a997c"
+    },
+    {
+      "pr": 10,
+      "wp": "STAGE02-WP-A-v1",
+      "merged": true,
+      "merge_commit": "cfc7c59",
+      "head_commit": "51c0cb2"
+    },
+    {
+      "pr": 11,
+      "wp": "STAGE02-WP-C-v1",
+      "merged": true,
+      "merge_commit": "19c5bdf",
+      "head_commit": "6e736a7"
+    }
+  ],
+  "inputs": {
+    "stage01_integration": {
+      "status": "pass",
+      "final_verdict": "Stage01PassWithTrackedRisks",
+      "shared_run_id": "bea7ff20106a",
+      "readiness_status": "research_only",
+      "display_action": "research_only",
+      "label_alignment_ambiguous_match_share": 0.8666666666666667
+    },
+    "wp_a_causal_cache_audit": {
+      "exists": true,
+      "machine_readable": true,
+      "status": "partial",
+      "report_status": "cache_not_linked_to_resolved_run_id",
+      "resolved_run_id": "bea7ff20106a",
+      "causal_cache_available": true,
+      "causal_cache_id": "dbefc30c9c4c2328fea7",
+      "cache_run_id": null,
+      "state_count": 30937,
+      "sector_count": 464,
+      "coverage_ratio": 0.052885,
+      "expected_state_rows": 584981,
+      "leakage_violation_count": 0,
+      "duplicate_key_count": 0,
+      "missing_metadata_count": 1,
+      "readiness_status": "research_only"
+    },
+    "wp_b_ci_validation": {
+      "exists": true,
+      "machine_readable": true,
+      "status": "pass",
+      "workflow": ".github/workflows/ci.yml",
+      "workflow_exists": true,
+      "private_db_required": "no",
+      "local_db_usage": "no",
+      "external_data_fetch": "no",
+      "training_algorithm_modified": "no",
+      "duckdb_committed": "no"
+    },
+    "wp_c_readiness_gate": {
+      "exists": true,
+      "machine_readable": true,
+      "status": "pass",
+      "run_id": "bea7ff20106a",
+      "readiness_status": "research_only",
+      "display_action": "research_only",
+      "causal_cache_status": "available",
+      "ci_validation_status": "available",
+      "external_data_fetch": false,
+      "no_fetch_mode": true,
+      "training_algorithm_modified": false,
+      "duckdb_committed": false,
+      "decision_ready_emitted": false
+    }
+  },
+  "acceptance_checks": {
+    "pr_9_10_11_merged": true,
+    "wp_a_causal_cache_audit_machine_readable": true,
+    "wp_b_ci_summary_and_workflow_exist": true,
+    "wp_c_readiness_gate_machine_readable": true,
+    "stage02_hmm_hsmm_training_modified": false,
+    "stage02_src_models_or_features_modified": false,
+    "duckdb_or_wal_committed": false,
+    "external_data_fetch": false,
+    "private_path_hygiene": "pass",
+    "readiness_remains_research_only": true,
+    "validated_or_decision_ready_emitted": false
+  },
+  "commands_run": [
+    {
+      "command": "git fetch origin",
+      "result": "pass",
+      "notes": "origin/main updated to 6a23696"
+    },
+    {
+      "command": "git checkout main",
+      "result": "blocked",
+      "notes": "pre-existing untracked files in the primary local worktree would have been overwritten; no files moved or deleted"
+    },
+    {
+      "command": "git worktree add -b stage02/wp-d-final-integration-acceptance <clean local worktree> origin/main",
+      "result": "pass"
+    },
+    {
+      "command": "git diff --check",
+      "result": "pass"
+    },
+    {
+      "command": "python -m compileall -q src tests",
+      "result": "failed",
+      "notes": "python unavailable in this shell"
+    },
+    {
+      "command": ".venv/bin/python -m compileall -q src tests",
+      "result": "pass",
+      "notes": "used a git-ignored .venv symlink to an existing local project environment"
+    },
+    {
+      "command": "pytest -q tests/test_readiness_gate.py tests/test_causal_cache_audit.py tests/test_private_path_hygiene.py",
+      "result": "failed",
+      "notes": "pytest unavailable in this shell"
+    },
+    {
+      "command": ".venv/bin/pytest -q tests/test_readiness_gate.py tests/test_causal_cache_audit.py tests/test_private_path_hygiene.py",
+      "result": "pass",
+      "tests": "16 passed"
+    },
+    {
+      "command": "bash scripts/check_no_private_paths.sh",
+      "result": "pass",
+      "summary": "PRIVATE_PATH_HYGIENE=pass scanned_files=56"
+    },
+    {
+      "command": "bash scripts/validate_stage01_no_private_db.sh",
+      "result": "pass",
+      "summary": "CI_SAFE_STAGE01_VALIDATION=pass private_db_required=no external_data_fetch=no"
+    }
+  ],
+  "readiness_conclusion": "HMM output remains research_only / diagnostic. Stage 02 added gates and evidence, but did not make outputs validated or decision-ready.",
+  "blocking_issues": [],
+  "tracked_risks": [
+    "Causal cache rows exist but are not linked to the resolved HMM run id.",
+    "Causal cache coverage is partial.",
+    "Label alignment ambiguity remains high.",
+    "CI is private-DB-free and is not a DB-backed validation artifact.",
+    "Stage 00 registry tables are missing in the local V0 DB, so some evidence remains seed-payload-based."
+  ],
+  "external_data_fetch": "no",
+  "training_algorithm_modified": "no",
+  "duckdb_committed": "no"
+}
