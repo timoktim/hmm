@@ -22,6 +22,7 @@ from src.evaluation.hsmm_lifecycle_calibration import (
     write_calibration_outputs,
 )
 from src.evaluation.hsmm_transition_validation import validate_transitions, write_transition_outputs
+from src.utils.lineage import hash_payload
 
 
 def _segments(states: pd.DataFrame, key_col: str) -> pd.DataFrame:
@@ -116,6 +117,99 @@ def _stress_lifecycle_from_targets(targets: pd.DataFrame, exit_type: str) -> pd.
             }
         )
     return pd.DataFrame(rows)
+
+
+def _single_value(frame: pd.DataFrame, column: str) -> object | None:
+    if frame.empty or column not in frame.columns:
+        return None
+    values = frame[column].dropna().astype(str).unique().tolist()
+    return values[0] if len(values) == 1 else None
+
+
+def _read_hsmm_run_metadata(storage: DuckDBStorage, run_id: str) -> dict[str, object]:
+    try:
+        run = storage.read_df(
+            """
+            SELECT run_id, config_hash, lineage_hash, feature_scope_id
+            FROM hsmm_model_runs
+            WHERE run_id = ?
+            LIMIT 1
+            """,
+            [run_id],
+        )
+    except Exception:
+        return {}
+    if run.empty:
+        return {}
+    row = run.iloc[0]
+    return {field: row.get(field) for field in ["run_id", "config_hash", "lineage_hash", "feature_scope_id"]}
+
+
+def _readiness_contract_metadata(
+    storage: DuckDBStorage,
+    run_id: str,
+    states: pd.DataFrame,
+    horizons: tuple[int, ...],
+    exit_types: tuple[str, ...],
+) -> dict[str, object]:
+    run_metadata = _read_hsmm_run_metadata(storage, run_id)
+    fallback_config_hash = hash_payload(
+        {
+            "calibration_config": CalibrationConfig().__dict__,
+            "horizons": list(horizons),
+            "exit_types": list(exit_types),
+        }
+    )
+    cutoff = pd.to_datetime(states["trade_date"]).max().date() if not states.empty and "trade_date" in states.columns else None
+    return {
+        "run_id": run_metadata.get("run_id") or run_id,
+        "config_hash": run_metadata.get("config_hash") or _single_value(states, "config_hash") or fallback_config_hash,
+        "lineage_hash": run_metadata.get("lineage_hash") or _single_value(states, "lineage_hash") or "unknown",
+        "profile_mode": "retrospective",
+        "profile_cutoff_date": cutoff,
+        "state_date_policy": "full_run",
+        "feature_scope_id": run_metadata.get("feature_scope_id") or _single_value(states, "feature_scope_id") or "all",
+        "created_at": pd.Timestamp.now(tz=None),
+    }
+
+
+def _augment_readiness_matrix(readiness: pd.DataFrame, metadata: dict[str, object]) -> pd.DataFrame:
+    if readiness.empty:
+        columns = [
+            "state_label",
+            "horizon_days",
+            "exit_type",
+            "probability_status",
+            "selected_method",
+            "can_show_numeric_probability",
+            "can_show_ordinal_score",
+            "must_hide",
+            "reason",
+            "run_id",
+            "config_hash",
+            "lineage_hash",
+            "profile_mode",
+            "profile_cutoff_date",
+            "state_date_policy",
+            "feature_scope_id",
+            "created_at",
+        ]
+        return pd.DataFrame(columns=columns)
+    out = readiness.copy()
+    for field in [
+        "run_id",
+        "config_hash",
+        "lineage_hash",
+        "profile_mode",
+        "profile_cutoff_date",
+        "state_date_policy",
+        "feature_scope_id",
+        "created_at",
+    ]:
+        out[field] = metadata.get(field)
+    if "probability_status" not in out.columns and "status" in out.columns:
+        out["probability_status"] = out["status"]
+    return out
 
 
 def _verdicts(selected: pd.DataFrame, transition_summary: pd.DataFrame) -> dict[str, str]:
@@ -274,7 +368,8 @@ def generate_probability_report(
     _stress_lifecycle_from_targets(targets, "state_id").to_csv(output_dir / "stress_hidden_state_lifecycle.csv", index=False)
 
     selected = calibration["selected_status"]
-    readiness = ui_readiness_matrix(selected)
+    contract_metadata = _readiness_contract_metadata(storage, run_id, states, horizons, exit_types)
+    readiness = _augment_readiness_matrix(ui_readiness_matrix(selected), contract_metadata)
     readiness.to_csv(output_dir / "ui_readiness_matrix.csv", index=False)
     verdicts = _verdicts(selected, transition["summary"])
     _write_summary(output_dir, run_id, selected, transition["summary"], verdicts)
@@ -286,6 +381,7 @@ def generate_probability_report(
                 "horizons": horizons,
                 "exit_types": exit_types,
                 "calibration_config": CalibrationConfig().__dict__,
+                "probability_readiness_contract": contract_metadata,
                 "verdicts": verdicts,
             },
             ensure_ascii=False,
