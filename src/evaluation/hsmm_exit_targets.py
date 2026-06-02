@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+from datetime import date
 from pathlib import Path
 
 import numpy as np
@@ -138,6 +139,11 @@ def _first_exit_arrays(group: pd.DataFrame, horizon: int, exit_type: str) -> dic
     state_ids = group["state_id"].to_numpy()
     labels = group["state_label"].astype(object).to_numpy()
     dates = pd.to_datetime(group["trade_date"]).to_numpy()
+    horizon_end_dates = np.empty(n, dtype=object)
+    horizon_end_dates[:] = None
+    horizon_positions = positions + horizon
+    has_horizon_end = horizon_positions < n
+    horizon_end_dates[has_horizon_end] = pd.to_datetime(dates[horizon_positions[has_horizon_end]])
     next_state_id = np.empty(n, dtype=object)
     next_state_id[:] = None
     next_state_label = np.empty(n, dtype=object)
@@ -160,7 +166,38 @@ def _first_exit_arrays(group: pd.DataFrame, horizon: int, exit_type: str) -> dic
         "exit_dates": exit_dates,
         "lags": lag_values,
         "censored": censored.astype(bool),
+        "horizon_end_dates": horizon_end_dates,
     }
+
+
+def _is_true(value: object) -> bool:
+    return isinstance(value, (bool, np.bool_)) and bool(value)
+
+
+def _is_false(value: object) -> bool:
+    return isinstance(value, (bool, np.bool_)) and not bool(value)
+
+
+def _target_observation_status(
+    actual_exit: object,
+    horizon_end_date: object,
+    realized_exit_date: object,
+    asof_cutoff_date: date | pd.Timestamp | str | None,
+) -> str:
+    horizon_end = pd.to_datetime(horizon_end_date) if pd.notna(horizon_end_date) else pd.NaT
+    realized_exit = pd.to_datetime(realized_exit_date) if pd.notna(realized_exit_date) else pd.NaT
+    cutoff = pd.to_datetime(asof_cutoff_date) if asof_cutoff_date is not None and pd.notna(asof_cutoff_date) else None
+    if _is_true(actual_exit):
+        if cutoff is None or (pd.notna(realized_exit) and realized_exit <= cutoff):
+            return "observed_positive"
+        return "right_censored_by_cutoff"
+    if pd.isna(horizon_end):
+        return "unknown"
+    if cutoff is not None and horizon_end > cutoff:
+        return "right_censored_by_cutoff"
+    if _is_false(actual_exit):
+        return "observed_negative"
+    return "unknown"
 
 
 def build_exit_targets(
@@ -168,6 +205,7 @@ def build_exit_targets(
     episodes: pd.DataFrame | None = None,
     horizons: tuple[int, ...] = DEFAULT_HORIZONS,
     exit_types: tuple[str, ...] = DEFAULT_EXIT_TYPES,
+    asof_cutoff_date: date | pd.Timestamp | str | None = None,
 ) -> pd.DataFrame:
     """Build audited HSMM exit targets by trading-row horizons.
 
@@ -218,7 +256,17 @@ def build_exit_targets(
                 frame["actual_next_state_label"] = exits["next_state_label"]
                 frame["realized_exit_date"] = exits["exit_dates"]
                 frame["realized_exit_lag_days"] = exits["lags"]
+                frame["horizon_end_date"] = exits["horizon_end_dates"]
                 frame["is_right_censored_for_horizon"] = exits["censored"]
+                frame["target_observation_status"] = [
+                    _target_observation_status(actual, horizon_end, realized_exit, asof_cutoff_date)
+                    for actual, horizon_end, realized_exit in zip(
+                        frame["actual_exit_within_h"],
+                        frame["horizon_end_date"],
+                        frame["realized_exit_date"],
+                        strict=False,
+                    )
+                ]
                 frame["raw_exit_score"] = state_score.to_numpy(dtype=float) if exit_type == "state_id" else label_score.to_numpy(dtype=float)
                 frame["raw_state_exit_score"] = state_score.to_numpy(dtype=float)
                 frame["raw_label_exit_score"] = label_score.to_numpy(dtype=float)
