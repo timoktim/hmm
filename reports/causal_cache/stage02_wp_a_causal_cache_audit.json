@@ -1,0 +1,198 @@
+{
+  "run_id": "latest",
+  "resolved_run_id": "bea7ff20106a",
+  "status": "partial",
+  "report_status": "cache_not_linked_to_resolved_run_id",
+  "causal_cache_available": true,
+  "causal_cache_id": "dbefc30c9c4c2328fea7",
+  "cache_run_id": null,
+  "state_source": "causal_backtest",
+  "state_count": 30937,
+  "sector_count": 464,
+  "min_trade_date": "2025-01-02",
+  "max_trade_date": "2026-05-27",
+  "coverage_ratio": 0.052885,
+  "train_end_max": "2026-05-06",
+  "max_observation_date_used_max": "2026-05-27",
+  "leakage_violation_count": 0,
+  "missing_metadata_count": 1,
+  "duplicate_key_count": 0,
+  "exec_date_violation_count": 0,
+  "readiness_status": "research_only",
+  "readiness_reason": "cache_not_linked_to_resolved_run_id",
+  "warnings": [
+    "walk_forward_cache_runs lacks run_id linkage metadata",
+    "audited latest walk-forward cache because no cache row can be proven to belong to the resolved HMM run",
+    "execution metadata absent; exec_date > signal_date was not audited",
+    "Stage 00 registry tables missing; wrote registry seed payload to summary JSON"
+  ],
+  "db_path": "data/db/a_share_hmm.duckdb",
+  "local_db_used": true,
+  "tables_checked": {
+    "walk_forward_cache_runs": {
+      "present": true,
+      "row_count": 7,
+      "columns": [
+        "cache_key",
+        "n_states",
+        "train_window_days",
+        "retrain_frequency",
+        "feature_version",
+        "start_date",
+        "end_date",
+        "signal_count",
+        "row_count",
+        "created_at",
+        "params_json",
+        "params_hash",
+        "universe_id",
+        "scope_type",
+        "include_custom_baskets",
+        "rebalance_days",
+        "state_date_mode",
+        "feature_scope_id"
+      ]
+    },
+    "walk_forward_state_cache": {
+      "present": true,
+      "row_count": 226810,
+      "columns": [
+        "cache_key",
+        "sector_id",
+        "trade_date",
+        "state_id",
+        "state_label",
+        "prob_trend_up",
+        "prob_neutral",
+        "prob_risk_off",
+        "next_state_probs_json",
+        "train_start",
+        "train_end",
+        "max_observation_date_used",
+        "probability_type",
+        "state_source"
+      ]
+    },
+    "sector_state_daily": {
+      "present": true,
+      "row_count": 2655935,
+      "columns": [
+        "run_id",
+        "sector_id",
+        "trade_date",
+        "state_id",
+        "state_label",
+        "prob_trend_up",
+        "prob_neutral",
+        "prob_risk_off",
+        "next_state_probs_json",
+        "state_source"
+      ]
+    },
+    "model_runs": {
+      "present": true,
+      "row_count": 25,
+      "columns": [
+        "run_id",
+        "model_type",
+        "n_states",
+        "train_start",
+        "train_end",
+        "feature_version",
+        "model_path",
+        "scaler_path",
+        "created_at",
+        "metrics_json",
+        "universe_id",
+        "scope_type",
+        "include_custom_baskets",
+        "feature_scope_id",
+        "feature_scope_type"
+      ]
+    },
+    "model_evidence_registry": {
+      "present": false,
+      "row_count": null,
+      "columns": []
+    },
+    "validation_runs": {
+      "present": false,
+      "row_count": null,
+      "columns": []
+    }
+  },
+  "cache_linkage_status": "latest_unlinked_cache",
+  "expected_state_rows": 584981,
+  "unique_cache_state_rows": 30937,
+  "cache_run_reported_row_count": 30937,
+  "train_end_violation_count": 0,
+  "max_observation_date_used_violation_count": 0,
+  "state_source_mix_found": false,
+  "registry_written": false,
+  "evidence_id": null,
+  "validation_run_id": null,
+  "registry_seed_payload": {
+    "model_evidence_registry": {
+      "run_id": "bea7ff20106a",
+      "model_type": "hmm",
+      "evidence_level": "internal_diagnostic",
+      "readiness_status": "research_only",
+      "causal_cache_id": "dbefc30c9c4c2328fea7",
+      "state_source": "causal_backtest",
+      "report_path": "reports/causal_cache/stage02_wp_a_causal_cache_audit.md",
+      "metrics_json": {
+        "index_id": "STAGE02-WP-A-v1",
+        "status": "partial",
+        "report_status": "cache_not_linked_to_resolved_run_id",
+        "causal_cache_available": true,
+        "causal_cache_id": "dbefc30c9c4c2328fea7",
+        "state_count": 30937,
+        "coverage_ratio": 0.052885,
+        "duplicate_key_count": 0,
+        "leakage_violation_count": 0,
+        "missing_metadata_count": 1,
+        "exec_date_violation_count": 0,
+        "readiness_status": "research_only",
+        "readiness_reason": "cache_not_linked_to_resolved_run_id"
+      },
+      "notes": "Seed payload only; Stage 00 registry tables were not present in the local DB."
+    },
+    "validation_runs": {
+      "run_id": "bea7ff20106a",
+      "validation_type": "causal_audit",
+      "status": "unknown",
+      "command": "python -m src.evaluation.causal_cache_audit --db data/db/a_share_hmm.duckdb --run-id latest --output reports/causal_cache/stage02_wp_a_causal_cache_audit.md --summary-json reports/causal_cache/stage02_wp_a_causal_cache_audit.json --no-fetch",
+      "verdict_code": "cache_not_linked_to_resolved_run_id",
+      "db_path": "data/db/a_share_hmm.duckdb",
+      "report_dir": "reports/causal_cache",
+      "metrics_json": {
+        "index_id": "STAGE02-WP-A-v1",
+        "status": "partial",
+        "report_status": "cache_not_linked_to_resolved_run_id",
+        "causal_cache_available": true,
+        "causal_cache_id": "dbefc30c9c4c2328fea7",
+        "state_count": 30937,
+        "coverage_ratio": 0.052885,
+        "duplicate_key_count": 0,
+        "leakage_violation_count": 0,
+        "missing_metadata_count": 1,
+        "exec_date_violation_count": 0,
+        "readiness_status": "research_only",
+        "readiness_reason": "cache_not_linked_to_resolved_run_id"
+      },
+      "warnings_json": [
+        "walk_forward_cache_runs lacks run_id linkage metadata",
+        "audited latest walk-forward cache because no cache row can be proven to belong to the resolved HMM run",
+        "execution metadata absent; exec_date > signal_date was not audited",
+        "Stage 00 registry tables missing; wrote registry seed payload to summary JSON"
+      ]
+    }
+  },
+  "report_path": "reports/causal_cache/stage02_wp_a_causal_cache_audit.md",
+  "summary_json_path": "reports/causal_cache/stage02_wp_a_causal_cache_audit.json",
+  "external_data_fetch": false,
+  "training_algorithm_modified": false,
+  "generated_at": "2026-06-02T05:08:57+00:00",
+  "index_id": "STAGE02-WP-A-v1",
+  "readiness_policy_note": "Stage 02 WP-A never promotes HMM outputs to decision_ready; causal cache evidence is a conservative gate only."
+}
