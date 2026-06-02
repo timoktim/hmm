@@ -1,0 +1,340 @@
+{
+  "index_id": "STAGE02-WP-C-v1",
+  "version": "v1",
+  "generated_at": "2026-06-02T05:35:38+00:00",
+  "status": "pass",
+  "requested_run_id": "latest",
+  "run_id": "bea7ff20106a",
+  "resolved_run_id_source": "model_runs",
+  "db_path": "data/db/a_share_hmm.duckdb",
+  "local_db_available": true,
+  "db_found": true,
+  "db_opened_read_only": true,
+  "db_preflight": "pass",
+  "tables_checked": {
+    "model_runs": {
+      "present": true,
+      "row_count": 25,
+      "columns": [
+        "run_id",
+        "model_type",
+        "n_states",
+        "train_start",
+        "train_end",
+        "feature_version",
+        "model_path",
+        "scaler_path",
+        "created_at",
+        "metrics_json",
+        "universe_id",
+        "scope_type",
+        "include_custom_baskets",
+        "feature_scope_id",
+        "feature_scope_type"
+      ]
+    },
+    "sector_state_daily": {
+      "present": true,
+      "row_count": 2655935,
+      "columns": [
+        "run_id",
+        "sector_id",
+        "trade_date",
+        "state_id",
+        "state_label",
+        "prob_trend_up",
+        "prob_neutral",
+        "prob_risk_off",
+        "next_state_probs_json",
+        "state_source"
+      ]
+    },
+    "hmm_confidence_run_summary": {
+      "present": true,
+      "row_count": 1,
+      "columns": [
+        "run_id",
+        "row_count",
+        "sector_count",
+        "min_trade_date",
+        "max_trade_date",
+        "high_count",
+        "medium_count",
+        "low_count",
+        "unclear_count",
+        "missing_count",
+        "high_share",
+        "medium_share",
+        "low_share",
+        "unclear_share",
+        "missing_share",
+        "median_posterior_max",
+        "median_posterior_margin",
+        "median_entropy_norm",
+        "readiness_status",
+        "report_path",
+        "created_at"
+      ]
+    },
+    "hmm_label_alignment_audit": {
+      "present": true,
+      "row_count": 15,
+      "columns": [
+        "audit_id",
+        "base_run_id",
+        "compare_run_id",
+        "base_state_key",
+        "matched_state_key",
+        "match_score",
+        "state_signature_distance",
+        "label_preserved",
+        "ambiguous_match",
+        "label_drift_severity",
+        "alignment_method",
+        "coverage_status",
+        "created_at"
+      ]
+    },
+    "hmm_churn_dwell_run_summary": {
+      "present": true,
+      "row_count": 1,
+      "columns": [
+        "run_id",
+        "row_count",
+        "sector_count",
+        "min_trade_date",
+        "max_trade_date",
+        "transition_count",
+        "transition_rate_1d",
+        "mean_dwell_days",
+        "median_dwell_days",
+        "p10_dwell_days",
+        "p90_dwell_days",
+        "single_day_episode_share",
+        "episode_count",
+        "fragmentation_score",
+        "churn_bucket",
+        "dwell_readiness_status",
+        "display_action",
+        "confidence_integration_status",
+        "alignment_integration_status",
+        "report_path",
+        "created_at"
+      ]
+    },
+    "walk_forward_cache_runs": {
+      "present": true,
+      "row_count": 7,
+      "columns": [
+        "cache_key",
+        "n_states",
+        "train_window_days",
+        "retrain_frequency",
+        "feature_version",
+        "start_date",
+        "end_date",
+        "signal_count",
+        "row_count",
+        "created_at",
+        "params_json",
+        "params_hash",
+        "universe_id",
+        "scope_type",
+        "include_custom_baskets",
+        "rebalance_days",
+        "state_date_mode",
+        "feature_scope_id"
+      ]
+    },
+    "walk_forward_state_cache": {
+      "present": true,
+      "row_count": 226810,
+      "columns": [
+        "cache_key",
+        "sector_id",
+        "trade_date",
+        "state_id",
+        "state_label",
+        "prob_trend_up",
+        "prob_neutral",
+        "prob_risk_off",
+        "next_state_probs_json",
+        "train_start",
+        "train_end",
+        "max_observation_date_used",
+        "probability_type",
+        "state_source"
+      ]
+    },
+    "model_evidence_registry": {
+      "present": false,
+      "row_count": null,
+      "columns": []
+    },
+    "validation_runs": {
+      "present": false,
+      "row_count": null,
+      "columns": []
+    }
+  },
+  "readiness_gate": {
+    "run_id": "bea7ff20106a",
+    "status": "pass",
+    "evidence_level": "exploratory",
+    "readiness_status": "research_only",
+    "display_action": "research_only",
+    "state_confidence_status": "available",
+    "label_identity_status": "available",
+    "churn_dwell_status": "available",
+    "causal_cache_status": "available",
+    "ci_validation_status": "available",
+    "reasons": [
+      "label_alignment_ambiguity_high",
+      "cache_not_linked_to_resolved_run_id",
+      "causal_cache_not_linked_to_resolved_run_id",
+      "causal_cache_coverage_partial",
+      "causal_cache_missing_metadata",
+      "ci_validation_no_private_db_not_db_backed",
+      "label_identity_not_strong_enough_for_validated_readiness",
+      "churn_dwell_gate_keeps_display_research_only"
+    ],
+    "warnings": [
+      "walk_forward_cache_runs lacks run_id linkage metadata",
+      "audited latest walk-forward cache because no cache row can be proven to belong to the resolved HMM run",
+      "execution metadata absent; exec_date > signal_date was not audited",
+      "Stage 00 registry tables missing; wrote registry seed payload to summary JSON"
+    ],
+    "required_next_evidence": [
+      "link causal cache rows to resolved HMM run_id in metadata or registry",
+      "raise causal cache coverage before stronger readiness",
+      "reduce or explain high label alignment ambiguity",
+      "produce CI evidence beyond no-private-DB smoke validation before stronger claims"
+    ]
+  },
+  "inputs": {
+    "confidence": {
+      "name": "confidence",
+      "availability": "available",
+      "source": "db:hmm_confidence_run_summary",
+      "status": "pass",
+      "readiness_status": "internal_only",
+      "display_action": null,
+      "reasons": [],
+      "warnings": [],
+      "metrics": {
+        "row_count": 584981,
+        "sector_count": 464,
+        "high_share": 0.9593029517197994,
+        "medium_share": 0.028641955892584545,
+        "low_share": 0.0041659472700822766,
+        "unclear_share": 0.007889145117533731,
+        "missing_share": 0.0
+      }
+    },
+    "label_alignment": {
+      "name": "label_alignment",
+      "availability": "available",
+      "source": "db:hmm_label_alignment_audit",
+      "status": "pass",
+      "readiness_status": "research_only",
+      "display_action": null,
+      "reasons": [
+        "label_alignment_ambiguity_high"
+      ],
+      "warnings": [],
+      "metrics": {
+        "rows": 15,
+        "ambiguous_share": 0.8666666666666667,
+        "label_preserved_share": 1.0,
+        "high_drift_share": 0.0
+      }
+    },
+    "churn_dwell": {
+      "name": "churn_dwell",
+      "availability": "available",
+      "source": "db:hmm_churn_dwell_run_summary",
+      "status": "pass",
+      "readiness_status": "research_only",
+      "display_action": "research_only",
+      "reasons": [],
+      "warnings": [],
+      "metrics": {
+        "row_count": 584981,
+        "transition_rate_1d": 0.07142,
+        "mean_dwell_days": 13.858825,
+        "median_dwell_days": 9.0,
+        "single_day_episode_share": 0.107581,
+        "episode_count": 42210,
+        "churn_bucket": "low"
+      }
+    },
+    "causal_cache": {
+      "name": "causal_cache",
+      "availability": "available",
+      "source": "reports/causal_cache/stage02_wp_a_causal_cache_audit.json",
+      "status": "partial",
+      "readiness_status": "research_only",
+      "display_action": null,
+      "reasons": [
+        "cache_not_linked_to_resolved_run_id",
+        "causal_cache_not_linked_to_resolved_run_id",
+        "causal_cache_coverage_partial",
+        "causal_cache_missing_metadata"
+      ],
+      "warnings": [
+        "walk_forward_cache_runs lacks run_id linkage metadata",
+        "audited latest walk-forward cache because no cache row can be proven to belong to the resolved HMM run",
+        "execution metadata absent; exec_date > signal_date was not audited",
+        "Stage 00 registry tables missing; wrote registry seed payload to summary JSON"
+      ],
+      "metrics": {
+        "report_status": "cache_not_linked_to_resolved_run_id",
+        "causal_cache_available": true,
+        "causal_cache_id": "dbefc30c9c4c2328fea7",
+        "cache_run_id": null,
+        "coverage_ratio": 0.052885,
+        "expected_state_rows": 584981,
+        "unique_cache_state_rows": 30937,
+        "missing_metadata_count": 1,
+        "leakage_violation_count": 0,
+        "duplicate_key_count": 0,
+        "exec_date_violation_count": 0
+      }
+    },
+    "ci_validation": {
+      "name": "ci_validation",
+      "availability": "available",
+      "source": "reports/ci_validation/stage02_wp_b_ci_validation_summary.json",
+      "status": "pass",
+      "readiness_status": null,
+      "display_action": null,
+      "reasons": [
+        "ci_validation_no_private_db_not_db_backed"
+      ],
+      "warnings": [],
+      "metrics": {
+        "ci_workflow": ".github/workflows/ci.yml",
+        "private_db_required": "no",
+        "local_db_usage": "no",
+        "duckdb_committed": "no",
+        "private_path_hygiene": {
+          "script": "pass",
+          "pytest": "pass"
+        }
+      }
+    }
+  },
+  "report_path": "reports/readiness_gate/stage02_wp_c_readiness_gate_report.md",
+  "summary_json_path": "reports/readiness_gate/stage02_wp_c_readiness_gate_report.json",
+  "external_data_fetch": false,
+  "no_fetch_mode": true,
+  "training_algorithm_modified": false,
+  "duckdb_committed": false,
+  "posterior_semantic_statement": "HMM posterior probabilities are state confidence diagnostics only; they are not return, rising, falling, profit, buy, or sell probabilities.",
+  "warnings": [
+    "walk_forward_cache_runs lacks run_id linkage metadata",
+    "audited latest walk-forward cache because no cache row can be proven to belong to the resolved HMM run",
+    "execution metadata absent; exec_date > signal_date was not audited",
+    "Stage 00 registry tables missing; wrote registry seed payload to summary JSON"
+  ]
+}
