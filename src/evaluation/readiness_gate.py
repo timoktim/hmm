@@ -17,6 +17,7 @@ from typing import Any, Mapping, Sequence
 import duckdb
 import pandas as pd
 
+from src.evaluation.causal_cache_lineage import STRONG_LINKAGE_STATUSES, load_lineage_report
 from src.ui.readiness_policy import CANONICAL_EVIDENCE_LEVELS, CANONICAL_READINESS_STATUSES
 
 
@@ -29,6 +30,7 @@ DEFAULT_ALIGNMENT_JSON = Path("reports/hmm_label_alignment/stage01_wp_b_label_al
 DEFAULT_CHURN_DWELL_JSON = Path("reports/hmm_churn_dwell/stage01_wp_c_churn_dwell_report.json")
 DEFAULT_STAGE01_INTEGRATION_JSON = Path("reports/stage01_integration/stage01_integration_summary.json")
 DEFAULT_CAUSAL_CACHE_JSON = Path("reports/causal_cache/stage02_wp_a_causal_cache_audit.json")
+DEFAULT_CAUSAL_CACHE_LINEAGE_JSON = Path("reports/causal_cache_lineage/stage02_wp_e_lineage_repair_report.json")
 DEFAULT_CI_VALIDATION_JSON = Path("reports/ci_validation/stage02_wp_b_ci_validation_summary.json")
 HIGH_LABEL_AMBIGUITY_THRESHOLD = 0.50
 MIN_CAUSAL_CACHE_COVERAGE = 0.80
@@ -549,7 +551,11 @@ def load_churn_dwell_input(con: duckdb.DuckDBPyConnection | None, run_id: str, r
     )
 
 
-def load_causal_cache_input(path: Path, run_id: str | None) -> dict[str, Any]:
+def load_causal_cache_input(
+    path: Path,
+    run_id: str | None,
+    lineage_path: Path = DEFAULT_CAUSAL_CACHE_LINEAGE_JSON,
+) -> dict[str, Any]:
     payload = _load_json(path)
     if payload is None:
         return _input_result(
@@ -569,10 +575,19 @@ def load_causal_cache_input(path: Path, run_id: str | None) -> dict[str, Any]:
         availability = "unavailable"
     else:
         availability = "available"
+    lineage = load_lineage_report(
+        lineage_path,
+        resolved_run_id=run_id,
+        cache_key=payload.get("causal_cache_id") or payload.get("cache_key"),
+    )
+    lineage_status = lineage.get("linkage_status") if lineage else payload.get("lineage_status")
+    strong_lineage = lineage_status in STRONG_LINKAGE_STATUSES
     if payload.get("status") != "pass" or payload.get("report_status") not in {None, "pass"}:
         reasons.append(_norm_text(payload.get("report_status"), "causal_cache_audit_not_pass"))
-    if payload.get("cache_run_id") in {None, ""}:
+    if payload.get("cache_run_id") in {None, ""} and not strong_lineage:
         reasons.append("causal_cache_not_linked_to_resolved_run_id")
+    if lineage_status and not strong_lineage:
+        reasons.append(f"causal_cache_lineage_{lineage_status}")
     coverage = payload.get("coverage_ratio")
     if coverage is not None and float(coverage) < MIN_CAUSAL_CACHE_COVERAGE:
         reasons.append("causal_cache_coverage_partial")
@@ -595,6 +610,10 @@ def load_causal_cache_input(path: Path, run_id: str | None) -> dict[str, Any]:
             "causal_cache_available": payload.get("causal_cache_available"),
             "causal_cache_id": payload.get("causal_cache_id"),
             "cache_run_id": payload.get("cache_run_id"),
+            "lineage_status": lineage_status,
+            "lineage_confidence": lineage.get("linkage_confidence") if lineage else payload.get("lineage_confidence"),
+            "lineage_method": lineage.get("linkage_method") if lineage else payload.get("lineage_method"),
+            "lineage_readiness_effect": lineage.get("readiness_effect") if lineage else payload.get("lineage_readiness_effect"),
             "coverage_ratio": payload.get("coverage_ratio"),
             "expected_state_rows": payload.get("expected_state_rows"),
             "unique_cache_state_rows": payload.get("unique_cache_state_rows"),
@@ -895,6 +914,7 @@ def generate_readiness_gate_report(
     alignment_json: str | Path = DEFAULT_ALIGNMENT_JSON,
     churn_dwell_json: str | Path = DEFAULT_CHURN_DWELL_JSON,
     causal_cache_json: str | Path = DEFAULT_CAUSAL_CACHE_JSON,
+    causal_cache_lineage_json: str | Path = DEFAULT_CAUSAL_CACHE_LINEAGE_JSON,
     ci_validation_json: str | Path = DEFAULT_CI_VALIDATION_JSON,
 ) -> dict[str, Any]:
     db = Path(db_path)
@@ -924,6 +944,7 @@ def generate_readiness_gate_report(
                     "hmm_churn_dwell_run_summary",
                     "walk_forward_cache_runs",
                     "walk_forward_state_cache",
+                    "causal_cache_run_linkage",
                     "model_evidence_registry",
                     "validation_runs",
                 ),
@@ -934,7 +955,11 @@ def generate_readiness_gate_report(
             "confidence": load_confidence_input(con, effective_run_id, Path(confidence_json)),
             "label_alignment": load_alignment_input(con, effective_run_id, Path(alignment_json)),
             "churn_dwell": load_churn_dwell_input(con, effective_run_id, Path(churn_dwell_json)),
-            "causal_cache": load_causal_cache_input(Path(causal_cache_json), resolved_run_id),
+            "causal_cache": load_causal_cache_input(
+                Path(causal_cache_json),
+                resolved_run_id,
+                Path(causal_cache_lineage_json),
+            ),
             "ci_validation": load_ci_validation_input(Path(ci_validation_json)),
         }
         decision = decide_readiness(

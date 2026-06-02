@@ -41,6 +41,9 @@ reports/**
 !reports/causal_cache/
 !reports/causal_cache/*.md
 !reports/causal_cache/*.json
+!reports/causal_cache_lineage/
+!reports/causal_cache_lineage/*.md
+!reports/causal_cache_lineage/*.json
 !reports/ci_validation/
 !reports/ci_validation/*.md
 !reports/ci_validation/*.json
