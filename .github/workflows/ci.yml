@@ -1,0 +1,47 @@
+name: CI
+
+on:
+  pull_request:
+  push:
+    branches:
+      - main
+      - "stage02/**"
+
+jobs:
+  validation:
+    name: CI-safe validation
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+          cache: pip
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          python -m pip install -r requirements.txt
+
+      - name: Compile source and tests
+        run: python -m compileall -q src tests
+
+      - name: Stage 01 diagnostic tests without private DB
+        run: pytest -q tests/test_hmm_confidence.py tests/test_hmm_label_alignment.py tests/test_hmm_churn_dwell.py
+
+      - name: UI readiness boundary tests
+        run: pytest -q tests/test_ui_readiness_policy.py tests/test_ui_causal_boundary.py
+
+      - name: Private path hygiene pytest
+        run: pytest -q tests/test_private_path_hygiene.py
+
+      - name: Private path hygiene script
+        run: bash scripts/check_no_private_paths.sh
+
+      - name: No-private-DB validation script
+        run: bash scripts/validate_stage01_no_private_db.sh
