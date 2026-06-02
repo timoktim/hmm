@@ -13,7 +13,7 @@ This file is the authoritative work-package index for Codex. Google Drive may st
 2. Superseded, archived, obsolete, or probe files must not be executed.
 3. Each stage/WP pair should have only one active version.
 4. Codex must report the index_id, file path, version, branch, commands run, test results, generated reports, data usage, and unresolved risks.
-5. Stage 01 must start from updated `main`, must not fetch external data by default, and must not modify HMM/HSMM training algorithms.
+5. Stage 02 must start from updated `main`, must not fetch external data by default, and must not modify HMM/HSMM training algorithms.
 6. Any task that needs V0 local data must read `docs/runtime/LOCAL_DB_HANDOFF.md` first and run its local DB preflight check.
 
 ## Local DB Protocol
@@ -49,6 +49,9 @@ docs/runtime/LOCAL_DB_HANDOFF.md
 | STAGE01-WP-B-v1 | 01 | B | archived | v1 | docs/work_packages/stage_01/STAGE01_WP_B_hmm_label_alignment_stability.md | Codex B | accepted |
 | STAGE01-WP-C-v1 | 01 | C | archived | v1 | docs/work_packages/stage_01/STAGE01_WP_C_hmm_churn_dwell_ui_readiness.md | Codex C | accepted |
 | STAGE01-WP-D-v1 | 01 | D | archived | v1 | docs/work_packages/stage_01/STAGE01_WP_D_integration_summary_hard_review.md | Codex Integration | accepted |
+| STAGE02-WP-A-v1 | 02 | A | active | v1 | docs/work_packages/stage_02/STAGE02_WP_A_causal_cache_contract_audit.md | Codex A | pending |
+| STAGE02-WP-B-v1 | 02 | B | active | v1 | docs/work_packages/stage_02/STAGE02_WP_B_ci_validation_artifact_skeleton.md | Codex B | pending |
+| STAGE02-WP-C-v1 | 02 | C | blocked_until_wp_a_wp_b | v1 | docs/work_packages/stage_02/STAGE02_WP_C_readiness_gate_integration.md | Codex C | pending |
 
 ## Stage 00 Boundary
 
@@ -60,22 +63,40 @@ Stage 00 is closed. It was limited to freezing the current baseline and establis
 
 ## Stage 01 Boundary
 
-Stage 01 is limited to HMM baseline strengthening. It must improve interpretability, stability diagnostics, and readiness behavior around the existing HMM outputs.
+Stage 01 is closed. It strengthened HMM baseline diagnostics without changing training algorithms.
 
-Stage 01 may:
+- WP-A: HMM posterior confidence diagnostics.
+- WP-B: HMM label alignment and state identity stability.
+- WP-C: HMM churn/dwell diagnostics and readiness downgrade.
+- WP-D: final integration summary and hard-issue review.
 
-- compute HMM posterior confidence metrics;
-- audit label alignment and state identity stability;
-- compute churn/dwell metrics;
-- add conservative UI readiness warnings or downgrades;
-- close the stage with integration summary and hard-issue review.
+Stage 01 final verdict: `Stage01PassWithTrackedRisks`.
 
-Stage 01 must not:
+Tracked risks carried into Stage 02:
+
+- No GitHub Actions CI.
+- Causal cache unavailable, so readiness remains `research_only`.
+- Label alignment ambiguity is high.
+- Diagnostics rely on local V0 DB validation rather than CI-managed DB artifact.
+
+## Stage 02 Boundary
+
+Stage 02 is limited to causal evidence and reproducible validation gates.
+
+Stage 02 may:
+
+- audit causal walk-forward cache availability and metadata;
+- add CI-safe validation artifacts that do not require private DB;
+- aggregate readiness from confidence, label alignment, churn/dwell, causal cache, and CI evidence;
+- document why readiness remains conservative.
+
+Stage 02 must not:
 
 - implement Robust HMM, Sticky HMM, Student-t emissions, or new training algorithms;
 - modify HSMM training or HSMM lifecycle semantics;
 - implement duration hazard, BOCPD, or decision engine;
-- fetch external market or constituent data unless a later explicit data work package is opened.
+- fetch external market or constituent data unless a later explicit data work package is opened;
+- mark any HMM output as decision-ready.
 
 ## Codex Retrieval Instruction
 
@@ -106,8 +127,8 @@ Each Codex thread must return:
 - local DB usage: yes/no
 - local DB path used: required for data-backed validation
 - local DB preflight result: required for data-backed validation
-- external data fetch: must be no for Stage 01
-- training algorithm modified: must be no for Stage 01
+- external data fetch: must be no for Stage 02
+- training algorithm modified: must be no for Stage 02
 - risks and unresolved issues
 - acceptance focus
 
@@ -124,3 +145,4 @@ Do not rely on deleting files. When a new version is created, change the old row
 | 2026-06-02 | Added local DB handoff protocol reference. | ChatGPT |
 | 2026-06-02 | Added Stage 01 WP-D integration summary and hard review work package. | ChatGPT |
 | 2026-06-02 | WP-D integration review accepted Stage 01 WP-A/WP-B/WP-C with tracked risks. | Codex |
+| 2026-06-02 | Registered Stage 02 WP-A/WP-B/WP-C work packages. | ChatGPT |
