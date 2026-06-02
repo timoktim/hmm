@@ -662,6 +662,15 @@ class DuckDBStorage:
                   clean_run BOOLEAN DEFAULT TRUE,
                   lineage_json TEXT,
                   lineage_hash TEXT,
+                  run_status TEXT DEFAULT 'completed',
+                  started_at TIMESTAMP,
+                  completed_at TIMESTAMP,
+                  failed_at TIMESTAMP,
+                  failure_message TEXT,
+                  expected_snapshot_count INTEGER,
+                  actual_snapshot_count INTEGER,
+                  expected_state_row_count INTEGER,
+                  actual_state_row_count INTEGER,
                   params_json TEXT,
                   params_hash TEXT,
                   code_version TEXT,
@@ -680,8 +689,18 @@ class DuckDBStorage:
                 "ALTER TABLE hsmm_model_runs ADD COLUMN IF NOT EXISTS clean_run BOOLEAN DEFAULT TRUE",
                 "ALTER TABLE hsmm_model_runs ADD COLUMN IF NOT EXISTS lineage_json TEXT",
                 "ALTER TABLE hsmm_model_runs ADD COLUMN IF NOT EXISTS lineage_hash TEXT",
+                "ALTER TABLE hsmm_model_runs ADD COLUMN IF NOT EXISTS run_status TEXT DEFAULT 'completed'",
+                "ALTER TABLE hsmm_model_runs ADD COLUMN IF NOT EXISTS started_at TIMESTAMP",
+                "ALTER TABLE hsmm_model_runs ADD COLUMN IF NOT EXISTS completed_at TIMESTAMP",
+                "ALTER TABLE hsmm_model_runs ADD COLUMN IF NOT EXISTS failed_at TIMESTAMP",
+                "ALTER TABLE hsmm_model_runs ADD COLUMN IF NOT EXISTS failure_message TEXT",
+                "ALTER TABLE hsmm_model_runs ADD COLUMN IF NOT EXISTS expected_snapshot_count INTEGER",
+                "ALTER TABLE hsmm_model_runs ADD COLUMN IF NOT EXISTS actual_snapshot_count INTEGER",
+                "ALTER TABLE hsmm_model_runs ADD COLUMN IF NOT EXISTS expected_state_row_count INTEGER",
+                "ALTER TABLE hsmm_model_runs ADD COLUMN IF NOT EXISTS actual_state_row_count INTEGER",
             ]:
                 con.execute(column_sql)
+            con.execute("UPDATE hsmm_model_runs SET run_status = 'completed' WHERE run_status IS NULL")
             con.execute(
                 """
                 CREATE TABLE IF NOT EXISTS hsmm_model_checkpoints (
