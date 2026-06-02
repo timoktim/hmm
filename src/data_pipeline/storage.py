@@ -471,9 +471,16 @@ class DuckDBStorage:
                   rebalance_days INTEGER,
                   state_date_mode VARCHAR,
                   feature_scope_id VARCHAR,
+                  lineage_json TEXT,
+                  lineage_hash VARCHAR,
+                  feature_lineage_hash VARCHAR,
+                  universe_membership_hash VARCHAR,
+                  data_snapshot_hash VARCHAR,
+                  cache_status VARCHAR,
                   signal_count INTEGER,
                   row_count INTEGER,
-                  created_at TIMESTAMP
+                  created_at TIMESTAMP,
+                  completed_at TIMESTAMP
                 );
                 """
             )
@@ -486,6 +493,13 @@ class DuckDBStorage:
                 "ALTER TABLE walk_forward_cache_runs ADD COLUMN IF NOT EXISTS rebalance_days INTEGER",
                 "ALTER TABLE walk_forward_cache_runs ADD COLUMN IF NOT EXISTS state_date_mode VARCHAR",
                 "ALTER TABLE walk_forward_cache_runs ADD COLUMN IF NOT EXISTS feature_scope_id VARCHAR",
+                "ALTER TABLE walk_forward_cache_runs ADD COLUMN IF NOT EXISTS lineage_json TEXT",
+                "ALTER TABLE walk_forward_cache_runs ADD COLUMN IF NOT EXISTS lineage_hash VARCHAR",
+                "ALTER TABLE walk_forward_cache_runs ADD COLUMN IF NOT EXISTS feature_lineage_hash VARCHAR",
+                "ALTER TABLE walk_forward_cache_runs ADD COLUMN IF NOT EXISTS universe_membership_hash VARCHAR",
+                "ALTER TABLE walk_forward_cache_runs ADD COLUMN IF NOT EXISTS data_snapshot_hash VARCHAR",
+                "ALTER TABLE walk_forward_cache_runs ADD COLUMN IF NOT EXISTS cache_status VARCHAR",
+                "ALTER TABLE walk_forward_cache_runs ADD COLUMN IF NOT EXISTS completed_at TIMESTAMP",
             ]:
                 con.execute(column_sql)
             con.execute(
@@ -505,10 +519,17 @@ class DuckDBStorage:
                   max_observation_date_used DATE,
                   probability_type VARCHAR,
                   state_source VARCHAR,
+                  lineage_hash VARCHAR,
+                  feature_lineage_hash VARCHAR,
                   PRIMARY KEY (cache_key, sector_id, trade_date)
                 );
                 """
             )
+            for column_sql in [
+                "ALTER TABLE walk_forward_state_cache ADD COLUMN IF NOT EXISTS lineage_hash VARCHAR",
+                "ALTER TABLE walk_forward_state_cache ADD COLUMN IF NOT EXISTS feature_lineage_hash VARCHAR",
+            ]:
+                con.execute(column_sql)
             con.execute(
                 """
                 CREATE TABLE IF NOT EXISTS data_health (
@@ -639,6 +660,8 @@ class DuckDBStorage:
                   config_hash TEXT,
                   run_hash TEXT,
                   clean_run BOOLEAN DEFAULT TRUE,
+                  lineage_json TEXT,
+                  lineage_hash TEXT,
                   params_json TEXT,
                   params_hash TEXT,
                   code_version TEXT,
@@ -655,6 +678,8 @@ class DuckDBStorage:
                 "ALTER TABLE hsmm_model_runs ADD COLUMN IF NOT EXISTS config_hash TEXT",
                 "ALTER TABLE hsmm_model_runs ADD COLUMN IF NOT EXISTS run_hash TEXT",
                 "ALTER TABLE hsmm_model_runs ADD COLUMN IF NOT EXISTS clean_run BOOLEAN DEFAULT TRUE",
+                "ALTER TABLE hsmm_model_runs ADD COLUMN IF NOT EXISTS lineage_json TEXT",
+                "ALTER TABLE hsmm_model_runs ADD COLUMN IF NOT EXISTS lineage_hash TEXT",
             ]:
                 con.execute(column_sql)
             con.execute(
