@@ -19,6 +19,22 @@ from src.config import settings
 _DB_WRITE_LOCK = threading.RLock()
 
 
+HSMM_RUN_CASCADE_TABLES = (
+    "hsmm_state_daily",
+    "hsmm_state_episodes",
+    "hsmm_model_checkpoints",
+    "hsmm_run_performance",
+    "hsmm_parameters",
+    "hsmm_model_parameters",
+    "hsmm_model_runs",
+    "hsmm_display_label_episodes",
+    "hsmm_lifecycle_ui_daily",
+    "hsmm_lifecycle_profile_metadata",
+    "hsmm_lifecycle_duration_profile",
+    "hsmm_next_state_tendency_profile",
+)
+
+
 @contextmanager
 def _schema_file_lock(lock_path: Path):
     lock_path.parent.mkdir(parents=True, exist_ok=True)
@@ -1334,6 +1350,40 @@ class DuckDBStorage:
                     ON CONFLICT ({", ".join(key_cols)}) DO NOTHING
                     """
                 )
+
+    def clear_hsmm_run_cascade(self, run_id: str, include_reports: bool = False) -> dict[str, object]:
+        summary: dict[str, object] = {
+            "run_id": run_id,
+            "include_reports": bool(include_reports),
+            "tables": {},
+            "deleted_total": 0,
+        }
+        with _DB_WRITE_LOCK, self.connect() as con:
+            existing_tables = {
+                str(row[0])
+                for row in con.execute(
+                    """
+                    SELECT table_name
+                    FROM information_schema.tables
+                    WHERE table_schema = 'main'
+                    """
+                ).fetchall()
+            }
+            table_summary: dict[str, dict[str, object]] = {}
+            deleted_total = 0
+            for table in HSMM_RUN_CASCADE_TABLES:
+                if table not in existing_tables:
+                    table_summary[table] = {"exists": False, "deleted_count": 0}
+                    continue
+                before = int(con.execute(f"SELECT COUNT(*) FROM {table} WHERE run_id = ?", [run_id]).fetchone()[0])
+                con.execute(f"DELETE FROM {table} WHERE run_id = ?", [run_id])
+                after = int(con.execute(f"SELECT COUNT(*) FROM {table} WHERE run_id = ?", [run_id]).fetchone()[0])
+                deleted = before - after
+                deleted_total += deleted
+                table_summary[table] = {"exists": True, "deleted_count": deleted}
+            summary["tables"] = table_summary
+            summary["deleted_total"] = deleted_total
+        return summary
 
     def read_df(self, sql: str, params: tuple | list | None = None) -> pd.DataFrame:
         with self.connect() as con:
