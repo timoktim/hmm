@@ -5,6 +5,7 @@ __pycache__/
 .pytest_cache/
 .ruff_cache/
 .mypy_cache/
+.venv
 .venv/
 venv/
 
@@ -37,5 +38,8 @@ reports/**
 !reports/hmm_churn_dwell/
 !reports/hmm_churn_dwell/*.md
 !reports/hmm_churn_dwell/*.json
+!reports/causal_cache/
+!reports/causal_cache/*.md
+!reports/causal_cache/*.json
 
 *.zip
