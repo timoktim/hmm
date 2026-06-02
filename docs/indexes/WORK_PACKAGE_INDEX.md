@@ -45,9 +45,10 @@ docs/runtime/LOCAL_DB_HANDOFF.md
 | STAGE00-WP-A-v1 | 00 | A | archived | v1 | docs/work_packages/stage_00/STAGE00_WP_A_evidence_registry.md | Codex A | accepted |
 | STAGE00-WP-B-v1 | 00 | B | archived | v1 | docs/work_packages/stage_00/STAGE00_WP_B_baseline_freeze.md | Codex B | accepted |
 | STAGE00-WP-C-v1 | 00 | C | archived | v1 | docs/work_packages/stage_00/STAGE00_WP_C_ui_readiness_causal_boundary.md | Codex C | accepted |
-| STAGE01-WP-A-v1 | 01 | A | active | v1 | docs/work_packages/stage_01/STAGE01_WP_A_hmm_confidence_metrics.md | Codex A | pending |
-| STAGE01-WP-B-v1 | 01 | B | active | v1 | docs/work_packages/stage_01/STAGE01_WP_B_hmm_label_alignment_stability.md | Codex B | pending |
-| STAGE01-WP-C-v1 | 01 | C | active | v1 | docs/work_packages/stage_01/STAGE01_WP_C_hmm_churn_dwell_ui_readiness.md | Codex C | pending |
+| STAGE01-WP-A-v1 | 01 | A | merged_pending_integration_acceptance | v1 | docs/work_packages/stage_01/STAGE01_WP_A_hmm_confidence_metrics.md | Codex A | pending_wp_d_review |
+| STAGE01-WP-B-v1 | 01 | B | merged_pending_integration_acceptance | v1 | docs/work_packages/stage_01/STAGE01_WP_B_hmm_label_alignment_stability.md | Codex B | pending_wp_d_review |
+| STAGE01-WP-C-v1 | 01 | C | merged_pending_integration_acceptance | v1 | docs/work_packages/stage_01/STAGE01_WP_C_hmm_churn_dwell_ui_readiness.md | Codex C | pending_wp_d_review |
+| STAGE01-WP-D-v1 | 01 | D | active | v1 | docs/work_packages/stage_01/STAGE01_WP_D_integration_summary_hard_review.md | Codex Integration | pending |
 
 ## Stage 00 Boundary
 
@@ -66,7 +67,8 @@ Stage 01 may:
 - compute HMM posterior confidence metrics;
 - audit label alignment and state identity stability;
 - compute churn/dwell metrics;
-- add conservative UI readiness warnings or downgrades.
+- add conservative UI readiness warnings or downgrades;
+- close the stage with integration summary and hard-issue review.
 
 Stage 01 must not:
 
@@ -120,3 +122,4 @@ Do not rely on deleting files. When a new version is created, change the old row
 | 2026-06-01 | Created GitHub-based Stage 00 work package index. | ChatGPT |
 | 2026-06-01 | Added Stage 01 work packages and boundaries. | Codex |
 | 2026-06-02 | Added local DB handoff protocol reference. | ChatGPT |
+| 2026-06-02 | Added Stage 01 WP-D integration summary and hard review work package. | ChatGPT |
