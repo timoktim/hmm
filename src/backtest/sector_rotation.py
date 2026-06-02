@@ -21,6 +21,10 @@ _HMM_WALK_FORWARD_CODE_VERSION = "stage03pf-wp2"
 _HMM_WALK_FORWARD_TOL = 0.01
 
 
+class LineageMismatchError(ValueError):
+    pass
+
+
 def _load_sector_ohlcv(
     storage: DuckDBStorage,
     universe_id: str | None = None,
@@ -124,6 +128,65 @@ def _feature_lineage_hash(features: pd.DataFrame, feature_version: str, feature_
             "row_count": int(len(features)),
         }
     )
+
+
+def _normalize_cache_universe(value: object) -> str:
+    if value is None or pd.isna(value):
+        return "all"
+    text = str(value)
+    return "all" if text in {"", "all", "None", "nan"} else text
+
+
+def _attach_feature_lineage_hash(features: pd.DataFrame, feature_lineage_hash: str, universe_id: str | None = None) -> pd.DataFrame:
+    out = features.copy()
+    out["feature_lineage_hash"] = feature_lineage_hash
+    out["universe_id"] = _normalize_cache_universe(universe_id)
+    return out
+
+
+def _validate_state_feature_merge(states: pd.DataFrame, features: pd.DataFrame, cache_params: dict[str, object]) -> None:
+    expected_feature_lineage_hash = str(cache_params.get("feature_lineage_hash") or "")
+    expected_feature_scope_id = str(cache_params.get("feature_scope_id") or "")
+    expected_universe_id = _normalize_cache_universe(cache_params.get("universe_id"))
+    if not expected_feature_lineage_hash:
+        raise LineageMismatchError("missing expected feature_lineage_hash")
+    if "feature_lineage_hash" not in states.columns or states["feature_lineage_hash"].isna().any():
+        raise LineageMismatchError("cached states missing feature_lineage_hash")
+    state_hashes = set(states["feature_lineage_hash"].astype(str).dropna().unique())
+    if state_hashes != {expected_feature_lineage_hash}:
+        raise LineageMismatchError("cached states feature_lineage_hash mismatch")
+    if "feature_lineage_hash" not in features.columns or features["feature_lineage_hash"].isna().any():
+        raise LineageMismatchError("current features missing feature_lineage_hash")
+    feature_hashes = set(features["feature_lineage_hash"].astype(str).dropna().unique())
+    if feature_hashes != {expected_feature_lineage_hash}:
+        raise LineageMismatchError("current features feature_lineage_hash mismatch")
+    if "feature_scope_id" not in features.columns:
+        raise LineageMismatchError("current features missing feature_scope_id")
+    feature_scope_ids = set(features["feature_scope_id"].astype(str).dropna().unique())
+    if feature_scope_ids != {expected_feature_scope_id}:
+        raise LineageMismatchError("current features feature_scope_id mismatch")
+    if "universe_id" in features.columns:
+        feature_universe_ids = {_normalize_cache_universe(value) for value in features["universe_id"].dropna().unique()}
+        if feature_universe_ids != {expected_universe_id}:
+            raise LineageMismatchError("current features universe_id mismatch")
+    if not {"sector_id", "trade_date"}.issubset(states.columns) or not {"sector_id", "trade_date"}.issubset(features.columns):
+        raise LineageMismatchError("state/feature date coverage cannot be checked")
+    state_keys = set(
+        zip(
+            states["sector_id"].astype(str),
+            pd.to_datetime(states["trade_date"]).dt.normalize(),
+            strict=False,
+        )
+    )
+    feature_keys = set(
+        zip(
+            features["sector_id"].astype(str),
+            pd.to_datetime(features["trade_date"]).dt.normalize(),
+            strict=False,
+        )
+    )
+    if not state_keys.issubset(feature_keys):
+        raise LineageMismatchError("current features do not cover cached state dates")
 
 
 def _cache_params_with_lineage(params: dict[str, object]) -> dict[str, object]:
@@ -243,12 +306,25 @@ def _walk_forward_cache_key(params: dict[str, object]) -> str:
     return f"hmmwf_{enriched['lineage_hash']}"
 
 
-def _read_walk_forward_cache(storage: DuckDBStorage, cache_key: str, expected_lineage_hash: str) -> pd.DataFrame:
+def _read_walk_forward_cache(
+    storage: DuckDBStorage,
+    cache_key: str,
+    expected_lineage_hash: str,
+    expected_feature_lineage_hash: str | None = None,
+    expected_feature_scope_id: str | None = None,
+    expected_universe_id: str | None = None,
+) -> pd.DataFrame:
     run = storage.read_df("SELECT * FROM walk_forward_cache_runs WHERE cache_key = ?", [cache_key])
     if run.empty:
         return pd.DataFrame()
     run_row = run.iloc[0].to_dict()
     if not is_valid_cache_metadata(run_row, expected_lineage_hash=expected_lineage_hash):
+        return pd.DataFrame()
+    if expected_feature_lineage_hash is not None and str(run_row.get("feature_lineage_hash") or "") != expected_feature_lineage_hash:
+        return pd.DataFrame()
+    if expected_feature_scope_id is not None and str(run_row.get("feature_scope_id") or "") != expected_feature_scope_id:
+        return pd.DataFrame()
+    if expected_universe_id is not None and _normalize_cache_universe(run_row.get("universe_id")) != _normalize_cache_universe(expected_universe_id):
         return pd.DataFrame()
     states = storage.read_df("SELECT * FROM walk_forward_state_cache WHERE cache_key = ? ORDER BY trade_date, sector_id", [cache_key])
     try:
@@ -259,6 +335,11 @@ def _read_walk_forward_cache(storage: DuckDBStorage, cache_key: str, expected_li
         return pd.DataFrame()
     if states.empty:
         return states
+    if expected_feature_lineage_hash is not None:
+        if "feature_lineage_hash" not in states.columns or states["feature_lineage_hash"].isna().any():
+            return pd.DataFrame()
+        if set(states["feature_lineage_hash"].astype(str).dropna().unique()) != {expected_feature_lineage_hash}:
+            return pd.DataFrame()
     for col in ["trade_date", "train_start", "train_end", "max_observation_date_used"]:
         if col in states.columns:
             states[col] = pd.to_datetime(states[col])
@@ -521,6 +602,7 @@ def run_sector_rotation_backtest(
         feature_scope_type=feature_scope_type,
     )
     storage.upsert_df("sector_features", features, ["sector_id", "trade_date", "feature_version", "feature_scope_id"])
+    cache_params: dict[str, object] | None = None
     if start_date:
         start_ts = pd.to_datetime(start_date)
     else:
@@ -557,11 +639,22 @@ def run_sector_rotation_backtest(
             feature_scope_type=feature_scope_type,
             include_custom_baskets=include_custom_baskets,
         )
+        features = _attach_feature_lineage_hash(features, str(cache_params["feature_lineage_hash"]), universe_id=universe_id)
         cache_key = _walk_forward_cache_key(cache_params)
-        states = _read_walk_forward_cache(storage, cache_key, expected_lineage_hash=str(cache_params["lineage_hash"]))
+        states = _read_walk_forward_cache(
+            storage,
+            cache_key,
+            expected_lineage_hash=str(cache_params["lineage_hash"]),
+            expected_feature_lineage_hash=str(cache_params["feature_lineage_hash"]),
+            expected_feature_scope_id=feature_scope_id,
+            expected_universe_id=universe_id or "all",
+        )
         cache_hit = not states.empty
         if states.empty:
             states = walk_forward_hmm_state_frame(features, state_dates, wf_config, progress_callback=progress_callback)
+            if not states.empty:
+                states["lineage_hash"] = cache_params["lineage_hash"]
+                states["feature_lineage_hash"] = cache_params["feature_lineage_hash"]
             _write_walk_forward_cache(storage, cache_key, states, cache_params, signal_count=len(state_dates))
         run_label = f"walk_forward:{cache_key}"
     else:
@@ -602,6 +695,8 @@ def run_sector_rotation_backtest(
 
     if states.empty:
         raise ValueError("walk-forward 训练样本不足或没有可用 HMM 状态。")
+    if walk_forward and cache_params is not None:
+        _validate_state_feature_merge(states, features, cache_params)
     state_features = states.merge(
         features[["sector_id", "trade_date", "ret_20d", "rs_20d", "amount_z_20d", "vol_20d", "drawdown_20d", "ma20_slope"]],
         on=["sector_id", "trade_date"],
