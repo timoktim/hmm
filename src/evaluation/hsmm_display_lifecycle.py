@@ -18,10 +18,42 @@ DEFAULT_HORIZONS = (1, 3, 5, 10, 20)
 AGE_BUCKETS = ((1, 3), (4, 7), (8, 14), (15, None))
 PHASES = ("early", "mature", "late", "unknown")
 EXIT_TENDENCIES = ("low", "medium", "high", "unavailable")
-RAW_SCORE_ALLOWED_STATUSES = {"usable_probability", "raw_only", "ordinal_only"}
+RAW_SCORE_ALLOWED_STATUSES = {"usable_probability", "raw_only"}
+PROBABILITY_READINESS_REQUIRED_FIELDS = (
+    "run_id",
+    "config_hash",
+    "lineage_hash",
+    "profile_mode",
+    "profile_cutoff_date",
+    "state_date_policy",
+    "feature_scope_id",
+    "exit_type",
+    "horizon_days",
+    "probability_status",
+    "created_at",
+)
+PROBABILITY_READINESS_METADATA_FIELDS = (
+    "run_id",
+    "config_hash",
+    "lineage_hash",
+    "profile_mode",
+    "profile_cutoff_date",
+    "state_date_policy",
+    "feature_scope_id",
+)
+PROBABILITY_READINESS_VALID_STATUSES = {
+    "usable_probability",
+    "raw_only",
+    "ordinal_only",
+    "invalid",
+    "insufficient_sample",
+    "missing",
+    "tail_censored",
+}
 NEXT_STATE_TENDENCIES = ("Trend", "Neutral", "Stress", "Repair", "Mixed", "Unavailable")
 FORBIDDEN_UI_TERMS = ("上涨概率", "下跌概率", "买入", "卖出", "交易信号", "推荐买入", "推荐板块", "目标收益", "胜率", "RiskOff")
 STATE_DATE_POLICIES = ("full_run", "cutoff_only")
+WP8_DAILY_ALIAS_SUFFIXES = ("readiness_status", "raw_score_used", "raw_basis")
 
 
 @dataclass(frozen=True)
@@ -339,15 +371,148 @@ def assign_state_phase(states: pd.DataFrame, duration_profile: pd.DataFrame, min
     return out
 
 
-def _read_probability_status(run_id: str, base_dir: Path | None = None) -> pd.DataFrame:
+def _single_contract_value(frame: pd.DataFrame, column: str) -> object | None:
+    if column not in frame.columns or frame.empty:
+        return None
+    values = frame[column].dropna().astype(str).unique().tolist()
+    return values[0] if len(values) == 1 else None
+
+
+def _normalize_contract_value(field: str, value: object) -> str:
+    if value is None:
+        return ""
+    try:
+        if pd.isna(value):
+            return ""
+    except (TypeError, ValueError):
+        pass
+    if field.endswith("_date"):
+        parsed = pd.to_datetime(value, errors="coerce")
+        if pd.notna(parsed):
+            return str(parsed.date())
+    return str(value).strip()
+
+
+def _expected_probability_metadata(
+    states: pd.DataFrame,
+    *,
+    profile_mode: str,
+    profile_cutoff_date: object,
+    state_date_policy: str,
+    extra: dict[str, object] | None = None,
+) -> dict[str, object]:
+    expected: dict[str, object] = {
+        "run_id": _single_contract_value(states, "run_id"),
+        "config_hash": _single_contract_value(states, "config_hash"),
+        "lineage_hash": _single_contract_value(states, "lineage_hash"),
+        "profile_mode": profile_mode,
+        "profile_cutoff_date": profile_cutoff_date,
+        "state_date_policy": state_date_policy,
+        "feature_scope_id": _single_contract_value(states, "feature_scope_id"),
+    }
+    if extra:
+        expected.update({key: value for key, value in extra.items() if value is not None})
+    return expected
+
+
+def _read_hsmm_run_contract_metadata(storage: DuckDBStorage, run_id: str) -> dict[str, object]:
+    try:
+        run = storage.read_df(
+            """
+            SELECT run_id, config_hash, lineage_hash, feature_scope_id
+            FROM hsmm_model_runs
+            WHERE run_id = ?
+            LIMIT 1
+            """,
+            [run_id],
+        )
+    except Exception:
+        return {}
+    if run.empty:
+        return {}
+    row = run.iloc[0]
+    return {field: row.get(field) for field in ["run_id", "config_hash", "lineage_hash", "feature_scope_id"]}
+
+
+def validate_probability_status_matrix(
+    matrix: pd.DataFrame,
+    expected_metadata: dict[str, object] | None = None,
+) -> pd.DataFrame:
+    if matrix.empty:
+        return pd.DataFrame()
+    out = matrix.copy()
+    if "probability_status" not in out.columns and "status" in out.columns:
+        out["probability_status"] = out["status"]
+    if "probability_status" not in out.columns:
+        out["probability_status"] = "missing"
+    if "exit_type" in out.columns:
+        out = out[out["exit_type"].astype(str).eq("display_label")].copy()
+    if out.empty:
+        return out
+    if "state_label" not in out.columns or "horizon_days" not in out.columns:
+        return pd.DataFrame()
+
+    out["probability_status"] = (
+        out["probability_status"]
+        .fillna("missing")
+        .astype(str)
+        .replace({"": "missing", "nan": "missing", "None": "missing"})
+    )
+    invalid_mask = ~out["probability_status"].isin(PROBABILITY_READINESS_VALID_STATUSES)
+    mismatch_reasons = pd.Series("", index=out.index, dtype=object)
+
+    missing_fields = [field for field in PROBABILITY_READINESS_REQUIRED_FIELDS if field not in out.columns]
+    if missing_fields:
+        invalid_mask = pd.Series(True, index=out.index)
+        mismatch_reasons = pd.Series("missing_required_fields:" + ",".join(missing_fields), index=out.index, dtype=object)
+
+    expected = expected_metadata or {}
+    for field in PROBABILITY_READINESS_METADATA_FIELDS:
+        expected_value = _normalize_contract_value(field, expected.get(field))
+        if expected_value == "":
+            continue
+        if field not in out.columns:
+            invalid_mask = pd.Series(True, index=out.index)
+            reason = f"missing_expected_field:{field}"
+            mismatch_reasons = mismatch_reasons.mask(mismatch_reasons.eq(""), reason)
+            mismatch_reasons = mismatch_reasons.mask(
+                ~mismatch_reasons.str.contains(reason, regex=False),
+                mismatch_reasons + ";" + reason,
+            )
+            continue
+        actual_values = out[field].map(lambda value: _normalize_contract_value(field, value))
+        field_mismatch = actual_values.ne(expected_value)
+        reason = f"{field}_mismatch"
+        mismatch_reasons = mismatch_reasons.mask(field_mismatch & mismatch_reasons.eq(""), reason)
+        mismatch_reasons = mismatch_reasons.mask(
+            field_mismatch & ~mismatch_reasons.str.contains(reason, regex=False),
+            mismatch_reasons + ";" + reason,
+        )
+        invalid_mask |= field_mismatch
+
+    out["readiness_contract_status"] = np.where(invalid_mask, "invalid", "valid")
+    out["readiness_mismatch_reason"] = mismatch_reasons.where(invalid_mask, "")
+    out.loc[invalid_mask, "probability_status"] = "invalid"
+    if "can_show_numeric_probability" in out.columns:
+        out.loc[invalid_mask, "can_show_numeric_probability"] = False
+    if "can_show_ordinal_score" in out.columns:
+        out.loc[invalid_mask, "can_show_ordinal_score"] = False
+    if "must_hide" in out.columns:
+        out.loc[invalid_mask, "must_hide"] = True
+    return out
+
+
+def _read_probability_status(
+    run_id: str,
+    base_dir: Path | None = None,
+    expected_metadata: dict[str, object] | None = None,
+) -> pd.DataFrame:
     root = base_dir or Path("reports") / "hsmm_lifecycle_probability" / run_id
     matrix_path = root / "ui_readiness_matrix.csv"
     if not matrix_path.exists():
         return pd.DataFrame()
     matrix = pd.read_csv(matrix_path)
-    if "probability_status" not in matrix.columns and "status" in matrix.columns:
-        matrix["probability_status"] = matrix["status"]
-    return matrix[matrix["exit_type"].astype(str).eq("display_label")].copy()
+    return validate_probability_status_matrix(matrix, expected_metadata)
 
 
 def _probability_status_map(probability_status: pd.DataFrame, horizons: tuple[int, ...], labels: Iterable[str]) -> pd.DataFrame:
@@ -371,8 +536,10 @@ def _raw_basis(status: object) -> str:
     value = str(status)
     if value == "usable_probability":
         return "raw_rank_used_allowed"
-    if value in {"raw_only", "ordinal_only"}:
-        return "raw_rank_used_as_ordinal"
+    if value == "raw_only":
+        return "raw_rank_used_as_internal_diagnostic"
+    if value == "ordinal_only":
+        return "raw_rank_excluded_ordinal_only"
     if value == "tail_censored":
         return "tail_censored_beyond_duration_support"
     if value == "invalid":
@@ -561,6 +728,7 @@ def _exit_tendency_long(
                     "raw_exit_rank_score",
                     "raw_score_used",
                     "probability_status",
+                    "raw_basis",
                     "sample_count",
                     "label_sample_count",
                 ]
@@ -735,6 +903,7 @@ def build_lifecycle_ui_frame(
     profile_cutoff_date: str | pd.Timestamp | None = None,
     state_date_policy: str = "full_run",
     source_probability_report_path: str | None = None,
+    expected_probability_metadata: dict[str, object] | None = None,
 ) -> tuple[pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, pd.DataFrame, dict[str, object]]:
     if states.empty:
         empty = pd.DataFrame()
@@ -761,6 +930,16 @@ def build_lifecycle_ui_frame(
         for label, age in zip(context["state_label"], context["display_state_age_days"], strict=False)
     ]
     probability_status = probability_status if probability_status is not None else pd.DataFrame()
+    probability_status = validate_probability_status_matrix(
+        probability_status,
+        _expected_probability_metadata(
+            states_all,
+            profile_mode=mode,
+            profile_cutoff_date=cutoff,
+            state_date_policy=date_policy,
+            extra=expected_probability_metadata,
+        ),
+    )
     exit_long, exit_profile, exit_distribution = _exit_tendency_long(
         context,
         ui_episodes,
@@ -817,6 +996,7 @@ def build_lifecycle_ui_frame(
             ("exit_tendency_basis", "exit_tendency_basis"),
             ("probability_status", "probability_status"),
             ("raw_score_used", "raw_score_used"),
+            ("raw_basis", "raw_basis"),
         ]:
             pivot = exit_long.pivot_table(
                 index=["run_id", "trade_date", "sector_code"],
@@ -833,11 +1013,15 @@ def build_lifecycle_ui_frame(
             f"exit_tendency_basis_{horizon}d": "unavailable",
             f"probability_status_{horizon}d": "missing",
             f"raw_score_used_{horizon}d": False,
+            f"raw_basis_{horizon}d": "raw_rank_excluded_missing_policy",
         }
         for col, default in defaults.items():
             if col not in ui.columns:
                 ui[col] = default
             ui[col] = ui[col].fillna(default)
+        ui[f"exit_tendency_{horizon}d_readiness_status"] = ui[f"probability_status_{horizon}d"]
+        ui[f"exit_tendency_{horizon}d_raw_score_used"] = ui[f"raw_score_used_{horizon}d"].fillna(False).astype(bool)
+        ui[f"exit_tendency_{horizon}d_raw_basis"] = ui[f"raw_basis_{horizon}d"]
     ui["probability_display_policy"] = "ordinal_tendency_only_no_percent"
 
     if not next_label.empty:
@@ -963,10 +1147,26 @@ def build_lifecycle_ui_frame(
 def build_lifecycle_ui_daily(storage: DuckDBStorage, run_id: str, horizons: tuple[int, ...] = DEFAULT_HORIZONS) -> pd.DataFrame:
     states = read_hsmm_states(storage, run_id)
     episodes = build_display_label_episodes(states)
-    probability_status = _read_probability_status(run_id)
+    run_metadata = _read_hsmm_run_contract_metadata(storage, run_id)
+    probability_status = _read_probability_status(run_id, expected_metadata=run_metadata)
     config = LifecycleDisplayConfig(horizons=tuple(horizons))
-    ui, *_ = build_lifecycle_ui_frame(states, episodes, tuple(horizons), probability_status, config)
+    ui, *_ = build_lifecycle_ui_frame(
+        states,
+        episodes,
+        tuple(horizons),
+        probability_status,
+        config,
+        expected_probability_metadata=run_metadata,
+    )
     return ui
+
+
+def _wp8_daily_alias_columns(horizons: tuple[int, ...]) -> list[str]:
+    return [
+        f"exit_tendency_{horizon}d_{suffix}"
+        for horizon in horizons
+        for suffix in WP8_DAILY_ALIAS_SUFFIXES
+    ] + [f"raw_basis_{horizon}d" for horizon in horizons]
 
 
 def _clear_lifecycle_profile_outputs(
@@ -1237,8 +1437,9 @@ def write_lifecycle_ui_outputs(
     config = LifecycleDisplayConfig(horizons=tuple(horizons))
     states = read_hsmm_states(storage, run_id)
     episodes = build_display_label_episodes(states)
+    run_metadata = _read_hsmm_run_contract_metadata(storage, run_id)
     probability_report_path = Path(probability_report) if probability_report else None
-    probability_status = _read_probability_status(run_id, probability_report_path)
+    probability_status = _read_probability_status(run_id, probability_report_path, expected_metadata=run_metadata)
     ui, duration_profile, exit_profile, exit_distribution, exit_long, extras = build_lifecycle_ui_frame(
         states,
         episodes,
@@ -1249,6 +1450,7 @@ def write_lifecycle_ui_outputs(
         profile_cutoff_date=profile_cutoff_date,
         state_date_policy=state_date_policy,
         source_probability_report_path=str(probability_report_path) if probability_report_path else "",
+        expected_probability_metadata=run_metadata,
     )
     metadata = extras["metadata"]
     next_profiles: dict[str, pd.DataFrame] = extras["next_profiles"]
@@ -1291,9 +1493,10 @@ def write_lifecycle_ui_outputs(
     if not episodes.empty:
         storage.upsert_df("hsmm_display_label_episodes", episodes, ["run_id", "sector_code", "episode_id"])
     if not ui.empty:
+        ui_for_db = ui.drop(columns=_wp8_daily_alias_columns(tuple(horizons)), errors="ignore")
         storage.upsert_df(
             "hsmm_lifecycle_ui_daily",
-            ui,
+            ui_for_db,
             ["run_id", "profile_mode", "profile_cutoff_date", "state_date_policy", "trade_date", "sector_code"],
         )
     if not metadata_df.empty:

@@ -42,17 +42,32 @@ def test_invalid_probability_slice_excludes_raw_rank():
     assert ui["exit_tendency_basis_1d"].str.contains("raw_rank_excluded_invalid").all()
 
 
-def test_ordinal_probability_slice_allows_raw_rank_as_ordinal():
+def test_ordinal_probability_slice_excludes_raw_rank():
     states = _states()
     episodes = build_display_label_episodes(states)
     probability_status = pd.DataFrame(
-        [{"state_label": "Stress", "horizon_days": 1, "probability_status": "ordinal_only"}]
+        [
+            {
+                "run_id": "policy_run",
+                "config_hash": "policy_config",
+                "lineage_hash": "policy_lineage",
+                "profile_mode": "retrospective",
+                "profile_cutoff_date": "2024-01-11",
+                "state_date_policy": "full_run",
+                "feature_scope_id": "policy_scope",
+                "exit_type": "display_label",
+                "state_label": "Stress",
+                "horizon_days": 1,
+                "probability_status": "ordinal_only",
+                "created_at": "2024-01-12T00:00:00",
+            }
+        ]
     )
 
     ui, *_ = build_lifecycle_ui_frame(states, episodes, horizons=(1,), probability_status=probability_status)
 
-    assert ui["raw_score_used_1d"].all()
-    assert ui["exit_tendency_basis_1d"].str.contains("raw_rank_used_as_ordinal").all()
+    assert not ui["raw_score_used_1d"].any()
+    assert ui["exit_tendency_basis_1d"].str.contains("raw_rank_excluded_ordinal_only").all()
 
 
 def test_exit_tendency_distribution_not_all_high_for_5d_10d_when_samples_sufficient():
