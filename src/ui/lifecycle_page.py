@@ -66,9 +66,12 @@ def _format_share(value: object) -> str:
 def _latest_lifecycle_run(storage: DuckDBStorage) -> str | None:
     run = storage.read_df(
         """
-        SELECT run_id
-        FROM hsmm_lifecycle_ui_daily
-        ORDER BY created_at DESC NULLS LAST
+        SELECT ui.run_id
+        FROM hsmm_lifecycle_ui_daily ui
+        JOIN hsmm_model_runs runs
+          ON runs.run_id = ui.run_id
+         AND runs.run_status = 'completed'
+        ORDER BY ui.created_at DESC NULLS LAST
         LIMIT 1
         """
     )
@@ -76,9 +79,12 @@ def _latest_lifecycle_run(storage: DuckDBStorage) -> str | None:
         return str(run.loc[0, "run_id"])
     states = storage.read_df(
         """
-        SELECT run_id
-        FROM hsmm_state_daily
-        ORDER BY created_at DESC NULLS LAST
+        SELECT states.run_id
+        FROM hsmm_state_daily states
+        JOIN hsmm_model_runs runs
+          ON runs.run_id = states.run_id
+         AND runs.run_status = 'completed'
+        ORDER BY states.created_at DESC NULLS LAST
         LIMIT 1
         """
     )
@@ -303,9 +309,12 @@ def render_lifecycle_page(storage: DuckDBStorage, universe_id: str | None = None
 
     available_runs = storage.read_df(
         """
-        SELECT DISTINCT run_id
-        FROM hsmm_lifecycle_ui_daily
-        ORDER BY run_id
+        SELECT DISTINCT ui.run_id
+        FROM hsmm_lifecycle_ui_daily ui
+        JOIN hsmm_model_runs runs
+          ON runs.run_id = ui.run_id
+         AND runs.run_status = 'completed'
+        ORDER BY ui.run_id
         """
     )
     run_options = available_runs["run_id"].astype(str).tolist() if not available_runs.empty else [run_id_default]

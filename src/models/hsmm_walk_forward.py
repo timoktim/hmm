@@ -96,6 +96,85 @@ def clear_hsmm_run(storage: DuckDBStorage, run_id: str) -> None:
         con.execute("DELETE FROM hsmm_model_runs WHERE run_id = ?", [run_id])
 
 
+def _hsmm_run_metadata_frame(
+    *,
+    run_id: str,
+    config: HSMMWalkForwardConfig,
+    feature_scope_id: str,
+    feature_scope_type: str,
+    start_date: pd.Timestamp,
+    end_date: pd.Timestamp,
+    config_payload: dict[str, object],
+    config_hash: str,
+    run_hash: str,
+    run_status: str,
+    started_at: pd.Timestamp,
+    expected_snapshot_count: int,
+    expected_state_row_count: int,
+    actual_snapshot_count: int = 0,
+    actual_state_row_count: int = 0,
+    completed_at: pd.Timestamp | None = None,
+    failed_at: pd.Timestamp | None = None,
+    failure_message: str | None = None,
+) -> pd.DataFrame:
+    lineage_payload = {
+        "run_id": run_id,
+        "config_hash": config_hash,
+        "run_hash": run_hash,
+        "feature_scope_id": feature_scope_id,
+        "feature_scope_type": feature_scope_type,
+    }
+    return pd.DataFrame(
+        [
+            {
+                "run_id": run_id,
+                "model_family": "hsmm",
+                "model_version": "hsmm_v1",
+                "created_at": pd.Timestamp.now(),
+                "universe_id": config.universe_id,
+                "include_custom_baskets": bool(config.include_custom_baskets),
+                "feature_scope_id": feature_scope_id,
+                "feature_version": config.feature_version,
+                "start_date": start_date.date(),
+                "end_date": end_date.date(),
+                "train_window_days": config.train_window_days,
+                "rebalance_days": config.rebalance_days,
+                "train_frequency": config.train_frequency,
+                "train_every_n_trade_days": config.train_every_n_trade_days,
+                "snapshot_frequency": config.snapshot_frequency,
+                "n_states": config.n_states,
+                "max_duration": config.max_duration,
+                "duration_smoothing": config.duration_smoothing,
+                "emission_type": "diag_gaussian",
+                "feature_columns_json": json_dumps(HSMM_FEATURE_COLUMNS),
+                "config_json": json.dumps(config_payload, ensure_ascii=False, sort_keys=True, default=str),
+                "config_hash": config_hash,
+                "run_hash": run_hash,
+                "clean_run": not config.append,
+                "lineage_json": json.dumps(lineage_payload, ensure_ascii=False, sort_keys=True, default=str),
+                "lineage_hash": run_hash,
+                "run_status": run_status,
+                "started_at": started_at,
+                "completed_at": completed_at,
+                "failed_at": failed_at,
+                "failure_message": failure_message,
+                "expected_snapshot_count": int(expected_snapshot_count),
+                "actual_snapshot_count": int(actual_snapshot_count),
+                "expected_state_row_count": int(expected_state_row_count),
+                "actual_state_row_count": int(actual_state_row_count),
+                "params_json": json.dumps(config_payload, ensure_ascii=False, sort_keys=True, default=str),
+                "params_hash": config_hash,
+                "code_version": "hsmm_mvp_v1",
+                "notes": config.notes,
+            }
+        ]
+    )
+
+
+def _write_hsmm_run_metadata(storage: DuckDBStorage, metadata: pd.DataFrame) -> None:
+    storage.upsert_df("hsmm_model_runs", metadata, ["run_id"])
+
+
 def _resolve_dates(config: HSMMWalkForwardConfig, ohlcv: pd.DataFrame) -> tuple[pd.Timestamp, pd.Timestamp]:
     dates = pd.to_datetime(ohlcv["trade_date"])
     start = pd.to_datetime(config.start_date) if config.start_date else dates.min()
@@ -701,102 +780,125 @@ def run_hsmm_walk_forward(
     config_payload = _config_hash_payload(config, feature_scope_id, feature_scope_type)
     hash_value = params_hash(config_payload)
     run_hash = params_hash({**config_payload, "run_id": run_id})
+    sector_count = int(features["sector_id"].astype(str).nunique()) if "sector_id" in features.columns else 0
+    expected_snapshot_count = int(len(snapshot_dates))
+    expected_state_row_count = int(expected_snapshot_count * sector_count)
+    run_started_at = pd.Timestamp.now(tz=None)
+    _write_hsmm_run_metadata(
+        storage,
+        _hsmm_run_metadata_frame(
+            run_id=run_id,
+            config=config,
+            feature_scope_id=feature_scope_id,
+            feature_scope_type=feature_scope_type,
+            start_date=start_date,
+            end_date=end_date,
+            config_payload=config_payload,
+            config_hash=hash_value,
+            run_hash=run_hash,
+            run_status="running",
+            started_at=run_started_at,
+            expected_snapshot_count=expected_snapshot_count,
+            expected_state_row_count=expected_state_row_count,
+        ),
+    )
 
-    for ordinal, train_date in enumerate(checkpoint_dates, start=1):
-        train_date = pd.Timestamp(train_date)
-        checkpoint_id = _checkpoint_id(run_id, train_date, ordinal)
-        train_sequences = _training_sequences(features, train_date, config)
-        if len(train_sequences) < config.min_train_sequences:
-            if progress_callback:
-                progress_callback(ordinal, len(checkpoint_dates), train_date, "insufficient_training_data")
-            continue
-        model = DiscreteDurationGaussianHSMM(
-            n_states=config.n_states,
-            max_duration=config.max_duration,
-            n_iter=config.n_iter,
-            tol=config.tol,
-            duration_smoothing=config.duration_smoothing,
-            transition_smoothing=config.transition_smoothing,
-            variance_floor=config.variance_floor,
-            random_state=config.random_state,
-            engine=config.hsmm_engine,
-        )
-        fit_started = time.perf_counter()
-        if progress_callback:
-            progress_callback(ordinal, len(checkpoint_dates), train_date, "checkpoint_fit_started")
-        model.fit(train_sequences, HSMM_FEATURE_COLUMNS)
-        fit_seconds = time.perf_counter() - fit_started
-        train_start = min(pd.to_datetime(seq["trade_date"]).min() for seq in train_sequences)
-        train_end = max(pd.to_datetime(seq["trade_date"]).max() for seq in train_sequences)
-        n_observations = int(sum(len(seq.dropna(subset=HSMM_FEATURE_COLUMNS)) for seq in train_sequences))
-        model_params_json = model.to_json()
-        model_params_hash = params_hash(json.loads(model_params_json))
-        checkpoint_artifacts[train_date] = {
-            "checkpoint_id": checkpoint_id,
-            "model": model,
-            "train_start": pd.Timestamp(train_start),
-            "train_end": pd.Timestamp(train_end),
-            "sector_ids": {str(seq["sector_id"].iloc[0]) for seq in train_sequences},
-        }
-        checkpoint_rows.append(
-            {
-                "run_id": run_id,
-                "checkpoint_id": checkpoint_id,
-                "train_date": train_date.date(),
-                "train_start_date": pd.Timestamp(train_start).date(),
-                "train_end_date": pd.Timestamp(train_end).date(),
-                "train_trade_day_count": int(pd.Series(pd.concat(train_sequences)["trade_date"]).nunique()),
-                "n_sequences": len(train_sequences),
-                "n_observations": n_observations,
-                "model_version": "hsmm_v1",
-                "feature_columns_json": json_dumps(HSMM_FEATURE_COLUMNS),
-                "state_label_profile_json": json_dumps(model.state_labels_),
-                "params_json": model_params_json,
-                "params_hash": model_params_hash,
-                "config_hash": hash_value,
-                "created_at": pd.Timestamp.now(),
-            }
-        )
-        performance_rows.append(
-            {
-                "run_id": run_id,
-                "checkpoint_id": checkpoint_id,
-                "train_date": train_date.date(),
-                "train_start_date": pd.Timestamp(train_start).date(),
-                "train_end_date": pd.Timestamp(train_end).date(),
-                "training_sequence_count": len(train_sequences),
-                "training_row_count": n_observations,
-                "fit_seconds": fit_seconds,
-                "decode_snapshot_count": 0,
-                "decode_sector_count": 0,
-                "decode_rows_generated": 0,
-                "decode_seconds": 0.0,
-                "created_at": pd.Timestamp.now(),
-            }
-        )
-        if config.persist_incremental or config.checkpoint_write_mode == "incremental":
-            storage.upsert_df("hsmm_model_checkpoints", pd.DataFrame([checkpoint_rows[-1]]), ["run_id", "checkpoint_id"])
-            storage.upsert_df("hsmm_run_performance", pd.DataFrame([performance_rows[-1]]), ["run_id", "checkpoint_id"])
-        last_model = model
-        if progress_callback:
-            progress_callback(ordinal, len(checkpoint_dates), train_date, "checkpoint_trained")
-
-    performance_by_checkpoint = {row["checkpoint_id"]: row for row in performance_rows}
-    if config.snapshot_decode_mode == "legacy":
-        for idx, snapshot_date in enumerate(snapshot_dates, start=1):
-            snapshot_date = pd.Timestamp(snapshot_date)
-            checkpoint_date = _latest_checkpoint_for(snapshot_date, sorted(checkpoint_artifacts))
-            if checkpoint_date is None:
+    try:
+        for ordinal, train_date in enumerate(checkpoint_dates, start=1):
+            train_date = pd.Timestamp(train_date)
+            checkpoint_id = _checkpoint_id(run_id, train_date, ordinal)
+            train_sequences = _training_sequences(features, train_date, config)
+            if len(train_sequences) < config.min_train_sequences:
+                if progress_callback:
+                    progress_callback(ordinal, len(checkpoint_dates), train_date, "insufficient_training_data")
                 continue
-            artifact = checkpoint_artifacts[checkpoint_date]
-            infer_sequences = _inference_sequences(
-                features,
-                artifact["sector_ids"],
-                artifact["train_start"],
-                snapshot_date,
+            model = DiscreteDurationGaussianHSMM(
+                n_states=config.n_states,
+                max_duration=config.max_duration,
+                n_iter=config.n_iter,
+                tol=config.tol,
+                duration_smoothing=config.duration_smoothing,
+                transition_smoothing=config.transition_smoothing,
+                variance_floor=config.variance_floor,
+                random_state=config.random_state,
+                engine=config.hsmm_engine,
             )
-            decode_started = time.perf_counter()
-            snapshot_rows = _snapshot_rows(
+            fit_started = time.perf_counter()
+            if progress_callback:
+                progress_callback(ordinal, len(checkpoint_dates), train_date, "checkpoint_fit_started")
+            model.fit(train_sequences, HSMM_FEATURE_COLUMNS)
+            fit_seconds = time.perf_counter() - fit_started
+            train_start = min(pd.to_datetime(seq["trade_date"]).min() for seq in train_sequences)
+            train_end = max(pd.to_datetime(seq["trade_date"]).max() for seq in train_sequences)
+            n_observations = int(sum(len(seq.dropna(subset=HSMM_FEATURE_COLUMNS)) for seq in train_sequences))
+            model_params_json = model.to_json()
+            model_params_hash = params_hash(json.loads(model_params_json))
+            checkpoint_artifacts[train_date] = {
+                "checkpoint_id": checkpoint_id,
+                "model": model,
+                "train_start": pd.Timestamp(train_start),
+                "train_end": pd.Timestamp(train_end),
+                "sector_ids": {str(seq["sector_id"].iloc[0]) for seq in train_sequences},
+            }
+            checkpoint_rows.append(
+                {
+                    "run_id": run_id,
+                    "checkpoint_id": checkpoint_id,
+                    "train_date": train_date.date(),
+                    "train_start_date": pd.Timestamp(train_start).date(),
+                    "train_end_date": pd.Timestamp(train_end).date(),
+                    "train_trade_day_count": int(pd.Series(pd.concat(train_sequences)["trade_date"]).nunique()),
+                    "n_sequences": len(train_sequences),
+                    "n_observations": n_observations,
+                    "model_version": "hsmm_v1",
+                    "feature_columns_json": json_dumps(HSMM_FEATURE_COLUMNS),
+                    "state_label_profile_json": json_dumps(model.state_labels_),
+                    "params_json": model_params_json,
+                    "params_hash": model_params_hash,
+                    "config_hash": hash_value,
+                    "created_at": pd.Timestamp.now(),
+                }
+            )
+            performance_rows.append(
+                {
+                    "run_id": run_id,
+                    "checkpoint_id": checkpoint_id,
+                    "train_date": train_date.date(),
+                    "train_start_date": pd.Timestamp(train_start).date(),
+                    "train_end_date": pd.Timestamp(train_end).date(),
+                    "training_sequence_count": len(train_sequences),
+                    "training_row_count": n_observations,
+                    "fit_seconds": fit_seconds,
+                    "decode_snapshot_count": 0,
+                    "decode_sector_count": 0,
+                    "decode_rows_generated": 0,
+                    "decode_seconds": 0.0,
+                    "created_at": pd.Timestamp.now(),
+                }
+            )
+            if config.persist_incremental or config.checkpoint_write_mode == "incremental":
+                storage.upsert_df("hsmm_model_checkpoints", pd.DataFrame([checkpoint_rows[-1]]), ["run_id", "checkpoint_id"])
+                storage.upsert_df("hsmm_run_performance", pd.DataFrame([performance_rows[-1]]), ["run_id", "checkpoint_id"])
+            last_model = model
+            if progress_callback:
+                progress_callback(ordinal, len(checkpoint_dates), train_date, "checkpoint_trained")
+
+        performance_by_checkpoint = {row["checkpoint_id"]: row for row in performance_rows}
+        if config.snapshot_decode_mode == "legacy":
+            for idx, snapshot_date in enumerate(snapshot_dates, start=1):
+                snapshot_date = pd.Timestamp(snapshot_date)
+                checkpoint_date = _latest_checkpoint_for(snapshot_date, sorted(checkpoint_artifacts))
+                if checkpoint_date is None:
+                    continue
+                artifact = checkpoint_artifacts[checkpoint_date]
+                infer_sequences = _inference_sequences(
+                    features,
+                    artifact["sector_ids"],
+                    artifact["train_start"],
+                    snapshot_date,
+                )
+                decode_started = time.perf_counter()
+                snapshot_rows = _snapshot_rows(
                     artifact["model"],
                     infer_sequences,
                     snapshot_date,
@@ -807,131 +909,146 @@ def run_hsmm_walk_forward(
                     artifact["train_end"],
                     feature_scope_id,
                     config.snapshot_frequency,
-            )
-            decode_seconds = time.perf_counter() - decode_started
-            rows.extend(snapshot_rows)
-            perf = performance_by_checkpoint.get(artifact["checkpoint_id"])
-            if perf is not None:
-                perf["decode_snapshot_count"] += 1
-                perf["decode_sector_count"] = max(perf["decode_sector_count"], len(infer_sequences))
-                perf["decode_rows_generated"] += len(snapshot_rows)
-                perf["decode_seconds"] += decode_seconds
-                if config.persist_incremental or config.checkpoint_write_mode == "incremental":
-                    storage.upsert_df("hsmm_run_performance", pd.DataFrame([perf]), ["run_id", "checkpoint_id"])
-            if snapshot_rows and (config.persist_incremental or config.checkpoint_write_mode == "incremental"):
-                storage.upsert_df("hsmm_state_daily", pd.DataFrame(snapshot_rows), ["run_id", "trade_date", "sector_code"])
-            if progress_callback and (idx == 1 or idx == len(snapshot_dates) or idx % max(1, config.log_every_n_snapshots) == 0):
-                progress_callback(idx, len(snapshot_dates), snapshot_date, "snapshot_decoded")
-    else:
-        checkpoint_snapshot_dates = _snapshot_dates_by_checkpoint(snapshot_dates, sorted(checkpoint_artifacts))
-        for idx, (checkpoint_date, served_dates) in enumerate(checkpoint_snapshot_dates.items(), start=1):
-            artifact = checkpoint_artifacts[checkpoint_date]
-            if progress_callback:
-                progress_callback(idx, len(checkpoint_snapshot_dates), pd.Timestamp(served_dates[-1]), "checkpoint_decode_started")
-            decode_started = time.perf_counter()
-            snapshot_rows = _snapshot_rows_for_checkpoint_prefix(
-                artifact["model"],
-                features,
-                artifact["sector_ids"],
-                served_dates,
-                run_id,
-                artifact["checkpoint_id"],
-                sector_names,
-                artifact["train_start"],
-                artifact["train_end"],
-                feature_scope_id,
-                config.snapshot_frequency,
-                n_jobs=config.n_jobs,
-                sector_chunk_size=config.sector_chunk_size,
-            )
-            decode_seconds = time.perf_counter() - decode_started
-            rows.extend(snapshot_rows)
-            perf = performance_by_checkpoint.get(artifact["checkpoint_id"])
-            if perf is not None:
-                perf["decode_snapshot_count"] += len(served_dates)
-                perf["decode_sector_count"] = max(perf["decode_sector_count"], len(artifact["sector_ids"]))
-                perf["decode_rows_generated"] += len(snapshot_rows)
-                perf["decode_seconds"] += decode_seconds
-                if config.persist_incremental or config.checkpoint_write_mode == "incremental":
-                    storage.upsert_df("hsmm_run_performance", pd.DataFrame([perf]), ["run_id", "checkpoint_id"])
-            if snapshot_rows and (config.persist_incremental or config.checkpoint_write_mode == "incremental"):
-                storage.upsert_df("hsmm_state_daily", pd.DataFrame(snapshot_rows), ["run_id", "trade_date", "sector_code"])
-            if progress_callback:
-                progress_callback(idx, len(checkpoint_snapshot_dates), pd.Timestamp(served_dates[-1]), "checkpoint_decode_finished")
+                )
+                decode_seconds = time.perf_counter() - decode_started
+                rows.extend(snapshot_rows)
+                perf = performance_by_checkpoint.get(artifact["checkpoint_id"])
+                if perf is not None:
+                    perf["decode_snapshot_count"] += 1
+                    perf["decode_sector_count"] = max(perf["decode_sector_count"], len(infer_sequences))
+                    perf["decode_rows_generated"] += len(snapshot_rows)
+                    perf["decode_seconds"] += decode_seconds
+                    if config.persist_incremental or config.checkpoint_write_mode == "incremental":
+                        storage.upsert_df("hsmm_run_performance", pd.DataFrame([perf]), ["run_id", "checkpoint_id"])
+                if snapshot_rows and (config.persist_incremental or config.checkpoint_write_mode == "incremental"):
+                    storage.upsert_df("hsmm_state_daily", pd.DataFrame(snapshot_rows), ["run_id", "trade_date", "sector_code"])
+                if progress_callback and (idx == 1 or idx == len(snapshot_dates) or idx % max(1, config.log_every_n_snapshots) == 0):
+                    progress_callback(idx, len(snapshot_dates), snapshot_date, "snapshot_decoded")
+        else:
+            checkpoint_snapshot_dates = _snapshot_dates_by_checkpoint(snapshot_dates, sorted(checkpoint_artifacts))
+            for idx, (checkpoint_date, served_dates) in enumerate(checkpoint_snapshot_dates.items(), start=1):
+                artifact = checkpoint_artifacts[checkpoint_date]
+                if progress_callback:
+                    progress_callback(idx, len(checkpoint_snapshot_dates), pd.Timestamp(served_dates[-1]), "checkpoint_decode_started")
+                decode_started = time.perf_counter()
+                snapshot_rows = _snapshot_rows_for_checkpoint_prefix(
+                    artifact["model"],
+                    features,
+                    artifact["sector_ids"],
+                    served_dates,
+                    run_id,
+                    artifact["checkpoint_id"],
+                    sector_names,
+                    artifact["train_start"],
+                    artifact["train_end"],
+                    feature_scope_id,
+                    config.snapshot_frequency,
+                    n_jobs=config.n_jobs,
+                    sector_chunk_size=config.sector_chunk_size,
+                )
+                decode_seconds = time.perf_counter() - decode_started
+                rows.extend(snapshot_rows)
+                perf = performance_by_checkpoint.get(artifact["checkpoint_id"])
+                if perf is not None:
+                    perf["decode_snapshot_count"] += len(served_dates)
+                    perf["decode_sector_count"] = max(perf["decode_sector_count"], len(artifact["sector_ids"]))
+                    perf["decode_rows_generated"] += len(snapshot_rows)
+                    perf["decode_seconds"] += decode_seconds
+                    if config.persist_incremental or config.checkpoint_write_mode == "incremental":
+                        storage.upsert_df("hsmm_run_performance", pd.DataFrame([perf]), ["run_id", "checkpoint_id"])
+                if snapshot_rows and (config.persist_incremental or config.checkpoint_write_mode == "incremental"):
+                    storage.upsert_df("hsmm_state_daily", pd.DataFrame(snapshot_rows), ["run_id", "trade_date", "sector_code"])
+                if progress_callback:
+                    progress_callback(idx, len(checkpoint_snapshot_dates), pd.Timestamp(served_dates[-1]), "checkpoint_decode_finished")
 
-    states = _stitch_state_age_by_label(pd.DataFrame(rows))
-    if not states.empty:
-        storage.upsert_df("hsmm_state_daily", states, ["run_id", "trade_date", "sector_code"])
-    if checkpoint_rows:
-        storage.upsert_df("hsmm_model_checkpoints", pd.DataFrame(checkpoint_rows), ["run_id", "checkpoint_id"])
-    performance_df = pd.DataFrame(performance_rows)
-    if not performance_df.empty:
-        storage.upsert_df("hsmm_run_performance", performance_df, ["run_id", "checkpoint_id"])
-    episodes = _episodes_from_daily(states)
-    _write_episodes(storage, run_id, episodes)
+        states = _stitch_state_age_by_label(pd.DataFrame(rows))
+        if not states.empty:
+            storage.upsert_df("hsmm_state_daily", states, ["run_id", "trade_date", "sector_code"])
+        if checkpoint_rows:
+            storage.upsert_df("hsmm_model_checkpoints", pd.DataFrame(checkpoint_rows), ["run_id", "checkpoint_id"])
+        performance_df = pd.DataFrame(performance_rows)
+        if not performance_df.empty:
+            storage.upsert_df("hsmm_run_performance", performance_df, ["run_id", "checkpoint_id"])
+        episodes = _episodes_from_daily(states)
+        _write_episodes(storage, run_id, episodes)
 
-    run_df = pd.DataFrame(
-        [
-            {
-                "run_id": run_id,
-                "model_family": "hsmm",
-                "model_version": "hsmm_v1",
-                "created_at": pd.Timestamp.now(),
-                "universe_id": config.universe_id,
-                "include_custom_baskets": bool(config.include_custom_baskets),
-                "feature_scope_id": feature_scope_id,
-                "feature_version": config.feature_version,
-                "start_date": start_date.date(),
-                "end_date": end_date.date(),
-                "train_window_days": config.train_window_days,
-                "rebalance_days": config.rebalance_days,
-                "train_frequency": config.train_frequency,
-                "train_every_n_trade_days": config.train_every_n_trade_days,
-                "snapshot_frequency": config.snapshot_frequency,
-                "n_states": config.n_states,
-                "max_duration": config.max_duration,
-                "duration_smoothing": config.duration_smoothing,
-                "emission_type": "diag_gaussian",
-                "feature_columns_json": json_dumps(HSMM_FEATURE_COLUMNS),
-                "config_json": json.dumps(config_payload, ensure_ascii=False, sort_keys=True, default=str),
-                "config_hash": hash_value,
-                "run_hash": run_hash,
-                "clean_run": not config.append,
-                "params_json": json.dumps(config_payload, ensure_ascii=False, sort_keys=True, default=str),
-                "params_hash": hash_value,
-                "code_version": "hsmm_mvp_v1",
-                "notes": config.notes,
-            }
-        ]
-    )
-    storage.upsert_df("hsmm_model_runs", run_df, ["run_id"])
-    if last_model is not None:
-        payload = last_model.to_dict()
-        params_df = pd.DataFrame(
-            [
-                {
-                    "run_id": run_id,
-                    "state_labels_json": json_dumps(payload["state_labels"]),
-                    "startprob_json": json_dumps(payload["startprob"]),
-                    "transition_matrix_json": json_dumps(payload["transmat"]),
-                    "duration_pmf_json": json_dumps(payload["duration_pmf"]),
-                    "emission_mean_json": json_dumps(payload["means"]),
-                    "emission_var_json": json_dumps(payload["vars"]),
-                    "scaler_json": json_dumps(payload["scaler"]),
-                    "created_at": pd.Timestamp.now(),
-                }
-            ]
+        if last_model is not None:
+            payload = last_model.to_dict()
+            params_df = pd.DataFrame(
+                [
+                    {
+                        "run_id": run_id,
+                        "state_labels_json": json_dumps(payload["state_labels"]),
+                        "startprob_json": json_dumps(payload["startprob"]),
+                        "transition_matrix_json": json_dumps(payload["transmat"]),
+                        "duration_pmf_json": json_dumps(payload["duration_pmf"]),
+                        "emission_mean_json": json_dumps(payload["means"]),
+                        "emission_var_json": json_dumps(payload["vars"]),
+                        "scaler_json": json_dumps(payload["scaler"]),
+                        "created_at": pd.Timestamp.now(),
+                    }
+                ]
+            )
+            storage.upsert_df("hsmm_parameters", params_df, ["run_id"])
+
+        actual_snapshot_count = int(states["trade_date"].nunique()) if "trade_date" in states.columns and not states.empty else 0
+        actual_state_row_count = int(len(states))
+        _write_hsmm_run_metadata(
+            storage,
+            _hsmm_run_metadata_frame(
+                run_id=run_id,
+                config=config,
+                feature_scope_id=feature_scope_id,
+                feature_scope_type=feature_scope_type,
+                start_date=start_date,
+                end_date=end_date,
+                config_payload=config_payload,
+                config_hash=hash_value,
+                run_hash=run_hash,
+                run_status="completed",
+                started_at=run_started_at,
+                completed_at=pd.Timestamp.now(tz=None),
+                expected_snapshot_count=expected_snapshot_count,
+                expected_state_row_count=expected_state_row_count,
+                actual_snapshot_count=actual_snapshot_count,
+                actual_state_row_count=actual_state_row_count,
+            ),
         )
-        storage.upsert_df("hsmm_parameters", params_df, ["run_id"])
-    return {
-        "run_id": run_id,
-        "states": states,
-        "episodes": episodes,
-        "checkpoints": pd.DataFrame(checkpoint_rows),
-        "performance": performance_df,
-        "config_hash": hash_value,
-        "run_hash": run_hash,
-    }
+        return {
+            "run_id": run_id,
+            "states": states,
+            "episodes": episodes,
+            "checkpoints": pd.DataFrame(checkpoint_rows),
+            "performance": performance_df,
+            "config_hash": hash_value,
+            "run_hash": run_hash,
+        }
+    except Exception as exc:
+        failure_states = pd.DataFrame(rows)
+        actual_snapshot_count = int(failure_states["trade_date"].nunique()) if "trade_date" in failure_states.columns and not failure_states.empty else 0
+        _write_hsmm_run_metadata(
+            storage,
+            _hsmm_run_metadata_frame(
+                run_id=run_id,
+                config=config,
+                feature_scope_id=feature_scope_id,
+                feature_scope_type=feature_scope_type,
+                start_date=start_date,
+                end_date=end_date,
+                config_payload=config_payload,
+                config_hash=hash_value,
+                run_hash=run_hash,
+                run_status="failed",
+                started_at=run_started_at,
+                failed_at=pd.Timestamp.now(tz=None),
+                failure_message=str(exc)[:1000],
+                expected_snapshot_count=expected_snapshot_count,
+                expected_state_row_count=expected_state_row_count,
+                actual_snapshot_count=actual_snapshot_count,
+                actual_state_row_count=int(len(failure_states)),
+            ),
+        )
+        raise
 
 
 def main() -> None:

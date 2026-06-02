@@ -45,7 +45,11 @@ class LifecycleDisplayConfig:
     saturation_high_medium_share: float = 0.95
 
 
-def read_hsmm_states(storage: DuckDBStorage, run_id: str) -> pd.DataFrame:
+def read_hsmm_states(storage: DuckDBStorage, run_id: str, require_completed: bool = True) -> pd.DataFrame:
+    if require_completed:
+        run_status = storage.read_df("SELECT run_status FROM hsmm_model_runs WHERE run_id = ? LIMIT 1", [run_id])
+        if not run_status.empty and str(run_status.loc[0, "run_status"]) != "completed":
+            return pd.DataFrame()
     states = storage.read_df("SELECT * FROM hsmm_state_daily WHERE run_id = ? ORDER BY sector_code, trade_date", [run_id])
     if states.empty:
         return states
