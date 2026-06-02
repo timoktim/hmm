@@ -1,0 +1,48 @@
+{
+  "index_id": "STAGE02-WP-B-v1",
+  "path": "docs/work_packages/stage_02/STAGE02_WP_B_ci_validation_artifact_skeleton.md",
+  "version": "v1",
+  "branch": "stage02/wp-b-ci-validation-artifacts",
+  "status": "pass",
+  "generated_at": "2026-06-02T03:12:50Z",
+  "ci_workflow": ".github/workflows/ci.yml",
+  "private_db_required": "no",
+  "local_db_usage": "no",
+  "local_db_path_used": "not used",
+  "external_data_fetch": "no",
+  "training_algorithm_modified": "no",
+  "stage01_diagnostic_algorithm_modified": "no",
+  "duckdb_committed": "no",
+  "commands_run": [
+    ".venv/bin/python -m compileall -q src tests",
+    ".venv/bin/pytest -q tests/test_private_path_hygiene.py",
+    ".venv/bin/pytest -q tests/test_hmm_confidence.py tests/test_hmm_label_alignment.py tests/test_hmm_churn_dwell.py",
+    ".venv/bin/pytest -q tests/test_ui_readiness_policy.py tests/test_ui_causal_boundary.py",
+    "bash scripts/check_no_private_paths.sh",
+    "bash scripts/validate_stage01_no_private_db.sh"
+  ],
+  "test_results": {
+    "compileall": "passed",
+    "tests/test_private_path_hygiene.py": "3 passed",
+    "stage01_diagnostic_unit_tests": "20 passed",
+    "ui_readiness_boundary_tests": "20 passed",
+    "scripts/check_no_private_paths.sh": "pass; scanned_files=47",
+    "scripts/validate_stage01_no_private_db.sh": "pass; private_db_required=no"
+  },
+  "generated_reports": [
+    "reports/ci_validation/stage02_wp_b_ci_validation_summary.md",
+    "reports/ci_validation/stage02_wp_b_ci_validation_summary.json"
+  ],
+  "private_path_hygiene": {
+    "script": "pass",
+    "pytest": "pass"
+  },
+  "local_db_artifact_policy": {
+    "docs_created": "yes",
+    "policy_files": [
+      "docs/validation/CI_VALIDATION_POLICY.md",
+      "docs/validation/LOCAL_DB_ARTIFACT_POLICY.md"
+    ]
+  },
+  "risks": []
+}
