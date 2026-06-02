@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import hashlib
-import json
 from collections.abc import Callable
 
 import pandas as pd
@@ -11,11 +9,16 @@ from src.config import settings
 from src.data_pipeline.calendar import assert_execution_after_signal, next_trade_date
 from src.data_pipeline.storage import DuckDBStorage
 from src.data_pipeline.universe import load_sector_like_ohlcv, universe_sector_ids
-from src.features.sector_features import add_sector_features, equal_weight_benchmark_ret20_from_close, feature_scope_for_universe
+from src.features.sector_features import FEATURE_COLUMNS, add_sector_features, equal_weight_benchmark_ret20_from_close, feature_scope_for_universe
 from src.models.walk_forward import ProgressCallback, WalkForwardConfig, walk_forward_hmm_state_frame
 from src.scoring.sector_ranker import rank_sectors
+from src.utils.lineage import build_model_lineage_payload, canonical_json, hash_payload, is_valid_cache_metadata
 
 Weights = dict[str, float]
+
+_HMM_WALK_FORWARD_MODEL_VERSION = "stage03pf-wp2"
+_HMM_WALK_FORWARD_CODE_VERSION = "stage03pf-wp2"
+_HMM_WALK_FORWARD_TOL = 0.01
 
 
 def _load_sector_ohlcv(
@@ -72,20 +75,198 @@ def estimate_backtest_signal_count(
     }
 
 
+def _digest_frame(df: pd.DataFrame, columns: list[str]) -> str:
+    available = [column for column in columns if column in df.columns]
+    if not available:
+        return hash_payload({"columns": [], "rows": []})
+    rows = df[available].copy()
+    sort_columns = [column for column in ["sector_id", "trade_date"] if column in rows.columns]
+    if sort_columns:
+        rows = rows.sort_values(sort_columns).reset_index(drop=True)
+    return hash_payload({"columns": available, "rows": rows.to_dict("records")})
+
+
+def _digest_trade_calendar(dates: pd.Series | list[pd.Timestamp]) -> str:
+    normalized = sorted(pd.to_datetime(pd.Series(dates)).dropna().dt.date.astype(str).unique().tolist())
+    return hash_payload({"trade_dates": normalized})
+
+
+def _digest_universe_membership(ohlcv: pd.DataFrame, universe_id: str | None, include_custom_baskets: bool) -> str:
+    sector_ids = sorted(ohlcv["sector_id"].dropna().astype(str).unique().tolist()) if "sector_id" in ohlcv.columns else []
+    return hash_payload(
+        {
+            "universe_id": universe_id or "all",
+            "include_custom_baskets": bool(include_custom_baskets),
+            "sector_ids": sector_ids,
+        }
+    )
+
+
+def _digest_custom_basket_membership(ohlcv: pd.DataFrame, include_custom_baskets: bool) -> str | None:
+    if not include_custom_baskets or "sector_id" not in ohlcv.columns:
+        return None
+    custom_ids = sorted(sector_id for sector_id in ohlcv["sector_id"].dropna().astype(str).unique() if sector_id.startswith("custom"))
+    return hash_payload({"custom_sector_ids": custom_ids})
+
+
+def _feature_lineage_hash(features: pd.DataFrame, feature_version: str, feature_scope_id: str, feature_scope_type: str) -> str:
+    sector_ids = sorted(features["sector_id"].dropna().astype(str).unique().tolist()) if "sector_id" in features.columns else []
+    trade_dates = pd.to_datetime(features["trade_date"]).dropna() if "trade_date" in features.columns else pd.Series(dtype="datetime64[ns]")
+    return hash_payload(
+        {
+            "feature_version": feature_version,
+            "feature_scope_id": feature_scope_id,
+            "feature_scope_type": feature_scope_type,
+            "feature_columns": list(FEATURE_COLUMNS),
+            "sector_ids": sector_ids,
+            "start_date": trade_dates.min().date() if len(trade_dates) else None,
+            "end_date": trade_dates.max().date() if len(trade_dates) else None,
+            "row_count": int(len(features)),
+        }
+    )
+
+
+def _cache_params_with_lineage(params: dict[str, object]) -> dict[str, object]:
+    enriched = dict(params)
+    model_params = dict(enriched.get("model_params") or {})
+    model_params.setdefault("n_states", int(enriched.get("n_states", 3) or 3))
+    model_params.setdefault("random_state", int(enriched.get("random_state", 42) or 42))
+    model_params.setdefault("n_iter", int(enriched.get("n_iter", 300) or 300))
+    model_params.setdefault("tol", enriched.get("tol", _HMM_WALK_FORWARD_TOL))
+
+    preprocess_params = dict(enriched.get("preprocess_params") or {})
+    preprocess_params.setdefault("min_train_rows", int(enriched.get("min_train_rows", 120) or 120))
+    preprocess_params.setdefault("min_sequence_length", int(enriched.get("min_sequence_length", 30) or 30))
+    preprocess_params.setdefault("apply_winsorize", bool(enriched.get("apply_winsorize", False)))
+
+    train_window_policy = dict(enriched.get("train_window_policy") or {})
+    train_window_policy.setdefault("train_window_days", enriched.get("train_window_days"))
+    train_window_policy.setdefault("retrain_frequency", enriched.get("retrain_frequency"))
+
+    state_date_policy = dict(enriched.get("state_date_policy") or {})
+    state_date_policy.setdefault("mode", enriched.get("state_date_mode"))
+    state_date_policy.setdefault("rebalance_days", enriched.get("rebalance_days"))
+
+    enriched["model_params"] = model_params
+    enriched["preprocess_params"] = preprocess_params
+    enriched["train_window_policy"] = train_window_policy
+    enriched["state_date_policy"] = state_date_policy
+    enriched.setdefault("feature_columns", list(FEATURE_COLUMNS))
+    enriched.setdefault("data_snapshot_hash", hash_payload({"data_snapshot": "unknown"}))
+    enriched.setdefault("universe_membership_hash", hash_payload({"universe": enriched.get("universe_id", "all")}))
+    enriched.setdefault("calendar_hash", hash_payload({"calendar": "unknown"}))
+    enriched.setdefault(
+        "feature_lineage_hash",
+        hash_payload(
+            {
+                "feature_version": enriched.get("feature_version"),
+                "feature_scope_id": enriched.get("feature_scope_id"),
+                "feature_columns": enriched.get("feature_columns"),
+            }
+        ),
+    )
+
+    lineage_payload = build_model_lineage_payload(
+        model_family="GaussianHMM",
+        model_version=str(enriched.get("model_version") or _HMM_WALK_FORWARD_MODEL_VERSION),
+        code_version=str(enriched.get("code_version") or _HMM_WALK_FORWARD_CODE_VERSION),
+        feature_version=str(enriched.get("feature_version") or ""),
+        feature_scope_id=str(enriched.get("feature_scope_id") or "all"),
+        feature_columns=enriched["feature_columns"],
+        model_params=model_params,
+        preprocess_params=preprocess_params,
+        train_window_policy=train_window_policy,
+        state_date_policy=state_date_policy,
+        universe_id=str(enriched.get("universe_id") or "all"),
+        universe_membership_hash=str(enriched.get("universe_membership_hash") or ""),
+        custom_basket_membership_hash=enriched.get("custom_basket_membership_hash"),
+        data_snapshot_hash=str(enriched.get("data_snapshot_hash") or ""),
+        calendar_hash=str(enriched.get("calendar_hash") or ""),
+        cache_contract_version="stage03pf-wp2",
+    )
+    enriched["lineage_json"] = canonical_json(lineage_payload)
+    enriched["lineage_hash"] = str(enriched.get("lineage_hash") or hash_payload(lineage_payload))
+    return enriched
+
+
+def _build_walk_forward_cache_params(
+    *,
+    ohlcv: pd.DataFrame,
+    features: pd.DataFrame,
+    trade_dates: pd.Series,
+    config: WalkForwardConfig,
+    feature_version: str,
+    start_ts: pd.Timestamp,
+    end_ts: pd.Timestamp,
+    rebalance_days: int,
+    state_date_mode: str,
+    universe_id: str | None,
+    scope_type: str,
+    feature_scope_id: str,
+    feature_scope_type: str,
+    include_custom_baskets: bool,
+) -> dict[str, object]:
+    base_params: dict[str, object] = {
+        "n_states": int(config.n_states),
+        "train_window_days": config.train_window_days,
+        "retrain_frequency": config.retrain_frequency,
+        "random_state": int(config.random_state),
+        "n_iter": int(config.n_iter),
+        "tol": _HMM_WALK_FORWARD_TOL,
+        "min_train_rows": int(config.min_train_rows),
+        "min_sequence_length": int(config.min_sequence_length),
+        "feature_columns": list(FEATURE_COLUMNS),
+        "feature_version": feature_version,
+        "start_date": start_ts.date(),
+        "end_date": end_ts.date(),
+        "rebalance_days": int(rebalance_days),
+        "state_date_mode": state_date_mode,
+        "universe_id": universe_id or "all",
+        "scope_type": scope_type,
+        "feature_scope_id": feature_scope_id,
+        "feature_scope_type": feature_scope_type,
+        "include_custom_baskets": bool(include_custom_baskets),
+        "data_snapshot_hash": _digest_frame(
+            ohlcv,
+            ["sector_id", "trade_date", "open", "high", "low", "close", "volume", "amount", "pct_chg", "turnover", "source"],
+        ),
+        "universe_membership_hash": _digest_universe_membership(ohlcv, universe_id, include_custom_baskets),
+        "custom_basket_membership_hash": _digest_custom_basket_membership(ohlcv, include_custom_baskets),
+        "calendar_hash": _digest_trade_calendar(trade_dates),
+        "feature_lineage_hash": _feature_lineage_hash(features, feature_version, feature_scope_id, feature_scope_type),
+    }
+    return _cache_params_with_lineage(base_params)
+
+
 def _walk_forward_cache_key(params: dict[str, object]) -> str:
-    payload = json.dumps(params, ensure_ascii=False, sort_keys=True, default=str)
-    return hashlib.sha1(payload.encode("utf-8")).hexdigest()[:20]
+    enriched = _cache_params_with_lineage(params)
+    return f"hmmwf_{enriched['lineage_hash']}"
 
 
-def _read_walk_forward_cache(storage: DuckDBStorage, cache_key: str) -> pd.DataFrame:
-    run = storage.read_df("SELECT row_count FROM walk_forward_cache_runs WHERE cache_key = ?", [cache_key])
-    if run.empty or int(run.loc[0, "row_count"] or 0) <= 0:
+def _read_walk_forward_cache(storage: DuckDBStorage, cache_key: str, expected_lineage_hash: str) -> pd.DataFrame:
+    run = storage.read_df("SELECT * FROM walk_forward_cache_runs WHERE cache_key = ?", [cache_key])
+    if run.empty:
+        return pd.DataFrame()
+    run_row = run.iloc[0].to_dict()
+    if not is_valid_cache_metadata(run_row, expected_lineage_hash=expected_lineage_hash):
         return pd.DataFrame()
     states = storage.read_df("SELECT * FROM walk_forward_state_cache WHERE cache_key = ? ORDER BY trade_date, sector_id", [cache_key])
-    if not states.empty:
-        for col in ["trade_date", "train_start", "train_end", "max_observation_date_used"]:
+    try:
+        reported_row_count = int(run_row.get("row_count") or 0)
+    except (TypeError, ValueError):
+        return pd.DataFrame()
+    if reported_row_count != len(states):
+        return pd.DataFrame()
+    if states.empty:
+        return states
+    for col in ["trade_date", "train_start", "train_end", "max_observation_date_used"]:
+        if col in states.columns:
             states[col] = pd.to_datetime(states[col])
-        states = states.drop(columns=["cache_key"])
+    if "max_observation_date_used" not in states.columns or "trade_date" not in states.columns:
+        return pd.DataFrame()
+    if states["max_observation_date_used"].gt(states["trade_date"]).any():
+        return pd.DataFrame()
+    states = states.drop(columns=["cache_key"], errors="ignore")
     return states
 
 
@@ -96,18 +277,26 @@ def _write_walk_forward_cache(
     params: dict[str, object],
     signal_count: int,
 ) -> None:
+    params = _cache_params_with_lineage(params)
+    expected_cache_key = _walk_forward_cache_key(params)
+    if cache_key != expected_cache_key:
+        raise ValueError("cache_key must be derived from lineage_hash")
     if states.empty:
         row_count = 0
         state_rows = states
     else:
         state_rows = states.copy()
-        state_rows.insert(0, "cache_key", cache_key)
+        state_rows["cache_key"] = cache_key
+        state_rows["lineage_hash"] = params["lineage_hash"]
+        state_rows["feature_lineage_hash"] = params["feature_lineage_hash"]
+        leading_cols = ["cache_key"] + [col for col in state_rows.columns if col != "cache_key"]
+        state_rows = state_rows[leading_cols]
         for col in ["trade_date", "train_start", "train_end", "max_observation_date_used"]:
             state_rows[col] = pd.to_datetime(state_rows[col]).dt.date
         row_count = len(state_rows)
         storage.upsert_df("walk_forward_state_cache", state_rows, ["cache_key", "sector_id", "trade_date"])
-    params_json = json.dumps(params, ensure_ascii=False, sort_keys=True, default=str)
-    params_hash = hashlib.sha1(params_json.encode("utf-8")).hexdigest()
+    params_json = canonical_json(params)
+    params_hash = hash_payload(params, length=40)
     cache_universe = params.get("universe_id")
     if cache_universe in {"", "all"}:
         cache_universe = None
@@ -129,9 +318,16 @@ def _write_walk_forward_cache(
                 "rebalance_days": int(params.get("rebalance_days", 0) or 0),
                 "state_date_mode": params.get("state_date_mode"),
                 "feature_scope_id": params.get("feature_scope_id"),
+                "lineage_json": params["lineage_json"],
+                "lineage_hash": params["lineage_hash"],
+                "feature_lineage_hash": params["feature_lineage_hash"],
+                "universe_membership_hash": params["universe_membership_hash"],
+                "data_snapshot_hash": params["data_snapshot_hash"],
+                "cache_status": "completed",
                 "signal_count": signal_count,
                 "row_count": row_count,
                 "created_at": pd.Timestamp.now(),
+                "completed_at": pd.Timestamp.now(),
             }
         ]
     )
@@ -344,25 +540,27 @@ def run_sector_rotation_backtest(
 
     if walk_forward:
         state_dates = base_signal_dates
-        cache_params = {
-            "n_states": int(n_states),
-            "train_window_days": train_window_days,
-            "retrain_frequency": retrain_frequency,
-            "feature_version": feature_version,
-            "start_date": start_ts.date(),
-            "end_date": end_ts.date(),
-            "rebalance_days": int(rebalance_days),
-            "state_date_mode": "rebalance_signals_v2",
-            "universe_id": universe_id or "all",
-            "scope_type": "universe" if universe_id else "all",
-            "feature_scope_id": feature_scope_id,
-            "include_custom_baskets": bool(include_custom_baskets),
-        }
+        wf_config = WalkForwardConfig(n_states=n_states, train_window_days=train_window_days, retrain_frequency=retrain_frequency)
+        cache_params = _build_walk_forward_cache_params(
+            ohlcv=ohlcv,
+            features=features,
+            trade_dates=trade_dates,
+            config=wf_config,
+            feature_version=feature_version,
+            start_ts=start_ts,
+            end_ts=end_ts,
+            rebalance_days=rebalance_days,
+            state_date_mode="rebalance_signals_v2",
+            universe_id=universe_id,
+            scope_type="universe" if universe_id else "all",
+            feature_scope_id=feature_scope_id,
+            feature_scope_type=feature_scope_type,
+            include_custom_baskets=include_custom_baskets,
+        )
         cache_key = _walk_forward_cache_key(cache_params)
-        states = _read_walk_forward_cache(storage, cache_key)
+        states = _read_walk_forward_cache(storage, cache_key, expected_lineage_hash=str(cache_params["lineage_hash"]))
         cache_hit = not states.empty
         if states.empty:
-            wf_config = WalkForwardConfig(n_states=n_states, train_window_days=train_window_days, retrain_frequency=retrain_frequency)
             states = walk_forward_hmm_state_frame(features, state_dates, wf_config, progress_callback=progress_callback)
             _write_walk_forward_cache(storage, cache_key, states, cache_params, signal_count=len(state_dates))
         run_label = f"walk_forward:{cache_key}"
