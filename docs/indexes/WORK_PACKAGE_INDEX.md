@@ -10,7 +10,7 @@ Logical root: docs/
 2. Archived or blocked rows must not be executed.
 3. Codex must start from updated `main`.
 4. Codex must read `docs/runtime/LOCAL_DB_HANDOFF.md` before any local DB-backed validation.
-5. No Stage 02 package may fetch external data or modify HMM/HSMM training algorithms.
+5. No Stage package may fetch external data or modify HMM/HSMM training algorithms unless a later data/model package explicitly allows it.
 6. DuckDB and WAL files must not be committed.
 
 ## Work Packages
@@ -26,20 +26,22 @@ Logical root: docs/
 | STAGE01-WP-D-v1 | 01 | D | archived | v1 | docs/work_packages/stage_01/STAGE01_WP_D_integration_summary_hard_review.md | Codex Integration | accepted |
 | STAGE02-WP-A-v1 | 02 | A | archived | v1 | docs/work_packages/stage_02/STAGE02_WP_A_causal_cache_contract_audit.md | Codex A | accepted |
 | STAGE02-WP-B-v1 | 02 | B | archived | v1 | docs/work_packages/stage_02/STAGE02_WP_B_ci_validation_artifact_skeleton.md | Codex B | accepted |
-| STAGE02-WP-C-v1 | 02 | C | active | v1 | docs/work_packages/stage_02/STAGE02_WP_C_readiness_gate_integration.md | Codex C | pending |
+| STAGE02-WP-C-v1 | 02 | C | archived | v1 | docs/work_packages/stage_02/STAGE02_WP_C_readiness_gate_integration.md | Codex C | accepted |
+| STAGE02-WP-D-v1 | 02 | D | active | v1 | docs/work_packages/stage_02/STAGE02_WP_D_final_integration_acceptance.md | Codex Integration | pending |
 
 ## Current Stage 02 Focus
 
-Stage 02 is limited to causal evidence, CI-safe validation, and conservative readiness aggregation.
+Stage 02 is now in final acceptance.
 
 Completed:
 
 - WP-A: causal cache contract audit.
 - WP-B: CI-safe validation and local DB artifact policy.
+- WP-C: conservative readiness gate integration.
 
 Active:
 
-- WP-C: readiness gate integration.
+- WP-D: final Stage 02 integration summary and hard issue review.
 
 Tracked risks carried forward:
 
@@ -68,3 +70,4 @@ Each Codex thread must report:
 | date | change | by |
 |---|---|---|
 | 2026-06-02 | Stage 02 WP-A/WP-B accepted and WP-C activated. | ChatGPT |
+| 2026-06-02 | Stage 02 WP-C accepted and WP-D final acceptance activated. | ChatGPT |
