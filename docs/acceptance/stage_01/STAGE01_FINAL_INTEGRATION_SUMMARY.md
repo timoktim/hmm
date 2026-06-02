@@ -18,7 +18,6 @@ The review started from latest `origin/main` at `dbc1f304811fe2ce75e3a8b879b73c3
 ## Local DB
 
 - Path used by commands: `data/db/a_share_hmm.duckdb`
-- Resolved local path: `/Users/tianxiwang/Documents/HMM高阶分析器/.codex_worktrees/stage01_wp_c/data/db/a_share_hmm.duckdb`
 - Preflight result: pass (`LOCAL_DB_FOUND=data/db/a_share_hmm.duckdb`)
 - Read-only schema sanity check: yes
 - Key table counts:
@@ -33,7 +32,7 @@ The review started from latest `origin/main` at `dbc1f304811fe2ce75e3a8b879b73c3
 ## Commands Run
 
 - `git fetch origin` -> updated `origin/main` through PR #5 merge.
-- `git worktree add -b stage01/wp-d-integration-summary /private/tmp/hmm-stage01-wp-d origin/main` -> branch created from latest `main`.
+- `git worktree add -b stage01/wp-d-integration-summary <local worktree> origin/main` -> branch created from latest `main`.
 - `git pull --ff-only` -> already up to date.
 - `.venv/bin/python -m compileall -q src tests` -> passed.
 - `.venv/bin/pytest -q tests/test_hmm_confidence.py tests/test_hmm_label_alignment.py tests/test_hmm_churn_dwell.py` -> 20 passed.

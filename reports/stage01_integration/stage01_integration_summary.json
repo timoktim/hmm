@@ -7,7 +7,6 @@
   "base_main_head": "dbc1f304811fe2ce75e3a8b879b73c3ace743e85",
   "local_db": {
     "path_used": "data/db/a_share_hmm.duckdb",
-    "resolved_path": "/Users/tianxiwang/Documents/HMM高阶分析器/.codex_worktrees/stage01_wp_c/data/db/a_share_hmm.duckdb",
     "preflight": "pass",
     "opened_read_only_where_applicable": true,
     "key_tables": {

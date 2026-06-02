@@ -9,7 +9,6 @@ generated_at: 2026-06-02T02:00:35Z
 ## Local DB Validation
 
 - db path used: data/db/a_share_hmm.duckdb
-- resolved path: /Users/tianxiwang/Documents/HMM高阶分析器/.codex_worktrees/stage01_wp_c/data/db/a_share_hmm.duckdb
 - preflight: pass
 - opened read-only where applicable: yes
 - model_runs: 25
