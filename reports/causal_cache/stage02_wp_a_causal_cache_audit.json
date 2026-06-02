@@ -192,7 +192,7 @@
   "summary_json_path": "reports/causal_cache/stage02_wp_a_causal_cache_audit.json",
   "external_data_fetch": false,
   "training_algorithm_modified": false,
-  "generated_at": "2026-06-02T03:20:25+00:00",
+  "generated_at": "2026-06-02T05:08:57+00:00",
   "index_id": "STAGE02-WP-A-v1",
   "readiness_policy_note": "Stage 02 WP-A never promotes HMM outputs to decision_ready; causal cache evidence is a conservative gate only."
 }
