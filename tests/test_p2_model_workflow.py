@@ -68,6 +68,9 @@ def test_model_workflow_status_with_run_and_cache(tmp_path):
                     "rebalance_days": 5,
                     "state_date_mode": "rebalance_signals_v2",
                     "feature_scope_id": "all",
+                    "lineage_hash": "lineage-cache1",
+                    "feature_lineage_hash": "feature-cache1",
+                    "cache_status": "completed",
                     "signal_count": 1,
                     "row_count": 10,
                     "created_at": pd.Timestamp("2024-02-02"),
@@ -75,6 +78,28 @@ def test_model_workflow_status_with_run_and_cache(tmp_path):
             ]
         ),
         ["cache_key"],
+    )
+    cache_dates = pd.date_range("2024-02-01", periods=10, freq="D")
+    storage.upsert_df(
+        "walk_forward_state_cache",
+        pd.DataFrame(
+            {
+                "cache_key": ["cache1"] * len(cache_dates),
+                "sector_id": [f"S{i:02d}" for i in range(len(cache_dates))],
+                "trade_date": cache_dates.date,
+                "state_id": [1] * len(cache_dates),
+                "state_label": ["TrendUp"] * len(cache_dates),
+                "prob_trend_up": [1.0] * len(cache_dates),
+                "prob_neutral": [0.0] * len(cache_dates),
+                "prob_risk_off": [0.0] * len(cache_dates),
+                "next_state_probs_json": ["{}"] * len(cache_dates),
+                "max_observation_date_used": cache_dates.date,
+                "state_source": ["causal_backtest"] * len(cache_dates),
+                "lineage_hash": ["lineage-cache1"] * len(cache_dates),
+                "feature_lineage_hash": ["feature-cache1"] * len(cache_dates),
+            }
+        ),
+        ["cache_key", "sector_id", "trade_date"],
     )
 
     status = build_model_workflow_status(storage)

@@ -145,6 +145,9 @@ def test_state_screener_cache_options_are_scope_filtered(tmp_path):
                     "rebalance_days": 5,
                     "state_date_mode": "rebalance_signals_v2",
                     "feature_scope_id": "all",
+                    "lineage_hash": "lineage-all",
+                    "feature_lineage_hash": "feature-all",
+                    "cache_status": "completed",
                     "signal_count": 1,
                     "row_count": 1,
                     "created_at": pd.Timestamp("2024-02-01"),
@@ -165,6 +168,9 @@ def test_state_screener_cache_options_are_scope_filtered(tmp_path):
                     "rebalance_days": 5,
                     "state_date_mode": "rebalance_signals_v2",
                     "feature_scope_id": "universe:u1:with_custom",
+                    "lineage_hash": "lineage-u1",
+                    "feature_lineage_hash": "feature-u1",
+                    "cache_status": "completed",
                     "signal_count": 1,
                     "row_count": 1,
                     "created_at": pd.Timestamp("2024-02-02"),
@@ -172,6 +178,44 @@ def test_state_screener_cache_options_are_scope_filtered(tmp_path):
             ]
         ),
         ["cache_key"],
+    )
+    storage.upsert_df(
+        "walk_forward_state_cache",
+        pd.DataFrame(
+            [
+                {
+                    "cache_key": "all_cache",
+                    "sector_id": "S1",
+                    "trade_date": pd.Timestamp("2024-02-01").date(),
+                    "state_id": 1,
+                    "state_label": "TrendUp",
+                    "prob_trend_up": 1.0,
+                    "prob_neutral": 0.0,
+                    "prob_risk_off": 0.0,
+                    "next_state_probs_json": "{}",
+                    "max_observation_date_used": pd.Timestamp("2024-02-01").date(),
+                    "state_source": "causal_backtest",
+                    "lineage_hash": "lineage-all",
+                    "feature_lineage_hash": "feature-all",
+                },
+                {
+                    "cache_key": "u_cache",
+                    "sector_id": "S1",
+                    "trade_date": pd.Timestamp("2024-02-01").date(),
+                    "state_id": 1,
+                    "state_label": "TrendUp",
+                    "prob_trend_up": 1.0,
+                    "prob_neutral": 0.0,
+                    "prob_risk_off": 0.0,
+                    "next_state_probs_json": "{}",
+                    "max_observation_date_used": pd.Timestamp("2024-02-01").date(),
+                    "state_source": "causal_backtest",
+                    "lineage_hash": "lineage-u1",
+                    "feature_lineage_hash": "feature-u1",
+                },
+            ]
+        ),
+        ["cache_key", "sector_id", "trade_date"],
     )
 
     all_options = walk_forward_cache_options_for_scope(storage)

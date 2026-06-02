@@ -11,7 +11,7 @@ from src.ui.components.data_status_bar import render_data_status_bar
 from src.ui.causal_boundary import classify_state_source
 from src.ui.formatters import format_probability_columns
 from src.ui.help_texts import display_state_label, rename_columns_for_display
-from src.ui.run_context import render_run_scope_status
+from src.ui.run_context import list_valid_walk_forward_caches, render_run_scope_status
 from src.ui.state_colors import SECTOR_STATE_COLORS
 
 
@@ -24,27 +24,16 @@ TEMPLATES = {
 }
 
 
-def walk_forward_cache_options_for_scope(storage: DuckDBStorage, universe_id: str | None = None) -> pd.DataFrame:
-    scope_filter = "WHERE (r.universe_id IS NULL OR r.universe_id IN ('', 'all'))"
-    params: list[object] = []
-    if universe_id:
-        scope_filter = "WHERE r.universe_id = ?"
-        params.append(universe_id)
-    return storage.read_df(
-        f"""
-        SELECT r.cache_key, r.start_date, r.end_date, r.created_at, r.signal_count, r.row_count,
-               r.universe_id, r.scope_type,
-               count(DISTINCT s.sector_id) AS cached_sectors,
-               min(s.trade_date) AS min_state_date,
-               max(s.trade_date) AS max_state_date
-        FROM walk_forward_cache_runs r
-        LEFT JOIN walk_forward_state_cache s USING(cache_key)
-        {scope_filter}
-        GROUP BY r.cache_key, r.start_date, r.end_date, r.created_at, r.signal_count,
-                 r.row_count, r.universe_id, r.scope_type
-        ORDER BY r.created_at DESC
-        """,
-        params,
+def walk_forward_cache_options_for_scope(
+    storage: DuckDBStorage,
+    universe_id: str | None = None,
+    *,
+    include_legacy_debug: bool = False,
+) -> pd.DataFrame:
+    return list_valid_walk_forward_caches(
+        storage,
+        universe_id,
+        include_legacy_debug=include_legacy_debug,
     )
 
 
@@ -86,10 +75,14 @@ def render_state_screener(storage: DuckDBStorage, universe_id: str | None = None
         caches = walk_forward_cache_options_for_scope(storage, active_universe)
         if caches.empty:
             st.warning("缺少与当前范围匹配的 walk-forward 状态缓存，请先在回测页按当前范围运行因果回测。")
+            legacy_caches = walk_forward_cache_options_for_scope(storage, active_universe, include_legacy_debug=True)
+            if not legacy_caches.empty:
+                with st.expander("Legacy/debug cache（默认不参与筛选）", expanded=False):
+                    st.dataframe(legacy_caches, use_container_width=True, hide_index=True)
             return
         labels = caches.apply(
             lambda r: (
-                f"{r['cache_key']} | 覆盖 {int(r['cached_sectors'] or 0)} 个板块 | "
+                f"{r['cache_key']} | selector {r['selection_status']} | 覆盖 {int(r['cached_sectors'] or 0)} 个板块 | "
                 f"范围 {'当前板块池' if pd.notna(r.get('universe_id')) and str(r.get('universe_id')) not in {'', 'all'} else '全市场'} | "
                 f"状态 {r['min_state_date']} 至 {r['max_state_date']} | 创建 {r['created_at']}"
             ),
@@ -101,6 +94,11 @@ def render_state_screener(storage: DuckDBStorage, universe_id: str | None = None
         selected_cache = st.selectbox("walk-forward 缓存", labels, index=default_cache_index)
         cache_key = selected_cache.split(" | ")[0]
         st.caption(f"state_source: {classify_state_source({'causal_cache_id': cache_key})}；cache: {cache_key}")
+        legacy_caches = walk_forward_cache_options_for_scope(storage, active_universe, include_legacy_debug=True)
+        legacy_caches = legacy_caches[legacy_caches["selection_status"].ne("valid")] if not legacy_caches.empty else legacy_caches
+        if not legacy_caches.empty:
+            with st.expander("Legacy/debug cache（默认隐藏）", expanded=False):
+                st.dataframe(legacy_caches, use_container_width=True, hide_index=True)
 
     st.subheader("筛选条件")
     template_name = st.selectbox("筛选模板", list(TEMPLATES.keys()), help="预设常见状态切换场景，可切到自定义后手动调整。", key="state_screener_template")
