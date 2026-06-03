@@ -1,24 +1,14 @@
 # STAGE03R_EXECUTION_INDEX
 
-Status: prepared, not active until Stage03 preflight gate passes
+Status: active
 Route anchor: `docs/roadmap/STAGE03R_ROUTE_ADJUSTMENT_20260603.md`
+Preflight evidence: PR #38, `Stage03PreflightVerdict: PASS`, full pytest `400 passed, 2 skipped, 27 warnings`
 
 ## Purpose
 
-Stage03R is the next development mainline after Stage03 preflight is accepted. It promotes Duration Hazard to the primary lifecycle exit signal and freezes HSMM as a lifecycle interpretation layer.
+Stage03R is the next development mainline after Stage03 preflight. It promotes Duration Hazard to the primary lifecycle exit signal and freezes HSMM as a lifecycle interpretation layer.
 
-This index is a planning artifact. Codex must not execute Stage03R packages while the Stage03 preflight gate remains blocked.
-
-## Current blocker before Stage03R
-
-Current open gatefix PRs must be resolved first:
-
-```text
-PR #36: STAGE03PF-GATEFIX-B1 A2 lifecycle tail status schema
-PR #37: STAGE03PF-GATEFIX-B2 A5 forward-return causal legacy semantics
-```
-
-They should not be merged independently while their GitHub Actions remain red. A combined A2+A5 validation branch or stacked PR must show the Stage03 preflight gate passing.
+Stage03R must remain hazard-first and evidence-gated. Do not restart the older path of trying to make HSMM numeric `p_exit` broadly usable before hazard work.
 
 ## Stage03R route
 
@@ -34,7 +24,7 @@ HMM causal regime context
 
 | index_id | package | status | branch | purpose |
 |---|---|---|---|---|
-| STAGE03R-WP0 | Scope Freeze and Signal Contract | blocked_until_preflight_pass | stage03r/wp0-scope-freeze-signal-contract | freeze HSMM / hazard responsibilities and field categories |
+| STAGE03R-WP0 | Scope Freeze and Signal Contract | active | stage03r/wp0-scope-freeze-signal-contract | freeze HSMM / hazard responsibilities and field categories |
 | STAGE03R-WP1 | Exit Target Dataset v1 | blocked_until_wp0 | stage03r/wp1-exit-target-dataset-v1 | causal, censored, purged exit target dataset |
 | STAGE03R-WP2 | Target Leakage and Purge Tests | blocked_until_wp1 | stage03r/wp2-target-leakage-purge-tests | synthetic leakage/censoring/purge/embargo tests |
 | STAGE03R-WP3 | Logistic Hazard Baseline | blocked_until_wp1_wp2 | stage03r/wp3-logistic-hazard-baseline | lightweight per-horizon logistic hazard |
@@ -48,13 +38,14 @@ HMM causal regime context
 
 ## Execution rules
 
-1. Do not run any Stage03R package until Stage03 preflight reports `Stage03PreflightVerdict: PASS`.
+1. Execute only active packages.
 2. Do not expand HSMM numerical probability responsibilities.
 3. Do not use HSMM raw/calibrated `p_exit` as a decision input by default.
 4. Duration Hazard v1 must be simple: logistic hazard, isotonic calibration, age-bucket baseline, readiness matrix, ordinal fallback.
 5. Competing-risks hazard, full BOCPD, heavy-tail HMM, GH emission, VAR-HSMM, deep switching state-space, and full decision engine are explicitly out of Stage03R v1.
 6. Every package must use causal walk-forward or explicit research-only mode.
 7. Every promotion claim must include sample support, calibration status, readiness status, and fallback reason.
+8. Final held-out testing discipline must be preserved. Do not tune repeatedly on final holdout.
 
 ## Pass criteria for Stage03R
 
@@ -71,3 +62,9 @@ Stage03R can pass only if:
 ## Failure policy
 
 If hazard does not stand up, do not return to expanding HSMM numerical probability. Downgrade output granularity, keep ordinal tendency, expand abstain, merge sparse state/horizon/age buckets, and record sample-ceiling limitations.
+
+## Revision log
+
+| date | change | by |
+|---|---|---|
+| 2026-06-03 | Activated Stage03R WP0 after Stage03 preflight PASS via PR #38. | ChatGPT |
