@@ -651,6 +651,7 @@ def _exit_tendency_long(
         "duration_percentile_status",
         "duration_tail_status",
         *[f"raw_p_exit_{horizon}d_status" for horizon in horizons],
+        *[f"p_exit_{horizon}d_status" for horizon in horizons],
     ]
     state_status_cols = [col for col in state_status_cols if col in states.columns]
     if {"sector_code", "trade_date"}.issubset(state_status_cols) and len(state_status_cols) > 2:
@@ -702,6 +703,12 @@ def _exit_tendency_long(
             if raw_status_col in h.columns
             else pd.Series("", index=h.index, dtype=object)
         )
+        p_exit_status_col = f"p_exit_{horizon}d_status"
+        p_exit_status = (
+            h[p_exit_status_col].fillna("").astype(str)
+            if p_exit_status_col in h.columns
+            else pd.Series("", index=h.index, dtype=object)
+        )
         beyond_support = (
             duration_tail_status.eq("beyond_duration_support")
             | duration_percentile_status.eq("beyond_support")
@@ -718,6 +725,8 @@ def _exit_tendency_long(
             ["tail_censored", "unavailable"],
             default=np.where(duration_tail_status.ne(""), duration_tail_status, "within_duration_support"),
         )
+        h["raw_p_exit_status"] = np.where(raw_tail_status.ne(""), raw_tail_status, "missing")
+        h["p_exit_status"] = np.where(p_exit_status.ne(""), p_exit_status, h["raw_p_exit_status"])
         h.loc[h["tail_censored"], "probability_status"] = "tail_censored"
         h.loc[unavailable_tail, "probability_status"] = "unavailable"
         h.loc[h["tail_censored"], "raw_score_allowed"] = False
@@ -787,6 +796,8 @@ def _exit_tendency_long(
                     "raw_score_used",
                     "probability_status",
                     "duration_tail_status",
+                    "raw_p_exit_status",
+                    "p_exit_status",
                     "raw_basis",
                     "sample_count",
                     "label_sample_count",
@@ -1055,6 +1066,8 @@ def build_lifecycle_ui_frame(
             ("exit_tendency_basis", "exit_tendency_basis"),
             ("probability_status", "probability_status"),
             ("duration_tail_status", "duration_tail_status"),
+            ("raw_p_exit_status", "raw_p_exit"),
+            ("p_exit_status", "p_exit"),
             ("raw_score_used", "raw_score_used"),
             ("raw_basis", "raw_basis"),
         ]:
@@ -1064,7 +1077,10 @@ def build_lifecycle_ui_frame(
                 values=value_col,
                 aggfunc="first",
             )
-            pivot.columns = [f"{prefix}_{int(col)}d" for col in pivot.columns]
+            if value_col in {"raw_p_exit_status", "p_exit_status"}:
+                pivot.columns = [f"{prefix}_{int(col)}d_status" for col in pivot.columns]
+            else:
+                pivot.columns = [f"{prefix}_{int(col)}d" for col in pivot.columns]
             ui = ui.merge(pivot.reset_index(), on=["run_id", "trade_date", "sector_code"], how="left")
     for horizon in horizons:
         defaults = {
@@ -1073,6 +1089,8 @@ def build_lifecycle_ui_frame(
             f"exit_tendency_basis_{horizon}d": "unavailable",
             f"probability_status_{horizon}d": "missing",
             f"duration_tail_status_{horizon}d": "unavailable",
+            f"raw_p_exit_{horizon}d_status": "missing",
+            f"p_exit_{horizon}d_status": "missing",
             f"raw_score_used_{horizon}d": False,
             f"raw_basis_{horizon}d": "raw_rank_excluded_missing_policy",
         }
