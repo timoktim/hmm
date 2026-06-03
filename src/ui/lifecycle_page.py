@@ -4,6 +4,7 @@ import pandas as pd
 import streamlit as st
 
 from src.data_pipeline.storage import DuckDBStorage
+from src.evaluation.evidence_registry import describe_artifact_evidence
 from src.ui.components.data_status_bar import render_data_status_bar
 from src.ui.evidence_badges import readiness_badge
 from src.ui.readiness_policy import evaluate_hsmm_lifecycle_field_display, is_numeric_p_exit_field
@@ -264,18 +265,45 @@ def _display_tendency(value: object) -> str:
     return TENDENCY_LABELS.get(str(value), str(value))
 
 
-def _attach_lifecycle_readiness(df: pd.DataFrame) -> pd.DataFrame:
+def _attach_lifecycle_readiness(df: pd.DataFrame, registry_evidence: dict[str, object] | None = None) -> pd.DataFrame:
     if df.empty:
         return df
     out = df.copy()
     decision = evaluate_hsmm_lifecycle_field_display("state_age")
     badge = readiness_badge(decision)
-    out["evidence_level"] = decision.evidence_level
-    out["readiness_status"] = decision.readiness_status
+    registry_evidence = registry_evidence or {}
+    out["evidence_level"] = registry_evidence.get("evidence_level") or decision.evidence_level
+    out["readiness_status"] = registry_evidence.get("readiness_status") or decision.readiness_status
+    out["evidence_selection_status"] = registry_evidence.get("selection_status") or "policy_only_no_registry_evidence"
+    out["evidence_id"] = registry_evidence.get("evidence_id")
     out["readiness_badge"] = badge["label"]
     if "state_source" not in out.columns:
         out["state_source"] = "unknown_due_to_missing_metadata"
     return out
+
+
+def _lifecycle_registry_evidence(
+    storage: DuckDBStorage,
+    *,
+    run_id: str,
+    profile_mode: str,
+    state_date_policy: str,
+    profile_cutoff_date: object | None,
+    metadata: pd.DataFrame,
+) -> dict[str, object]:
+    feature_scope_id = None
+    if not metadata.empty:
+        feature_scope_id = metadata.iloc[0].get("feature_scope_id")
+    return describe_artifact_evidence(
+        str(storage.db_path),
+        run_id=run_id,
+        artifact_type="hsmm_lifecycle_profile",
+        feature_scope_id=str(feature_scope_id or "") if feature_scope_id is not None else None,
+    ) | {
+        "profile_mode": profile_mode,
+        "state_date_policy": state_date_policy,
+        "profile_cutoff_date": profile_cutoff_date,
+    }
 
 
 def _display_frame(df: pd.DataFrame) -> pd.DataFrame:
@@ -338,7 +366,15 @@ def render_lifecycle_page(storage: DuckDBStorage, universe_id: str | None = None
 
     metadata = _load_profile_metadata(storage, run_id, profile_mode, state_date_policy)
     latest_date = ui["trade_date"].max()
-    latest = _attach_lifecycle_readiness(ui)
+    registry_evidence = _lifecycle_registry_evidence(
+        storage,
+        run_id=run_id,
+        profile_mode=profile_mode,
+        state_date_policy=state_date_policy,
+        profile_cutoff_date=cutoff,
+        metadata=metadata,
+    )
+    latest = _attach_lifecycle_readiness(ui, registry_evidence)
     if universe_id:
         items = storage.list_universe_items(universe_id)
         allowed = set(items["item_id"].astype(str)) if not items.empty else set()
@@ -427,6 +463,8 @@ def render_lifecycle_page(storage: DuckDBStorage, universe_id: str | None = None
         "state_source",
         "evidence_level",
         "readiness_status",
+        "evidence_selection_status",
+        "evidence_id",
         "readiness_badge",
     ]
     display = _display_frame(filtered[[c for c in display_cols if c in filtered.columns]])
@@ -452,6 +490,8 @@ def render_lifecycle_page(storage: DuckDBStorage, universe_id: str | None = None
             "state_source": "状态来源",
             "evidence_level": "证据层级",
             "readiness_status": "Readiness",
+            "evidence_selection_status": "证据选择状态",
+            "evidence_id": "Evidence ID",
             "readiness_badge": "Readiness badge",
         },
         inplace=True,

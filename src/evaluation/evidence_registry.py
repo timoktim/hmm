@@ -32,6 +32,8 @@ class ReadinessStatus(str, Enum):
 
 
 VALIDATION_STATUSES = {"pass", "fail", "skip", "error", "unknown"}
+SELECTABLE_READINESS_STATUSES = {"research_only", "internal_only", "partial", "validated"}
+LEGACY_DEBUG_EVIDENCE_LEVEL = "legacy/debug"
 VALIDATION_TYPES = {
     "schema_migration",
     "unit_tests",
@@ -66,8 +68,12 @@ class EvidenceRecord:
     evidence_level: EvidenceLevel | str
     readiness_status: ReadinessStatus | str
     evidence_id: str | None = None
+    artifact_type: str | None = None
+    artifact_path: str | None = None
+    lineage_hash: str | None = None
     source_run_id: str | None = None
     model_family: str | None = None
+    verdict: str | None = None
     verdict_code: str | None = None
     verdict_label: str | None = None
     universe_id: str | None = None
@@ -91,6 +97,7 @@ class EvidenceRecord:
     state_date_policy: str | None = None
     report_path: str | None = None
     ui_route: str | None = None
+    metadata_json: str | dict[str, Any] | list[Any] | None = None
     artifact_manifest_json: str | dict[str, Any] | list[Any] | None = None
     metrics_json: str | dict[str, Any] | list[Any] | None = None
     notes: str | None = None
@@ -124,11 +131,15 @@ class ValidationRunRecord:
 MODEL_EVIDENCE_COLUMNS = [
     "evidence_id",
     "run_id",
+    "artifact_type",
+    "artifact_path",
+    "lineage_hash",
     "source_run_id",
     "model_type",
     "model_family",
     "evidence_level",
     "readiness_status",
+    "verdict",
     "verdict_code",
     "verdict_label",
     "universe_id",
@@ -152,6 +163,7 @@ MODEL_EVIDENCE_COLUMNS = [
     "state_date_policy",
     "report_path",
     "ui_route",
+    "metadata_json",
     "artifact_manifest_json",
     "metrics_json",
     "notes",
@@ -268,11 +280,15 @@ def ensure_evidence_registry_schema_for_connection(con: duckdb.DuckDBPyConnectio
         CREATE TABLE IF NOT EXISTS model_evidence_registry (
           evidence_id TEXT PRIMARY KEY,
           run_id TEXT NOT NULL,
+          artifact_type TEXT,
+          artifact_path TEXT,
+          lineage_hash TEXT,
           source_run_id TEXT,
           model_type TEXT NOT NULL,
           model_family TEXT,
           evidence_level TEXT NOT NULL CHECK (evidence_level IN ('exploratory', 'internal_diagnostic', 'validated_signal', 'decision_support')),
           readiness_status TEXT NOT NULL CHECK (readiness_status IN ('blocked', 'research_only', 'internal_only', 'partial', 'validated', 'decision_ready')),
+          verdict TEXT,
           verdict_code TEXT,
           verdict_label TEXT,
           universe_id TEXT,
@@ -296,6 +312,7 @@ def ensure_evidence_registry_schema_for_connection(con: duckdb.DuckDBPyConnectio
           state_date_policy TEXT,
           report_path TEXT,
           ui_route TEXT,
+          metadata_json TEXT,
           artifact_manifest_json TEXT,
           metrics_json TEXT,
           notes TEXT,
@@ -304,6 +321,14 @@ def ensure_evidence_registry_schema_for_connection(con: duckdb.DuckDBPyConnectio
         );
         """
     )
+    for column_sql in [
+        "ALTER TABLE model_evidence_registry ADD COLUMN IF NOT EXISTS artifact_type TEXT",
+        "ALTER TABLE model_evidence_registry ADD COLUMN IF NOT EXISTS artifact_path TEXT",
+        "ALTER TABLE model_evidence_registry ADD COLUMN IF NOT EXISTS lineage_hash TEXT",
+        "ALTER TABLE model_evidence_registry ADD COLUMN IF NOT EXISTS verdict TEXT",
+        "ALTER TABLE model_evidence_registry ADD COLUMN IF NOT EXISTS metadata_json TEXT",
+    ]:
+        con.execute(column_sql)
     con.execute(
         """
         CREATE TABLE IF NOT EXISTS validation_runs (
@@ -357,15 +382,19 @@ def ensure_evidence_registry_schema(db_path: str) -> None:
 def _normalize_evidence_record(record: EvidenceRecord) -> dict[str, Any]:
     data = asdict(record)
     data["model_type"] = record.model_type.lower().strip()
+    data["artifact_type"] = str(record.artifact_type or record.model_type).lower().strip()
+    data["artifact_path"] = record.artifact_path or record.report_path
     data["evidence_level"] = _enum_value(record.evidence_level, EvidenceLevel, "evidence_level")
     data["readiness_status"] = _enum_value(record.readiness_status, ReadinessStatus, "readiness_status")
-    data["evidence_id"] = record.evidence_id or make_evidence_id(record.run_id, data["model_type"], record.report_path)
+    data["evidence_id"] = record.evidence_id or make_evidence_id(record.run_id, data["artifact_type"], data["artifact_path"])
+    data["verdict"] = record.verdict or record.verdict_code or record.verdict_label
     notes = record.notes or ""
     if not record.feature_scope_id:
         data["feature_scope_id"] = "missing"
         missing_note = "feature_scope_id missing; source metadata did not provide a value."
         notes = f"{notes}\n{missing_note}".strip() if notes else missing_note
     data["notes"] = notes or None
+    data["metadata_json"] = _json_dumps(record.metadata_json)
     data["artifact_manifest_json"] = _json_dumps(record.artifact_manifest_json)
     data["metrics_json"] = _json_dumps(record.metrics_json)
     data["created_at"] = record.created_at or _utc_now()
@@ -421,6 +450,127 @@ def list_evidence_for_run(db_path: str, run_id: str) -> pd.DataFrame:
             "SELECT * FROM model_evidence_registry WHERE run_id = ? ORDER BY updated_at DESC, evidence_id",
             [run_id],
         ).fetchdf()
+
+
+def list_evidence_for_lineage(db_path: str, lineage_hash: str) -> pd.DataFrame:
+    ensure_evidence_registry_schema(db_path)
+    with _connect(db_path) as con:
+        return con.execute(
+            "SELECT * FROM model_evidence_registry WHERE lineage_hash = ? ORDER BY updated_at DESC, evidence_id",
+            [lineage_hash],
+        ).fetchdf()
+
+
+def _normalize_optional_text(value: object) -> str | None:
+    if value is None:
+        return None
+    try:
+        if pd.isna(value):
+            return None
+    except (TypeError, ValueError):
+        pass
+    text = str(value).strip()
+    return text or None
+
+
+def _with_selection_status(frame: pd.DataFrame) -> pd.DataFrame:
+    if frame.empty:
+        return frame
+    out = frame.copy()
+    out["selection_status"] = "valid"
+    for column in ("evidence_id", "evidence_level", "readiness_status"):
+        out.loc[out[column].isna() | out[column].astype(str).str.strip().eq(""), "selection_status"] = f"missing_{column}"
+    out.loc[~out["readiness_status"].astype(str).isin(SELECTABLE_READINESS_STATUSES), "selection_status"] = "invalid_readiness"
+    return out
+
+
+def list_selectable_evidence(
+    db_path: str,
+    *,
+    run_id: str | None = None,
+    lineage_hash: str | None = None,
+    artifact_type: str | None = None,
+    feature_scope_id: str | None = None,
+    universe_id: str | None = None,
+    include_legacy_debug: bool = False,
+) -> pd.DataFrame:
+    ensure_evidence_registry_schema(db_path)
+    clauses: list[str] = []
+    params: list[Any] = []
+    filters = {
+        "run_id": run_id,
+        "lineage_hash": lineage_hash,
+        "artifact_type": artifact_type.lower().strip() if artifact_type else None,
+        "feature_scope_id": feature_scope_id,
+        "universe_id": universe_id,
+    }
+    for column, value in filters.items():
+        normalized = _normalize_optional_text(value)
+        if normalized is not None:
+            clauses.append(f"{column} = ?")
+            params.append(normalized)
+    where = "WHERE " + " AND ".join(clauses) if clauses else ""
+    with _connect(db_path) as con:
+        frame = con.execute(
+            f"""
+            SELECT *
+            FROM model_evidence_registry
+            {where}
+            ORDER BY updated_at DESC, evidence_id
+            """,
+            params,
+        ).fetchdf()
+    out = _with_selection_status(frame)
+    if include_legacy_debug or out.empty:
+        return out
+    return out[out["selection_status"].eq("valid")].copy()
+
+
+def latest_selectable_evidence(
+    db_path: str,
+    *,
+    run_id: str | None = None,
+    lineage_hash: str | None = None,
+    artifact_type: str | None = None,
+    feature_scope_id: str | None = None,
+    universe_id: str | None = None,
+) -> dict[str, Any] | None:
+    frame = list_selectable_evidence(
+        db_path,
+        run_id=run_id,
+        lineage_hash=lineage_hash,
+        artifact_type=artifact_type,
+        feature_scope_id=feature_scope_id,
+        universe_id=universe_id,
+    )
+    return None if frame.empty else frame.iloc[0].to_dict()
+
+
+def describe_artifact_evidence(
+    db_path: str,
+    *,
+    run_id: str | None = None,
+    lineage_hash: str | None = None,
+    artifact_type: str | None = None,
+    feature_scope_id: str | None = None,
+    universe_id: str | None = None,
+) -> dict[str, Any]:
+    evidence = latest_selectable_evidence(
+        db_path,
+        run_id=run_id,
+        lineage_hash=lineage_hash,
+        artifact_type=artifact_type,
+        feature_scope_id=feature_scope_id,
+        universe_id=universe_id,
+    )
+    if evidence is not None:
+        return evidence
+    return {
+        "evidence_id": None,
+        "evidence_level": LEGACY_DEBUG_EVIDENCE_LEVEL,
+        "readiness_status": "missing",
+        "selection_status": "legacy_missing_evidence",
+    }
 
 
 def get_latest_evidence(db_path: str, model_type: str, run_id: str | None = None) -> dict[str, Any] | None:
@@ -497,7 +647,17 @@ def read_existing_run_metadata(db_path: str, run_id: str) -> tuple[dict[str, Any
                 continue
             desired = [
                 column
-                for column in ("universe_id", "feature_scope_id", "feature_scope_type", "universe_version", "feature_version")
+                for column in (
+                    "lineage_hash",
+                    "universe_id",
+                    "feature_scope_id",
+                    "feature_scope_type",
+                    "universe_version",
+                    "feature_version",
+                    "profile_mode",
+                    "profile_cutoff_date",
+                    "state_date_policy",
+                )
                 if column in columns
             ]
             if desired:
@@ -536,8 +696,15 @@ def register_report_as_evidence(
             feature_scope_id=metadata.get("feature_scope_id"),
             feature_scope_type=metadata.get("feature_scope_type"),
             feature_version=metadata.get("feature_version"),
+            lineage_hash=metadata.get("lineage_hash"),
+            profile_mode=metadata.get("profile_mode"),
+            profile_cutoff_date=metadata.get("profile_cutoff_date"),
+            state_date_policy=metadata.get("state_date_policy"),
             report_path=report_path,
+            artifact_type=f"{model_type.lower().strip()}_report",
+            artifact_path=report_path,
             artifact_manifest_json={"report_path": report_path, "exists": True, "size_bytes": path.stat().st_size},
+            metadata_json=metadata,
             notes=("Warnings: " + "; ".join(warnings)) if warnings else None,
         ),
     )
