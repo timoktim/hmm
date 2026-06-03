@@ -44,5 +44,8 @@ reports/**
 !reports/ci_validation/
 !reports/ci_validation/*.md
 !reports/ci_validation/*.json
+!reports/stage03r/
+!reports/stage03r/*.md
+!reports/stage03r/*.json
 
 *.zip

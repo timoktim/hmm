@@ -1,0 +1,234 @@
+{
+  "metadata": {
+    "schema_name": "lifecycle_signal_contract",
+    "schema_version": "v1",
+    "stage": "STAGE03R",
+    "index_id": "STAGE03R-WP0",
+    "route_anchor": "docs/roadmap/STAGE03R_ROUTE_ADJUSTMENT_20260603.md",
+    "hazard_primary_lifecycle_exit_engine": "planned",
+    "default_decision_surface": "none"
+  },
+  "field_categories": {
+    "display_safe": {
+      "description": "May be shown as lifecycle or regime context without implying a trading decision."
+    },
+    "internal_diagnostic": {
+      "description": "May be retained for diagnostics, audits, or research summaries, but is not a default UI or decision input."
+    },
+    "calibration_required": {
+      "description": "Numeric probability-like values require explicit calibration, validation, readiness status, and display policy before numeric exposure."
+    },
+    "hidden": {
+      "description": "Must not be shown as a numeric lifecycle signal or used as a default decision input."
+    },
+    "future_hazard_input": {
+      "description": "Reserved for future Duration Hazard outputs after readiness approval."
+    },
+    "forbidden_decision_input": {
+      "description": "Must not be consumed by any decision surface."
+    }
+  },
+  "fields": {
+    "hmm_state_label": {
+      "category": "display_safe",
+      "ui_exposure": "regime_context",
+      "decision_input_default": false,
+      "readiness_required": false
+    },
+    "hmm_state_confidence": {
+      "category": "display_safe",
+      "ui_exposure": "confidence_context",
+      "decision_input_default": false,
+      "readiness_required": false
+    },
+    "hmm_state_entropy": {
+      "category": "internal_diagnostic",
+      "ui_exposure": "diagnostic_only",
+      "decision_input_default": false,
+      "readiness_required": false
+    },
+    "hmm_posterior_margin": {
+      "category": "internal_diagnostic",
+      "ui_exposure": "diagnostic_only",
+      "decision_input_default": false,
+      "readiness_required": false
+    },
+    "hsmm_state_age": {
+      "category": "display_safe",
+      "ui_exposure": "lifecycle_context",
+      "decision_input_default": false,
+      "readiness_required": false
+    },
+    "hsmm_state_phase": {
+      "category": "display_safe",
+      "ui_exposure": "lifecycle_context",
+      "decision_input_default": false,
+      "readiness_required": false
+    },
+    "hsmm_duration_percentile": {
+      "category": "display_safe",
+      "ui_exposure": "duration_context",
+      "decision_input_default": false,
+      "readiness_required": false
+    },
+    "hsmm_duration_percentile_status": {
+      "category": "display_safe",
+      "ui_exposure": "duration_context_status",
+      "decision_input_default": false,
+      "readiness_required": false
+    },
+    "hsmm_duration_tail_status": {
+      "category": "display_safe",
+      "ui_exposure": "duration_tail_status",
+      "decision_input_default": false,
+      "readiness_required": false
+    },
+    "hsmm_exit_tendency_ordinal": {
+      "category": "internal_diagnostic",
+      "ui_exposure": "low_medium_high_only_when_policy_allows",
+      "decision_input_default": false,
+      "readiness_required": true
+    },
+    "hsmm_raw_p_exit_1d": {
+      "category": "calibration_required",
+      "ui_exposure": "hidden_until_usable_probability",
+      "decision_input_default": false,
+      "readiness_required": true
+    },
+    "hsmm_raw_p_exit_3d": {
+      "category": "calibration_required",
+      "ui_exposure": "hidden_until_usable_probability",
+      "decision_input_default": false,
+      "readiness_required": true
+    },
+    "hsmm_raw_p_exit_5d": {
+      "category": "calibration_required",
+      "ui_exposure": "hidden_until_usable_probability",
+      "decision_input_default": false,
+      "readiness_required": true
+    },
+    "hsmm_raw_p_exit_10d": {
+      "category": "calibration_required",
+      "ui_exposure": "hidden_until_usable_probability",
+      "decision_input_default": false,
+      "readiness_required": true
+    },
+    "hsmm_raw_p_exit_20d": {
+      "category": "calibration_required",
+      "ui_exposure": "hidden_until_usable_probability",
+      "decision_input_default": false,
+      "readiness_required": true
+    },
+    "hsmm_calibrated_p_exit_1d": {
+      "category": "calibration_required",
+      "ui_exposure": "hidden_until_usable_probability",
+      "decision_input_default": false,
+      "readiness_required": true
+    },
+    "hsmm_calibrated_p_exit_3d": {
+      "category": "calibration_required",
+      "ui_exposure": "hidden_until_usable_probability",
+      "decision_input_default": false,
+      "readiness_required": true
+    },
+    "hsmm_calibrated_p_exit_5d": {
+      "category": "calibration_required",
+      "ui_exposure": "hidden_until_usable_probability",
+      "decision_input_default": false,
+      "readiness_required": true
+    },
+    "hsmm_calibrated_p_exit_10d": {
+      "category": "calibration_required",
+      "ui_exposure": "hidden_until_usable_probability",
+      "decision_input_default": false,
+      "readiness_required": true
+    },
+    "hsmm_calibrated_p_exit_20d": {
+      "category": "calibration_required",
+      "ui_exposure": "hidden_until_usable_probability",
+      "decision_input_default": false,
+      "readiness_required": true
+    },
+    "hsmm_next_state_tendency": {
+      "category": "display_safe",
+      "ui_exposure": "realized_episode_supported_description",
+      "decision_input_default": false,
+      "readiness_required": true
+    },
+    "hazard_exit_tendency_ordinal": {
+      "category": "future_hazard_input",
+      "ui_exposure": "future_readiness_approved_low_medium_high",
+      "decision_input_default": false,
+      "future_decision_input": "readiness_approved_only",
+      "readiness_required": true
+    },
+    "hazard_calibrated_probability": {
+      "category": "future_hazard_input",
+      "ui_exposure": "future_readiness_approved_numeric_probability",
+      "decision_input_default": false,
+      "future_decision_input": "readiness_approved_only",
+      "readiness_required": true
+    },
+    "hazard_readiness_status": {
+      "category": "future_hazard_input",
+      "ui_exposure": "future_readiness_metadata",
+      "decision_input_default": false,
+      "future_decision_input": "readiness_approved_only",
+      "readiness_required": true
+    },
+    "hazard_sample_support": {
+      "category": "future_hazard_input",
+      "ui_exposure": "future_readiness_metadata",
+      "decision_input_default": false,
+      "future_decision_input": "readiness_approved_only",
+      "readiness_required": true
+    },
+    "hazard_fallback_reason": {
+      "category": "future_hazard_input",
+      "ui_exposure": "future_readiness_metadata",
+      "decision_input_default": false,
+      "future_decision_input": "readiness_approved_only",
+      "readiness_required": true
+    }
+  },
+  "rules": {
+    "hsmm_numeric_p_exit_default_decision_input": false,
+    "hsmm_numeric_p_exit_allowed_categories": [
+      "calibration_required",
+      "hidden"
+    ],
+    "decision_engine_may_consume": [
+      "readiness_approved_hazard_fields"
+    ],
+    "decision_engine_must_not_consume": [
+      "hsmm_raw_probability",
+      "hsmm_unvalidated_calibrated_probability"
+    ],
+    "readiness_status_overrides": {
+      "missing": {
+        "category": "hidden",
+        "numeric_probability_display": "forbidden",
+        "pseudo_probability_fill": "forbidden"
+      },
+      "invalid": {
+        "category": "hidden",
+        "numeric_probability_display": "forbidden",
+        "pseudo_probability_fill": "forbidden"
+      },
+      "insufficient_sample": {
+        "category": "hidden",
+        "numeric_probability_display": "forbidden",
+        "pseudo_probability_fill": "forbidden"
+      }
+    }
+  },
+  "out_of_scope_models": [
+    "competing-risks hazard",
+    "BOCPD",
+    "robust HMM",
+    "sticky HMM",
+    "VAR-HSMM",
+    "deep switching state-space",
+    "full decision engine"
+  ]
+}
