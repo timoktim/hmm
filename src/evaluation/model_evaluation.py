@@ -8,7 +8,8 @@ from src.data_pipeline.universe import load_sector_like_ohlcv, universe_sector_i
 
 
 _IN_SAMPLE_SOURCES = {"in_sample", "in_sample_display", "in_sample_explanation"}
-_CAUSAL_SOURCES = {"walk_forward", "causal_walk_forward"}
+_CAUSAL_REQUEST_SOURCES = {"walk_forward", "causal_walk_forward"}
+_CAUSAL_STATE_SOURCE = "causal_walk_forward"
 
 
 def _empty_forward_result(reason: str, metadata: dict[str, object] | None = None) -> pd.DataFrame:
@@ -44,7 +45,7 @@ def _normalize_evaluation_mode(evaluation_mode: str | None, state_source: str | 
         if mode == "causal_walk_forward":
             return "causal"
         return mode
-    if state_source in _CAUSAL_SOURCES:
+    if state_source in _CAUSAL_REQUEST_SOURCES:
         return "causal"
     if state_source in _IN_SAMPLE_SOURCES:
         return "in_sample_display"
@@ -262,7 +263,7 @@ def evaluate_forward_returns(
         states = storage.read_df(
             """
             SELECT sector_id, trade_date, state_label,
-                   COALESCE(state_source, 'causal_backtest') AS state_source
+                   COALESCE(state_source, 'unknown_due_to_missing_metadata') AS state_source
             FROM walk_forward_state_cache
             WHERE cache_key = ?
             """,
@@ -304,11 +305,25 @@ def evaluate_forward_returns(
                     cache_key=cache_key,
                 ),
             )
+        invalid_sources = source_values - {_CAUSAL_STATE_SOURCE}
+        if invalid_sources:
+            warning = "causal evaluation 需要 causal_walk_forward state_source；legacy 或缺失来源已阻断。"
+            return _empty_forward_result(
+                warning,
+                _forward_metadata(
+                    evaluation_mode=mode,
+                    evidence_level="exploratory",
+                    readiness_status="research_only",
+                    state_source="unknown_due_to_missing_metadata",
+                    warning=warning,
+                    cache_key=cache_key,
+                ),
+            )
         result_metadata = _forward_metadata(
             evaluation_mode=mode,
             evidence_level="validated_signal",
             readiness_status="validated",
-            state_source="causal_walk_forward",
+            state_source=_CAUSAL_STATE_SOURCE,
             cache_key=cache_key,
         )
     else:

@@ -114,12 +114,14 @@ def test_evaluate_forward_returns_uses_walk_forward_cache(tmp_path):
         ),
         ["cache_key"],
     )
-    storage.upsert_df("walk_forward_state_cache", pd.DataFrame({"cache_key": "cache", "sector_id": "S", "trade_date": dates[:5].date, "state_id": 2, "state_label": "RiskOff", "prob_trend_up": 0, "prob_neutral": 0, "prob_risk_off": 1, "next_state_probs_json": "{}", "state_source": "causal_backtest"}), ["cache_key", "sector_id", "trade_date"])
+    storage.upsert_df("walk_forward_state_cache", pd.DataFrame({"cache_key": "cache", "sector_id": "S", "trade_date": dates[:5].date, "state_id": 2, "state_label": "RiskOff", "prob_trend_up": 0, "prob_neutral": 0, "prob_risk_off": 1, "next_state_probs_json": "{}", "state_source": "causal_walk_forward"}), ["cache_key", "sector_id", "trade_date"])
 
-    out = evaluate_forward_returns(storage, "r", horizons=(5,), state_source="walk_forward", cache_key="cache")
+    out = evaluate_forward_returns(storage, "r", horizons=(5,), state_source="walk_forward", cache_key="cache", evaluation_mode="causal")
 
     assert set(out["state_label"]) == {"RiskOff"}
-    assert out["state_source"].eq("walk_forward").all()
+    assert out["state_source"].eq("causal_walk_forward").all()
+    assert out["readiness_status"].eq("validated").all()
+    assert out.attrs["state_source"] == "causal_walk_forward"
 
 
 def test_state_screener_cache_options_are_scope_filtered(tmp_path):
@@ -194,7 +196,7 @@ def test_state_screener_cache_options_are_scope_filtered(tmp_path):
                     "prob_risk_off": 0.0,
                     "next_state_probs_json": "{}",
                     "max_observation_date_used": pd.Timestamp("2024-02-01").date(),
-                    "state_source": "causal_backtest",
+                    "state_source": "causal_walk_forward",
                     "lineage_hash": "lineage-all",
                     "feature_lineage_hash": "feature-all",
                 },
@@ -209,7 +211,7 @@ def test_state_screener_cache_options_are_scope_filtered(tmp_path):
                     "prob_risk_off": 0.0,
                     "next_state_probs_json": "{}",
                     "max_observation_date_used": pd.Timestamp("2024-02-01").date(),
-                    "state_source": "causal_backtest",
+                    "state_source": "causal_walk_forward",
                     "lineage_hash": "lineage-u1",
                     "feature_lineage_hash": "feature-u1",
                 },

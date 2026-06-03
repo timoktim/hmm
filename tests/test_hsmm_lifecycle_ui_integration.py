@@ -46,6 +46,17 @@ def _seed_states(storage: DuckDBStorage, run_id: str = "lifecycle_ui_run") -> in
                     "raw_p_exit_5d": 0.4 + (i % 5) * 0.02,
                     "raw_p_exit_10d": 0.5 + (i % 5) * 0.02,
                     "raw_p_exit_20d": 0.6 + (i % 5) * 0.02,
+                    "duration_tail_status": "within_duration_support",
+                    "raw_p_exit_1d_status": "available",
+                    "raw_p_exit_3d_status": "available",
+                    "raw_p_exit_5d_status": "available",
+                    "raw_p_exit_10d_status": "available",
+                    "raw_p_exit_20d_status": "available",
+                    "p_exit_1d_status": "available",
+                    "p_exit_3d_status": "available",
+                    "p_exit_5d_status": "available",
+                    "p_exit_10d_status": "available",
+                    "p_exit_20d_status": "available",
                     "most_likely_next_state_id": (i + 1) % 4,
                     "most_likely_next_state_label": labels[min(i + 1, len(labels) - 1)],
                     "next_state_probability": 0.6,
@@ -105,6 +116,19 @@ def test_lifecycle_cli_outputs_and_ui_contract(tmp_path):
         assert ui[col].isin(EXIT_TENDENCIES).all()
     assert ui["state_phase"].isin(["early", "mature", "late", "unknown"]).all()
     assert {"next_state_tendency_phase_aware", "next_state_tendency_age_bucket", "source_run_id"}.issubset(ui.columns)
+    required_status_cols = {
+        "duration_tail_status_1d",
+        "duration_tail_status_3d",
+        "duration_tail_status_5d",
+        "raw_p_exit_1d_status",
+        "raw_p_exit_3d_status",
+        "raw_p_exit_5d_status",
+        "p_exit_1d_status",
+        "p_exit_3d_status",
+        "p_exit_5d_status",
+    }
+    assert required_status_cols.issubset(ui.columns)
+    assert ui["duration_tail_status_1d"].eq("within_duration_support").all()
 
     summary = (output / "summary.md").read_text(encoding="utf-8")
     assert "not a price prediction" in summary
@@ -116,7 +140,25 @@ def test_lifecycle_cli_outputs_and_ui_contract(tmp_path):
     stored_eps = storage.read_df("SELECT COUNT(*) AS n FROM hsmm_display_label_episodes WHERE run_id = 'lifecycle_ui_run'")
     stored_meta = storage.read_df("SELECT COUNT(*) AS n FROM hsmm_lifecycle_profile_metadata WHERE run_id = 'lifecycle_ui_run'")
     stored_next = storage.read_df("SELECT COUNT(*) AS n FROM hsmm_next_state_tendency_profile WHERE run_id = 'lifecycle_ui_run'")
+    stored_cols = storage.read_df(
+        """
+        SELECT column_name
+        FROM information_schema.columns
+        WHERE table_name = 'hsmm_lifecycle_ui_daily'
+        """
+    )
+    persisted_status_cols = {
+        f"duration_tail_status_{horizon}d"
+        for horizon in (1, 3, 5, 10, 20)
+    } | {
+        f"raw_p_exit_{horizon}d_status"
+        for horizon in (1, 3, 5, 10, 20)
+    } | {
+        f"p_exit_{horizon}d_status"
+        for horizon in (1, 3, 5, 10, 20)
+    }
     assert int(stored_ui.loc[0, "n"]) == expected_rows
     assert int(stored_eps.loc[0, "n"]) > 0
     assert int(stored_meta.loc[0, "n"]) == 1
     assert int(stored_next.loc[0, "n"]) >= 0
+    assert persisted_status_cols.issubset(set(stored_cols["column_name"].astype(str)))

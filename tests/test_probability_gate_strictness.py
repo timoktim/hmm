@@ -88,9 +88,21 @@ def test_missing_readiness_contract_disables_raw_rank() -> None:
     assert ui["exit_tendency_1d_raw_basis"].eq("raw_rank_excluded_invalid").all()
 
 
-def test_raw_and_calibrated_p_exit_do_not_appear_in_lifecycle_ui_output() -> None:
+def test_raw_and_calibrated_p_exit_values_do_not_appear_in_lifecycle_ui_output() -> None:
     ui = _ui(_matrix("usable_probability"))
 
-    assert not any(column.startswith("raw_p_exit") for column in ui.columns)
+    raw_p_exit_value_cols = [
+        column
+        for column in ui.columns
+        if column.startswith("raw_p_exit") and not column.endswith("_status")
+    ]
+    p_exit_value_cols = [
+        column
+        for column in ui.columns
+        if column.startswith("p_exit") and not column.endswith("_status")
+    ]
+    assert not raw_p_exit_value_cols
     assert not any(column.startswith("calibrated_p_exit") for column in ui.columns)
-    assert "p_exit_1d" not in ui.columns
+    assert not p_exit_value_cols
+    assert "raw_p_exit_1d_status" in ui.columns
+    assert "p_exit_1d_status" in ui.columns
