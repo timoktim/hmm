@@ -61,9 +61,9 @@ def render_model_evaluation(storage: DuckDBStorage, universe_id: str | None = No
             labels = caches.apply(lambda r: f"{r['cache_key']} | {r['start_date']} 至 {r['end_date']} | {r['created_at']}", axis=1).tolist()
             selected_cache = st.selectbox("walk-forward 缓存", labels)
             cache_key = selected_cache.split(" | ")[0]
-            forward = evaluate_forward_returns(storage, run_id, universe_id=active_universe, scope=scope, state_source="walk_forward", cache_key=cache_key)
+            forward = evaluate_forward_returns(storage, run_id, universe_id=active_universe, scope=scope, state_source="walk_forward", cache_key=cache_key, evaluation_mode="causal")
     if state_eval_mode == "in_sample_display":
-        forward = evaluate_forward_returns(storage, run_id, universe_id=active_universe, scope=scope, state_source="in_sample_display")
+        forward = evaluate_forward_returns(storage, run_id, universe_id=active_universe, scope=scope, state_source="in_sample_display", evaluation_mode="in_sample_display")
     if forward.empty:
         warning = str(forward.attrs.get("warning", "") or "")
         if warning:
@@ -73,6 +73,13 @@ def render_model_evaluation(storage: DuckDBStorage, universe_id: str | None = No
         else:
             st.warning("暂无状态后未来收益样本。请检查板块行情和 run 范围是否一致。")
     else:
+        st.caption(
+            "评估口径："
+            f"mode={forward.attrs.get('evaluation_mode', '')}；"
+            f"evidence={forward.attrs.get('evidence_level', '')}；"
+            f"readiness={forward.attrs.get('readiness_status', '')}；"
+            f"state_source={forward.attrs.get('state_source', '')}。"
+        )
         display_forward = forward.copy()
         display_forward["state_label"] = display_forward["state_label"].map(display_value)
         st.dataframe(rename_columns_for_display(display_forward), width="stretch")
