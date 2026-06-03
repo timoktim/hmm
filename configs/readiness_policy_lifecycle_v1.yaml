@@ -1,0 +1,163 @@
+{
+  "metadata": {
+    "schema_name": "readiness_policy_lifecycle",
+    "schema_version": "v1",
+    "stage": "STAGE03R",
+    "index_id": "STAGE03R-WP0",
+    "route_anchor": "docs/roadmap/STAGE03R_ROUTE_ADJUSTMENT_20260603.md"
+  },
+  "readiness_statuses": {
+    "display_safe": {
+      "allowed": true,
+      "ui_display": true,
+      "allow_numeric_probability": false,
+      "allow_ordinal": false,
+      "failure": false
+    },
+    "internal_only": {
+      "allowed": true,
+      "ui_display": false,
+      "allow_numeric_probability": false,
+      "allow_ordinal": false,
+      "failure": false
+    },
+    "calibration_required": {
+      "allowed": true,
+      "ui_display": false,
+      "allow_numeric_probability": false,
+      "allow_ordinal": false,
+      "requires": [
+        "calibration_passed",
+        "validation_passed",
+        "sample_support_sufficient"
+      ],
+      "failure": false
+    },
+    "hidden": {
+      "allowed": true,
+      "ui_display": false,
+      "allow_numeric_probability": false,
+      "allow_ordinal": false,
+      "failure": false
+    },
+    "usable_probability": {
+      "allowed": true,
+      "ui_display": true,
+      "allow_numeric_probability": true,
+      "allow_ordinal": true,
+      "requires": [
+        "calibration_passed",
+        "validation_passed",
+        "sample_support_sufficient",
+        "no_leakage_evidence"
+      ],
+      "failure": false
+    },
+    "ordinal_only": {
+      "allowed": true,
+      "ui_display": true,
+      "allow_numeric_probability": false,
+      "allow_ordinal": true,
+      "allowed_ordinal_labels": [
+        "low",
+        "medium",
+        "high"
+      ],
+      "failure": false
+    },
+    "baseline_only": {
+      "allowed": true,
+      "ui_display": true,
+      "allow_numeric_probability": false,
+      "allow_ordinal": true,
+      "allowed_ordinal_labels": [
+        "low",
+        "medium",
+        "high"
+      ],
+      "failure": false
+    },
+    "insufficient_sample": {
+      "allowed": true,
+      "ui_display": true,
+      "allow_numeric_probability": false,
+      "allow_ordinal": false,
+      "pseudo_probability_fill": false,
+      "failure": false
+    },
+    "invalid": {
+      "allowed": true,
+      "ui_display": false,
+      "allow_numeric_probability": false,
+      "allow_ordinal": false,
+      "pseudo_probability_fill": false,
+      "failure": true
+    },
+    "abstain": {
+      "allowed": true,
+      "ui_display": true,
+      "allow_numeric_probability": false,
+      "allow_ordinal": false,
+      "failure": false
+    }
+  },
+  "status_rules": {
+    "usable_probability": {
+      "may_show_numeric_probability": true,
+      "only_after": [
+        "calibration_passed",
+        "validation_passed",
+        "sample_support_sufficient",
+        "no_leakage_evidence"
+      ]
+    },
+    "ordinal_only": {
+      "may_show_numeric_probability": false,
+      "may_show_labels": [
+        "low",
+        "medium",
+        "high"
+      ]
+    },
+    "insufficient_sample": {
+      "may_show_numeric_probability": false,
+      "must_not_fill_pseudo_probability": true
+    },
+    "invalid": {
+      "may_show_numeric_probability": false,
+      "must_hide_numeric_signal": true
+    },
+    "hidden": {
+      "may_show_numeric_probability": false,
+      "must_hide_numeric_signal": true
+    },
+    "abstain": {
+      "valid_output": true,
+      "failure": false,
+      "may_show_numeric_probability": false
+    }
+  },
+  "decision_engine_rules": {
+    "future_decision_engine_status": "out_of_scope_for_stage03r_v1",
+    "may_consume": [
+      "readiness_approved_hazard_exit_tendency_ordinal",
+      "readiness_approved_hazard_calibrated_probability",
+      "hazard_readiness_status",
+      "hazard_sample_support",
+      "hazard_fallback_reason"
+    ],
+    "must_not_consume": [
+      "hsmm_raw_p_exit",
+      "hsmm_unvalidated_calibrated_p_exit",
+      "insufficient_sample_probability",
+      "invalid_probability",
+      "hidden_probability"
+    ],
+    "abstain_policy": "abstain is a legal output when readiness is insufficient"
+  },
+  "fallback_rules": {
+    "insufficient_sample": "emit insufficient_sample or abstain; do not impute a pseudo-probability",
+    "invalid": "emit invalid or abstain; do not show a numeric lifecycle signal",
+    "hidden": "hide numeric probability and keep explanatory status only"
+  }
+}

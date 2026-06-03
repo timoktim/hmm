@@ -1,0 +1,68 @@
+{
+  "wp": "STAGE03R-WP0",
+  "status": "pass",
+  "branch": "stage03r/wp0-scope-freeze-signal-contract",
+  "stage03_preflight_status": "pass",
+  "route_anchor": "docs/roadmap/STAGE03R_ROUTE_ADJUSTMENT_20260603.md",
+  "contract_files_created": {
+    "configs/lifecycle_signal_contract_v1.yaml": true,
+    "configs/readiness_policy_lifecycle_v1.yaml": true
+  },
+  "hsmm_numeric_p_exit_default_decision_input": false,
+  "hazard_primary_lifecycle_exit_engine": "planned",
+  "out_of_scope_models": [
+    "competing-risks hazard",
+    "BOCPD",
+    "robust HMM",
+    "sticky HMM",
+    "VAR-HSMM",
+    "deep switching state-space",
+    "full decision engine"
+  ],
+  "commands_run": [
+    {
+      "command": ".venv/bin/python -m compileall -q src tests",
+      "status": "pass"
+    },
+    {
+      "command": ".venv/bin/pytest -q tests/test_stage03r_signal_contract.py",
+      "status": "pass",
+      "results": {
+        "passed": 7
+      }
+    },
+    {
+      "command": "bash scripts/stage03_preflight_gate.sh",
+      "status": "pass",
+      "results": {
+        "Stage03PreflightVerdict": "PASS",
+        "focused_tests_passed": 67,
+        "private_path_hygiene": "pass",
+        "stage01_no_private_db": "pass",
+        "python": ".venv/bin/python",
+        "pytest": ".venv/bin/pytest"
+      }
+    },
+    {
+      "command": "bash scripts/check_no_private_paths.sh",
+      "status": "pass",
+      "results": {
+        "PRIVATE_PATH_HYGIENE": "pass",
+        "scanned_files": 72
+      }
+    },
+    {
+      "command": "bash scripts/validate_stage01_no_private_db.sh",
+      "status": "pass",
+      "results": {
+        "CI_SAFE_STAGE01_VALIDATION": "pass",
+        "private_db_required": false,
+        "external_data_fetch": false
+      }
+    }
+  ],
+  "external_data_fetch": "no",
+  "training_algorithm_modified": "no",
+  "DuckDB_committed": "no",
+  "private_db_required": "no"
+}
