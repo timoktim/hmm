@@ -18,6 +18,8 @@ PREFIX_COMPARE_FIELDS = [
     "duration_model_age_days",
     "display_state_age_days",
     "duration_percentile",
+    "duration_percentile_status",
+    "duration_tail_status",
     "state_phase",
     "expected_remaining_days",
     "p_exit_1d",
@@ -30,6 +32,11 @@ PREFIX_COMPARE_FIELDS = [
     "raw_p_exit_5d",
     "raw_p_exit_10d",
     "raw_p_exit_20d",
+    "raw_p_exit_1d_status",
+    "raw_p_exit_3d_status",
+    "raw_p_exit_5d_status",
+    "raw_p_exit_10d_status",
+    "raw_p_exit_20d_status",
 ]
 
 

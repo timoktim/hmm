@@ -155,6 +155,14 @@ class DiscreteDurationGaussianHSMM:
         out["state_age_days_by_label"] = label_ages
         out["state_age_days"] = out["state_age_days_by_label"]
         out["duration_percentile"] = [self.duration_percentile(int(s), int(a)) for s, a in zip(result.path, out["state_age_days_by_id"], strict=False)]
+        out["duration_percentile_status"] = [
+            self.duration_percentile_status(int(s), int(a))
+            for s, a in zip(result.path, out["state_age_days_by_id"], strict=False)
+        ]
+        out["duration_tail_status"] = [
+            self.duration_tail_status(int(s), int(a))
+            for s, a in zip(result.path, out["state_age_days_by_id"], strict=False)
+        ]
         out["state_phase"] = [self.state_phase(float(p)) for p in out["duration_percentile"]]
         out["viterbi_score"] = result.score
         return out
@@ -177,9 +185,12 @@ class DiscreteDurationGaussianHSMM:
         label_age = int(record.get("state_age_days_by_label", record["state_age_days"]))
         p_exit = {h: self.p_exit_h(state_id, age, h) for h in (1, 3, 5, 10, 20)}
         p_stay = {h: 1.0 - p_exit[h] for h in p_exit}
+        p_exit_status = {h: self.p_exit_status(state_id, age, h) for h in p_exit}
         next_state_id = int(np.argmax(self.transmat_[state_id]))
         next_prob = float(self.transmat_[state_id, next_state_id])
         duration_percentile = self.duration_percentile(state_id, age)
+        duration_percentile_status = self.duration_percentile_status(state_id, age)
+        duration_tail_status = self.duration_tail_status(state_id, age)
         return {
             "state_id": state_id,
             "state_label": self.state_labels_.get(state_id, f"State{state_id}"),
@@ -192,6 +203,8 @@ class DiscreteDurationGaussianHSMM:
             "duration_model_age_days": age,
             "display_state_age_days": label_age,
             "duration_percentile": duration_percentile,
+            "duration_percentile_status": duration_percentile_status,
+            "duration_tail_status": duration_tail_status,
             "expected_remaining_days": self.expected_remaining_days(state_id, age),
             "p_stay_1d": p_stay[1],
             "p_stay_3d": p_stay[3],
@@ -207,6 +220,16 @@ class DiscreteDurationGaussianHSMM:
             "raw_p_exit_5d": p_exit[5],
             "raw_p_exit_10d": p_exit[10],
             "raw_p_exit_20d": p_exit[20],
+            "p_exit_1d_status": p_exit_status[1],
+            "p_exit_3d_status": p_exit_status[3],
+            "p_exit_5d_status": p_exit_status[5],
+            "p_exit_10d_status": p_exit_status[10],
+            "p_exit_20d_status": p_exit_status[20],
+            "raw_p_exit_1d_status": p_exit_status[1],
+            "raw_p_exit_3d_status": p_exit_status[3],
+            "raw_p_exit_5d_status": p_exit_status[5],
+            "raw_p_exit_10d_status": p_exit_status[10],
+            "raw_p_exit_20d_status": p_exit_status[20],
             "calibrated_p_exit_1d": np.nan,
             "calibrated_p_exit_3d": np.nan,
             "calibrated_p_exit_5d": np.nan,
@@ -231,9 +254,12 @@ class DiscreteDurationGaussianHSMM:
             age = 1
         p_exit = {h: self.p_exit_h(state_id, age, h) for h in (1, 3, 5, 10, 20)}
         p_stay = {h: 1.0 - p_exit[h] for h in p_exit}
+        p_exit_status = {h: self.p_exit_status(state_id, age, h) for h in p_exit}
         next_state_id = int(np.argmax(self.transmat_[state_id]))
         next_prob = float(self.transmat_[state_id, next_state_id])
         duration_percentile = self.duration_percentile(state_id, age)
+        duration_percentile_status = self.duration_percentile_status(state_id, age)
+        duration_tail_status = self.duration_tail_status(state_id, age)
         return {
             "state_id": state_id,
             "state_label": self.state_labels_.get(state_id, f"State{state_id}"),
@@ -246,6 +272,8 @@ class DiscreteDurationGaussianHSMM:
             "duration_model_age_days": age,
             "display_state_age_days": age,
             "duration_percentile": duration_percentile,
+            "duration_percentile_status": duration_percentile_status,
+            "duration_tail_status": duration_tail_status,
             "expected_remaining_days": self.expected_remaining_days(state_id, age),
             "p_stay_1d": p_stay[1],
             "p_stay_3d": p_stay[3],
@@ -261,6 +289,16 @@ class DiscreteDurationGaussianHSMM:
             "raw_p_exit_5d": p_exit[5],
             "raw_p_exit_10d": p_exit[10],
             "raw_p_exit_20d": p_exit[20],
+            "p_exit_1d_status": p_exit_status[1],
+            "p_exit_3d_status": p_exit_status[3],
+            "p_exit_5d_status": p_exit_status[5],
+            "p_exit_10d_status": p_exit_status[10],
+            "p_exit_20d_status": p_exit_status[20],
+            "raw_p_exit_1d_status": p_exit_status[1],
+            "raw_p_exit_3d_status": p_exit_status[3],
+            "raw_p_exit_5d_status": p_exit_status[5],
+            "raw_p_exit_10d_status": p_exit_status[10],
+            "raw_p_exit_20d_status": p_exit_status[20],
             "calibrated_p_exit_1d": np.nan,
             "calibrated_p_exit_3d": np.nan,
             "calibrated_p_exit_5d": np.nan,
@@ -316,16 +354,33 @@ class DiscreteDurationGaussianHSMM:
             return "unknown"
         return "within_support"
 
+    def duration_tail_status(self, state_id: int, age: int) -> str:
+        if age <= 0:
+            return "unavailable"
+        if age >= self.max_duration:
+            return "beyond_duration_support"
+        return "within_duration_support"
+
     def p_exit_h(self, state_id: int, age: int, horizon: int) -> float:
         pmf = self.duration_pmf_[state_id]
         support = np.arange(1, self.max_duration + 1)
-        if age > self.max_duration:
+        if age <= 0 or age >= self.max_duration:
             return np.nan
         survival = pmf[support >= max(age, 1)].sum()
         if survival <= EPS:
             return np.nan
         exit_mass = pmf[(support >= age) & (support < age + horizon)].sum()
         return float(np.clip(exit_mass / survival, 0.0, 1.0))
+
+    def p_exit_status(self, state_id: int, age: int, horizon: int) -> str:
+        if age <= 0:
+            return "unavailable"
+        if age >= self.max_duration:
+            return "beyond_duration_support"
+        value = self.p_exit_h(state_id, age, horizon)
+        if not np.isfinite(value):
+            return "unavailable"
+        return "available"
 
     def expected_remaining_days(self, state_id: int, age: int) -> float:
         pmf = self.duration_pmf_[state_id]
@@ -341,6 +396,8 @@ class DiscreteDurationGaussianHSMM:
 
     @staticmethod
     def state_phase(duration_percentile: float) -> str:
+        if pd.isna(duration_percentile):
+            return "unknown"
         if duration_percentile < 0.33:
             return "early"
         if duration_percentile < 0.67:
@@ -460,8 +517,10 @@ class DiscreteDurationGaussianHSMM:
             segments = _segments_from_path(path)
             start_counts[segments[0][0]] += 1
             for idx, (state, start, end) in enumerate(segments):
-                duration = min(end - start + 1, self.max_duration)
-                duration_counts[state, duration - 1] += 1
+                is_right_censored = idx == len(segments) - 1
+                if not is_right_censored:
+                    duration = min(end - start + 1, self.max_duration)
+                    duration_counts[state, duration - 1] += 1
                 obs_by_state[state].append(x[start : end + 1])
                 if idx > 0:
                     prev = segments[idx - 1][0]
