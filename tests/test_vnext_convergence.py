@@ -56,12 +56,15 @@ def test_model_evaluation_forward_returns(tmp_path):
     storage.upsert_df("sector_state_daily", state_rows, ["run_id", "sector_id", "trade_date"])
     storage.upsert_df("model_runs", pd.DataFrame([{"run_id": "r", "model_type": "GaussianHMM", "n_states": 3, "train_start": dates[0].date(), "train_end": dates[-1].date(), "feature_version": "v", "model_path": "", "scaler_path": "", "universe_id": None, "scope_type": "all", "include_custom_baskets": True, "feature_scope_id": "all", "feature_scope_type": "all", "created_at": pd.Timestamp("2024-02-01"), "metrics_json": "{}"}]), ["run_id"])
 
-    out = evaluate_forward_returns(storage, "r", horizons=(5,))
+    out = evaluate_forward_returns(storage, "r", horizons=(5,), evaluation_mode="in_sample_display")
 
     assert not out.empty
     assert out.loc[0, "state_label"] == "TrendUp"
     assert out.loc[0, "sample_count"] == 10
     assert out.loc[0, "mean_return"] > 0
+    assert out["state_source"].eq("in_sample_explanation").all()
+    assert out["readiness_status"].eq("research_only").all()
+    assert out.attrs["readiness_status"] == "research_only"
 
 
 def test_model_evaluation_baseline_compare(tmp_path, monkeypatch):
