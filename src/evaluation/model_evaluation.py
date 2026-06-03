@@ -7,10 +7,56 @@ from src.data_pipeline.storage import DuckDBStorage
 from src.data_pipeline.universe import load_sector_like_ohlcv, universe_sector_ids
 
 
-def _empty_forward_result(reason: str) -> pd.DataFrame:
+_IN_SAMPLE_SOURCES = {"in_sample", "in_sample_display", "in_sample_explanation"}
+_CAUSAL_SOURCES = {"walk_forward", "causal_walk_forward"}
+
+
+def _empty_forward_result(reason: str, metadata: dict[str, object] | None = None) -> pd.DataFrame:
     df = pd.DataFrame()
     df.attrs["warning"] = reason
+    if metadata:
+        df.attrs.update(metadata)
     return df
+
+
+def _forward_metadata(
+    *,
+    evaluation_mode: str,
+    evidence_level: str,
+    readiness_status: str,
+    state_source: str,
+    warning: str = "",
+    cache_key: str | None = None,
+) -> dict[str, object]:
+    return {
+        "evaluation_mode": evaluation_mode,
+        "evidence_level": evidence_level,
+        "readiness_status": readiness_status,
+        "state_source": state_source,
+        "readiness_reason": warning,
+        "causal_cache_id": cache_key,
+    }
+
+
+def _normalize_evaluation_mode(evaluation_mode: str | None, state_source: str | None) -> str | None:
+    if evaluation_mode:
+        mode = str(evaluation_mode).strip()
+        if mode == "causal_walk_forward":
+            return "causal"
+        return mode
+    if state_source in _CAUSAL_SOURCES:
+        return "causal"
+    if state_source in _IN_SAMPLE_SOURCES:
+        return "in_sample_display"
+    return None
+
+
+def _cache_has_causal_metadata(cache_row: pd.Series) -> bool:
+    lineage_hash = cache_row.get("lineage_hash")
+    cache_status = cache_row.get("cache_status")
+    if pd.notna(lineage_hash) and str(lineage_hash).strip() and str(cache_status or "").strip() == "completed":
+        return True
+    return pd.notna(cache_row.get("params_hash")) or pd.notna(cache_row.get("params_json"))
 
 
 def _normalize_cache_universe(value: object) -> str | None:
@@ -87,27 +133,132 @@ def evaluate_forward_returns(
     horizons: tuple[int, ...] = (5, 20),
     universe_id: str | None = None,
     scope: str = "all",
-    state_source: str = "in_sample_display",
+    state_source: str | None = None,
     cache_key: str | None = None,
     expected_cache_params: dict[str, object] | None = None,
+    evaluation_mode: str | None = None,
 ) -> pd.DataFrame:
+    mode = _normalize_evaluation_mode(evaluation_mode, state_source)
+    if mode is None:
+        warning = "evaluate_forward_returns 必须显式指定 evaluation_mode；不会默认把样本内状态当作因果证据。"
+        return _empty_forward_result(
+            warning,
+            _forward_metadata(
+                evaluation_mode="missing",
+                evidence_level="exploratory",
+                readiness_status="research_only",
+                state_source="unknown_due_to_missing_metadata",
+                warning=warning,
+            ),
+        )
+    if mode not in {"in_sample_display", "causal"}:
+        warning = f"不支持的 evaluation_mode: {mode}"
+        return _empty_forward_result(
+            warning,
+            _forward_metadata(
+                evaluation_mode=mode,
+                evidence_level="exploratory",
+                readiness_status="research_only",
+                state_source="unknown_due_to_missing_metadata",
+                warning=warning,
+            ),
+        )
+    requested_state_source = state_source or ("walk_forward" if mode == "causal" else "in_sample_display")
+    if mode == "causal" and requested_state_source in _IN_SAMPLE_SOURCES:
+        warning = "causal evaluation 不能使用样本内状态。"
+        return _empty_forward_result(
+            warning,
+            _forward_metadata(
+                evaluation_mode=mode,
+                evidence_level="exploratory",
+                readiness_status="research_only",
+                state_source="in_sample_explanation",
+                warning=warning,
+            ),
+        )
     run = storage.get_model_run(run_id)
     if run.empty:
-        return pd.DataFrame()
+        warning = f"找不到模型 run：{run_id}"
+        return _empty_forward_result(
+            warning,
+            _forward_metadata(
+                evaluation_mode=mode,
+                evidence_level="exploratory",
+                readiness_status="research_only",
+                state_source="in_sample_explanation" if mode == "in_sample_display" else "unknown_due_to_missing_metadata",
+                warning=warning,
+                cache_key=cache_key,
+            ),
+        )
     run_row = run.iloc[0]
     ohlcv = load_sector_like_ohlcv(storage, universe_id=universe_id if scope == "universe" else None, include_custom_baskets=True)
     if ohlcv.empty:
-        return pd.DataFrame()
+        warning = "缺少可评估行情数据。"
+        return _empty_forward_result(
+            warning,
+            _forward_metadata(
+                evaluation_mode=mode,
+                evidence_level="exploratory",
+                readiness_status="research_only",
+                state_source="in_sample_explanation" if mode == "in_sample_display" else "unknown_due_to_missing_metadata",
+                warning=warning,
+                cache_key=cache_key,
+            ),
+        )
     meta = storage.read_df("SELECT sector_id, sector_type, sector_name FROM sector_meta")
-    if state_source == "walk_forward":
+    if mode == "causal":
         if cache_key is None:
-            return _empty_forward_result("选择因果 walk-forward 状态评估时必须指定 cache_key；不会自动使用最新缓存。")
+            warning = "选择因果 walk-forward 状态评估时必须指定 cache_key；不会自动使用最新缓存。"
+            return _empty_forward_result(
+                warning,
+                _forward_metadata(
+                    evaluation_mode=mode,
+                    evidence_level="exploratory",
+                    readiness_status="research_only",
+                    state_source="unknown_due_to_missing_metadata",
+                    warning=warning,
+                ),
+            )
         cache_run = storage.read_df("SELECT * FROM walk_forward_cache_runs WHERE cache_key = ?", [cache_key])
         if cache_run.empty:
-            return _empty_forward_result(f"找不到 walk-forward 缓存：{cache_key}")
+            warning = f"找不到 walk-forward 缓存：{cache_key}"
+            return _empty_forward_result(
+                warning,
+                _forward_metadata(
+                    evaluation_mode=mode,
+                    evidence_level="exploratory",
+                    readiness_status="research_only",
+                    state_source="unknown_due_to_missing_metadata",
+                    warning=warning,
+                    cache_key=cache_key,
+                ),
+            )
+        if not _cache_has_causal_metadata(cache_run.iloc[0]):
+            warning = "walk-forward 缓存缺少 causal cache metadata；causal evaluation 降级为 research_only。"
+            return _empty_forward_result(
+                warning,
+                _forward_metadata(
+                    evaluation_mode=mode,
+                    evidence_level="exploratory",
+                    readiness_status="research_only",
+                    state_source="unknown_due_to_missing_metadata",
+                    warning=warning,
+                    cache_key=cache_key,
+                ),
+            )
         mismatch = _cache_match_warning(cache_run.iloc[0], run_row, universe_id, scope, expected_cache_params)
         if mismatch:
-            return _empty_forward_result(mismatch)
+            return _empty_forward_result(
+                mismatch,
+                _forward_metadata(
+                    evaluation_mode=mode,
+                    evidence_level="exploratory",
+                    readiness_status="research_only",
+                    state_source="unknown_due_to_missing_metadata",
+                    warning=mismatch,
+                    cache_key=cache_key,
+                ),
+            )
         states = storage.read_df(
             """
             SELECT sector_id, trade_date, state_label,
@@ -127,7 +278,46 @@ def evaluate_forward_returns(
             [run_id],
         )
     if states.empty:
-        return pd.DataFrame()
+        return _empty_forward_result(
+            "没有可评估状态样本。",
+            _forward_metadata(
+                evaluation_mode=mode,
+                evidence_level="exploratory",
+                readiness_status="research_only",
+                state_source="in_sample_explanation" if mode == "in_sample_display" else "unknown_due_to_missing_metadata",
+                warning="没有可评估状态样本。",
+                cache_key=cache_key,
+            ),
+        )
+    if mode == "causal":
+        source_values = set(states.get("state_source", pd.Series(dtype=str)).dropna().astype(str).unique().tolist())
+        if source_values & _IN_SAMPLE_SOURCES:
+            warning = "causal evaluation 检测到样本内 state_source，已阻断。"
+            return _empty_forward_result(
+                warning,
+                _forward_metadata(
+                    evaluation_mode=mode,
+                    evidence_level="exploratory",
+                    readiness_status="research_only",
+                    state_source="in_sample_explanation",
+                    warning=warning,
+                    cache_key=cache_key,
+                ),
+            )
+        result_metadata = _forward_metadata(
+            evaluation_mode=mode,
+            evidence_level="validated_signal",
+            readiness_status="validated",
+            state_source="causal_walk_forward",
+            cache_key=cache_key,
+        )
+    else:
+        result_metadata = _forward_metadata(
+            evaluation_mode=mode,
+            evidence_level="exploratory",
+            readiness_status="research_only",
+            state_source="in_sample_explanation",
+        )
     states = states.merge(meta, on="sector_id", how="left")
     states = _scope_filter(states, storage, universe_id, scope)
     prices = ohlcv.copy()
@@ -154,11 +344,16 @@ def evaluate_forward_returns(
                     "win_rate": float((ret > 0).mean()),
                     "volatility": float(ret.std(ddof=0)),
                     "sample_count": int(len(ret)),
-                    "state_source": state_source,
+                    "state_source": result_metadata["state_source"],
+                    "evaluation_mode": mode,
+                    "evidence_level": result_metadata["evidence_level"],
+                    "readiness_status": result_metadata["readiness_status"],
                     "cache_key": cache_key,
                 }
             )
-    return pd.DataFrame(rows).sort_values(["state_label", "horizon_days"]) if rows else pd.DataFrame()
+    result = pd.DataFrame(rows).sort_values(["state_label", "horizon_days"]) if rows else pd.DataFrame()
+    result.attrs.update(result_metadata)
+    return result
 
 
 def evaluate_state_stability(storage: DuckDBStorage, run_id: str) -> tuple[pd.DataFrame, pd.DataFrame]:

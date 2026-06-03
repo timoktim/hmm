@@ -26,6 +26,8 @@ Weights = dict[str, float]
 _HMM_WALK_FORWARD_MODEL_VERSION = "stage03pf-wp2"
 _HMM_WALK_FORWARD_CODE_VERSION = "stage03pf-wp2"
 _HMM_WALK_FORWARD_TOL = 0.01
+_OPEN_ENTRY_DAY_POLICIES = {"exclude_entry_day_intraday", "include_open_to_close"}
+_CLOSE_ENTRY_DAY_POLICY = "close_execution_after_market_close"
 
 
 class LineageMismatchError(ValueError):
@@ -452,18 +454,50 @@ def _weighted_return(returns: pd.Series, weights: Weights) -> float:
     return float(total)
 
 
+def _resolve_execution_policy(
+    execution_price: str,
+    entry_day_return_policy: str | None,
+    transaction_cost: float,
+) -> dict[str, object]:
+    if execution_price not in {"open", "close"}:
+        raise ValueError("execution_price 必须是 open 或 close")
+    if execution_price == "open":
+        resolved_entry_policy = entry_day_return_policy or "exclude_entry_day_intraday"
+        if resolved_entry_policy not in _OPEN_ENTRY_DAY_POLICIES:
+            raise ValueError("open execution 的 entry_day_return_policy 必须是 exclude_entry_day_intraday 或 include_open_to_close")
+        timing = "next_trade_date_open"
+        price_policy = "signal_date_close_to_next_trade_date_open"
+    else:
+        if entry_day_return_policy not in {None, _CLOSE_ENTRY_DAY_POLICY}:
+            raise ValueError("close execution 不支持 open-to-close entry day return")
+        resolved_entry_policy = _CLOSE_ENTRY_DAY_POLICY
+        timing = "next_trade_date_close"
+        price_policy = "signal_date_close_to_next_trade_date_close"
+    return {
+        "execution_price_policy": price_policy,
+        "execution_timing": timing,
+        "entry_day_return_policy": resolved_entry_policy,
+        "cost_policy": "single_side_turnover_cost",
+        "transaction_cost": float(transaction_cost),
+    }
+
+
 def simulate_portfolio_returns(
     open_prices: pd.DataFrame,
     close_prices: pd.DataFrame,
     target_events: pd.DataFrame,
     execution_price: str = "open",
     transaction_cost: float = 0.001,
+    entry_day_return_policy: str | None = None,
 ) -> tuple[pd.DataFrame, pd.DataFrame]:
-    if execution_price not in {"open", "close"}:
-        raise ValueError("execution_price 必须是 open 或 close")
+    execution_policy = _resolve_execution_policy(execution_price, entry_day_return_policy, transaction_cost)
     events = target_events.copy()
     if events.empty:
-        return pd.DataFrame(), pd.DataFrame()
+        curve = pd.DataFrame()
+        trades = pd.DataFrame()
+        curve.attrs.update(execution_policy)
+        trades.attrs.update(execution_policy)
+        return curve, trades
     events["exec_date"] = pd.to_datetime(events["exec_date"])
     event_map = {pd.Timestamp(row["exec_date"]): row["weights"] for _, row in events.iterrows()}
     open_prices = open_prices.sort_index()
@@ -492,8 +526,9 @@ def simulate_portfolio_returns(
                 turnover = _turnover(old_weights, target)
                 cost = turnover * transaction_cost
                 current_weights = target
-                weights_for_intraday = target
-                trade_rows.append({"exec_date": trade_date, "turnover": turnover, "cost": cost, "weights": target})
+                if execution_policy["entry_day_return_policy"] == "include_open_to_close":
+                    weights_for_intraday = target
+                trade_rows.append({"exec_date": trade_date, "turnover": turnover, "cost": cost, "weights": target, **execution_policy})
             intraday = _weighted_return(intraday_ret.loc[trade_date], weights_for_intraday)
             gross_return = (1 + overnight) * (1 + intraday) - 1
             net_return = (1 + overnight) * (1 - cost) * (1 + intraday) - 1
@@ -503,7 +538,7 @@ def simulate_portfolio_returns(
             if target is not None:
                 turnover = _turnover(current_weights, target)
                 cost = turnover * transaction_cost
-                trade_rows.append({"exec_date": trade_date, "turnover": turnover, "cost": cost, "weights": target})
+                trade_rows.append({"exec_date": trade_date, "turnover": turnover, "cost": cost, "weights": target, **execution_policy})
                 current_weights = target
             net_return = (1 + holding_return) * (1 - cost) - 1
 
@@ -520,10 +555,16 @@ def simulate_portfolio_returns(
 
     curve = pd.DataFrame(rows)
     if curve.empty:
-        return curve, pd.DataFrame(trade_rows)
+        trades = pd.DataFrame(trade_rows)
+        curve.attrs.update(execution_policy)
+        trades.attrs.update(execution_policy)
+        return curve, trades
     curve["nav_gross"] = (1 + curve["gross_return"].fillna(0)).cumprod()
     curve["nav_net"] = (1 + curve["net_return"].fillna(0)).cumprod()
-    return curve, pd.DataFrame(trade_rows)
+    trades = pd.DataFrame(trade_rows)
+    curve.attrs.update(execution_policy)
+    trades.attrs.update(execution_policy)
+    return curve, trades
 
 
 def _strategy_metrics(curve: pd.DataFrame) -> dict[str, float]:
@@ -591,6 +632,7 @@ def run_sector_rotation_backtest(
     train_window_days: int | None = 504,
     n_states: int = 3,
     execution_price: str = "open",
+    entry_day_return_policy: str | None = None,
     transaction_cost: float = 0.001,
     walk_forward: bool = True,
     retrain_frequency: str = "monthly",
@@ -603,6 +645,7 @@ def run_sector_rotation_backtest(
 ) -> dict[str, object]:
     storage = storage or DuckDBStorage()
     storage.init_schema()
+    execution_policy = _resolve_execution_policy(execution_price, entry_day_return_policy, transaction_cost)
     ohlcv = _load_sector_ohlcv(storage, universe_id=universe_id, include_custom_baskets=include_custom_baskets)
     if ohlcv.empty:
         raise ValueError("缺少板块行情数据。")
@@ -753,6 +796,7 @@ def run_sector_rotation_backtest(
             target_events=events,
             execution_price=execution_price,
             transaction_cost=transaction_cost,
+            entry_day_return_policy=str(execution_policy["entry_day_return_policy"]),
         )
         if not curve.empty:
             curve = curve[(curve["trade_date"] >= start_ts) & (curve["trade_date"] <= end_ts)].copy()
@@ -788,6 +832,7 @@ def run_sector_rotation_backtest(
         "trades": trades_df,
         "states": states,
         "execution_price": execution_price,
+        **execution_policy,
         "transaction_cost": transaction_cost,
         "state_source": "causal_backtest" if walk_forward else "in_sample_display",
         "cache_hit": cache_hit,
