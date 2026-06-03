@@ -14,7 +14,13 @@ import pandas as pd
 
 from src.config import settings
 from src.data_pipeline.storage import DuckDBStorage, json_dumps
-from src.data_pipeline.universe import load_sector_like_ohlcv
+from src.data_pipeline.universe import (
+    compute_calendar_hash,
+    compute_custom_basket_membership_hash,
+    compute_sector_ohlcv_snapshot_hash,
+    compute_universe_membership_hash,
+    load_sector_like_ohlcv,
+)
 from src.features.hsmm_features import HSMM_FEATURE_COLUMNS, build_hsmm_features
 from src.features.sector_features import feature_scope_for_universe
 from src.models.hsmm_model import DiscreteDurationGaussianHSMM
@@ -68,14 +74,42 @@ def params_hash(payload: dict[str, object]) -> str:
     return hashlib.sha1(params_json.encode("utf-8")).hexdigest()
 
 
-def _config_hash_payload(config: HSMMWalkForwardConfig, feature_scope_id: str, feature_scope_type: str) -> dict[str, object]:
+def _config_hash_payload(
+    config: HSMMWalkForwardConfig,
+    feature_scope_id: str,
+    feature_scope_type: str,
+    lineage_digests: dict[str, object] | None = None,
+) -> dict[str, object]:
     payload = asdict(config)
     for key in ["run_id", "notes", "db_path", "overwrite"]:
         payload.pop(key, None)
     payload["feature_scope_id"] = feature_scope_id
     payload["feature_scope_type"] = feature_scope_type
     payload["feature_columns"] = HSMM_FEATURE_COLUMNS
+    if lineage_digests:
+        payload.update(lineage_digests)
     return payload
+
+
+def _hsmm_lineage_digests(
+    storage: DuckDBStorage,
+    config: HSMMWalkForwardConfig,
+    ohlcv: pd.DataFrame,
+    trade_dates: list[pd.Timestamp] | pd.Series,
+    start_date: pd.Timestamp,
+    end_date: pd.Timestamp,
+) -> dict[str, object]:
+    sector_ids = sorted(ohlcv["sector_id"].dropna().astype(str).unique().tolist()) if "sector_id" in ohlcv.columns else []
+    custom_ids = [sector_id for sector_id in sector_ids if sector_id.startswith("custom:")]
+    return {
+        "universe_membership_hash": compute_universe_membership_hash(storage, config.universe_id, as_of_date=end_date),
+        "custom_basket_membership_hash": (
+            compute_custom_basket_membership_hash(storage, custom_ids, as_of_date=end_date) if config.include_custom_baskets else None
+        ),
+        "custom_basket_membership_policy": "current_snapshot" if config.include_custom_baskets else None,
+        "data_snapshot_hash": compute_sector_ohlcv_snapshot_hash(storage, sector_ids, start_date, end_date),
+        "calendar_hash": compute_calendar_hash(trade_dates),
+    }
 
 
 def _resolve_run_id(config: HSMMWalkForwardConfig) -> str:
@@ -102,6 +136,7 @@ def _hsmm_run_metadata_frame(
     config_payload: dict[str, object],
     config_hash: str,
     run_hash: str,
+    lineage_digests: dict[str, object],
     run_status: str,
     started_at: pd.Timestamp,
     expected_snapshot_count: int,
@@ -118,6 +153,7 @@ def _hsmm_run_metadata_frame(
         "run_hash": run_hash,
         "feature_scope_id": feature_scope_id,
         "feature_scope_type": feature_scope_type,
+        **lineage_digests,
     }
     return pd.DataFrame(
         [
@@ -145,6 +181,10 @@ def _hsmm_run_metadata_frame(
                 "config_json": json.dumps(config_payload, ensure_ascii=False, sort_keys=True, default=str),
                 "config_hash": config_hash,
                 "run_hash": run_hash,
+                "universe_membership_hash": lineage_digests.get("universe_membership_hash"),
+                "custom_basket_membership_hash": lineage_digests.get("custom_basket_membership_hash"),
+                "data_snapshot_hash": lineage_digests.get("data_snapshot_hash"),
+                "calendar_hash": lineage_digests.get("calendar_hash"),
                 "clean_run": not config.append,
                 "lineage_json": json.dumps(lineage_payload, ensure_ascii=False, sort_keys=True, default=str),
                 "lineage_hash": run_hash,
@@ -736,6 +776,10 @@ def run_hsmm_walk_forward(
         raise ValueError("HSMM MVP only supports snapshot_frequency='daily'")
     checkpoint_dates = _select_checkpoint_dates(all_trade_dates, snapshot_dates, config)
     sector_names = _sector_name_map(storage)
+    lineage_digests = _hsmm_lineage_digests(storage, config, ohlcv, snapshot_dates, start_date, end_date)
+    config_payload = _config_hash_payload(config, feature_scope_id, feature_scope_type, lineage_digests)
+    hash_value = params_hash(config_payload)
+    run_hash = params_hash({**config_payload, "run_id": run_id})
 
     if config.profile_only:
         profile = build_hsmm_performance_profile(
@@ -759,8 +803,8 @@ def run_hsmm_walk_forward(
             "episodes": pd.DataFrame(),
             "checkpoints": pd.DataFrame(),
             "performance": pd.DataFrame(),
-            "config_hash": params_hash(_config_hash_payload(config, feature_scope_id, feature_scope_type)),
-            "run_hash": params_hash({**_config_hash_payload(config, feature_scope_id, feature_scope_type), "run_id": run_id}),
+            "config_hash": hash_value,
+            "run_hash": run_hash,
         }
 
     existing_run = storage.read_df("SELECT run_status FROM hsmm_model_runs WHERE run_id = ? LIMIT 1", [run_id])
@@ -777,9 +821,6 @@ def run_hsmm_walk_forward(
     checkpoint_artifacts: dict[pd.Timestamp, dict[str, object]] = {}
     last_model: DiscreteDurationGaussianHSMM | None = None
 
-    config_payload = _config_hash_payload(config, feature_scope_id, feature_scope_type)
-    hash_value = params_hash(config_payload)
-    run_hash = params_hash({**config_payload, "run_id": run_id})
     sector_count = int(features["sector_id"].astype(str).nunique()) if "sector_id" in features.columns else 0
     expected_snapshot_count = int(len(snapshot_dates))
     expected_state_row_count = int(expected_snapshot_count * sector_count)
@@ -796,6 +837,7 @@ def run_hsmm_walk_forward(
             config_payload=config_payload,
             config_hash=hash_value,
             run_hash=run_hash,
+            lineage_digests=lineage_digests,
             run_status="running",
             started_at=run_started_at,
             expected_snapshot_count=expected_snapshot_count,
@@ -1005,6 +1047,7 @@ def run_hsmm_walk_forward(
                 config_payload=config_payload,
                 config_hash=hash_value,
                 run_hash=run_hash,
+                lineage_digests=lineage_digests,
                 run_status="completed",
                 started_at=run_started_at,
                 completed_at=pd.Timestamp.now(tz=None),
@@ -1039,6 +1082,7 @@ def run_hsmm_walk_forward(
                 config_payload=config_payload,
                 config_hash=hash_value,
                 run_hash=run_hash,
+                lineage_digests=lineage_digests,
                 run_status="failed",
                 started_at=run_started_at,
                 failed_at=pd.Timestamp.now(tz=None),

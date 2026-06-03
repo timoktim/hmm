@@ -491,7 +491,9 @@ class DuckDBStorage:
                   lineage_hash VARCHAR,
                   feature_lineage_hash VARCHAR,
                   universe_membership_hash VARCHAR,
+                  custom_basket_membership_hash VARCHAR,
                   data_snapshot_hash VARCHAR,
+                  calendar_hash VARCHAR,
                   cache_status VARCHAR,
                   signal_count INTEGER,
                   row_count INTEGER,
@@ -513,7 +515,9 @@ class DuckDBStorage:
                 "ALTER TABLE walk_forward_cache_runs ADD COLUMN IF NOT EXISTS lineage_hash VARCHAR",
                 "ALTER TABLE walk_forward_cache_runs ADD COLUMN IF NOT EXISTS feature_lineage_hash VARCHAR",
                 "ALTER TABLE walk_forward_cache_runs ADD COLUMN IF NOT EXISTS universe_membership_hash VARCHAR",
+                "ALTER TABLE walk_forward_cache_runs ADD COLUMN IF NOT EXISTS custom_basket_membership_hash VARCHAR",
                 "ALTER TABLE walk_forward_cache_runs ADD COLUMN IF NOT EXISTS data_snapshot_hash VARCHAR",
+                "ALTER TABLE walk_forward_cache_runs ADD COLUMN IF NOT EXISTS calendar_hash VARCHAR",
                 "ALTER TABLE walk_forward_cache_runs ADD COLUMN IF NOT EXISTS cache_status VARCHAR",
                 "ALTER TABLE walk_forward_cache_runs ADD COLUMN IF NOT EXISTS completed_at TIMESTAMP",
             ]:
@@ -605,6 +609,8 @@ class DuckDBStorage:
                   weight DOUBLE DEFAULT 1.0,
                   note TEXT,
                   created_at TIMESTAMP,
+                  valid_from DATE,
+                  valid_to DATE,
                   PRIMARY KEY (universe_id, item_id)
                 );
                 """
@@ -630,10 +636,19 @@ class DuckDBStorage:
                   weight DOUBLE DEFAULT 1.0,
                   note TEXT,
                   created_at TIMESTAMP,
+                  valid_from DATE,
+                  valid_to DATE,
                   PRIMARY KEY (basket_id, stock_code)
                 );
                 """
             )
+            for column_sql in [
+                "ALTER TABLE user_universe_items ADD COLUMN IF NOT EXISTS valid_from DATE",
+                "ALTER TABLE user_universe_items ADD COLUMN IF NOT EXISTS valid_to DATE",
+                "ALTER TABLE custom_stock_basket_members ADD COLUMN IF NOT EXISTS valid_from DATE",
+                "ALTER TABLE custom_stock_basket_members ADD COLUMN IF NOT EXISTS valid_to DATE",
+            ]:
+                con.execute(column_sql)
             con.execute(
                 """
                 CREATE TABLE IF NOT EXISTS custom_basket_ohlcv (
@@ -675,6 +690,10 @@ class DuckDBStorage:
                   config_json TEXT,
                   config_hash TEXT,
                   run_hash TEXT,
+                  universe_membership_hash TEXT,
+                  custom_basket_membership_hash TEXT,
+                  data_snapshot_hash TEXT,
+                  calendar_hash TEXT,
                   clean_run BOOLEAN DEFAULT TRUE,
                   lineage_json TEXT,
                   lineage_hash TEXT,
@@ -702,6 +721,10 @@ class DuckDBStorage:
                 "ALTER TABLE hsmm_model_runs ADD COLUMN IF NOT EXISTS config_json TEXT",
                 "ALTER TABLE hsmm_model_runs ADD COLUMN IF NOT EXISTS config_hash TEXT",
                 "ALTER TABLE hsmm_model_runs ADD COLUMN IF NOT EXISTS run_hash TEXT",
+                "ALTER TABLE hsmm_model_runs ADD COLUMN IF NOT EXISTS universe_membership_hash TEXT",
+                "ALTER TABLE hsmm_model_runs ADD COLUMN IF NOT EXISTS custom_basket_membership_hash TEXT",
+                "ALTER TABLE hsmm_model_runs ADD COLUMN IF NOT EXISTS data_snapshot_hash TEXT",
+                "ALTER TABLE hsmm_model_runs ADD COLUMN IF NOT EXISTS calendar_hash TEXT",
                 "ALTER TABLE hsmm_model_runs ADD COLUMN IF NOT EXISTS clean_run BOOLEAN DEFAULT TRUE",
                 "ALTER TABLE hsmm_model_runs ADD COLUMN IF NOT EXISTS lineage_json TEXT",
                 "ALTER TABLE hsmm_model_runs ADD COLUMN IF NOT EXISTS lineage_hash TEXT",

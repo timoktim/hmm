@@ -8,7 +8,14 @@ from src.backtest.metrics import annual_return, calmar_ratio, max_drawdown, shar
 from src.config import settings
 from src.data_pipeline.calendar import assert_execution_after_signal, next_trade_date
 from src.data_pipeline.storage import DuckDBStorage
-from src.data_pipeline.universe import load_sector_like_ohlcv, universe_sector_ids
+from src.data_pipeline.universe import (
+    compute_calendar_hash,
+    compute_custom_basket_membership_hash,
+    compute_sector_ohlcv_snapshot_hash,
+    compute_universe_membership_hash,
+    load_sector_like_ohlcv,
+    universe_sector_ids,
+)
 from src.features.sector_features import FEATURE_COLUMNS, add_sector_features, equal_weight_benchmark_ret20_from_close, feature_scope_for_universe
 from src.models.walk_forward import ProgressCallback, WalkForwardConfig, walk_forward_hmm_state_frame
 from src.scoring.sector_ranker import rank_sectors
@@ -246,6 +253,7 @@ def _cache_params_with_lineage(params: dict[str, object]) -> dict[str, object]:
         data_snapshot_hash=str(enriched.get("data_snapshot_hash") or ""),
         calendar_hash=str(enriched.get("calendar_hash") or ""),
         cache_contract_version="stage03pf-wp2",
+        custom_basket_membership_policy=enriched.get("custom_basket_membership_policy"),
     )
     enriched["lineage_json"] = canonical_json(lineage_payload)
     enriched["lineage_hash"] = str(enriched.get("lineage_hash") or hash_payload(lineage_payload))
@@ -254,6 +262,7 @@ def _cache_params_with_lineage(params: dict[str, object]) -> dict[str, object]:
 
 def _build_walk_forward_cache_params(
     *,
+    storage: DuckDBStorage,
     ohlcv: pd.DataFrame,
     features: pd.DataFrame,
     trade_dates: pd.Series,
@@ -269,6 +278,8 @@ def _build_walk_forward_cache_params(
     feature_scope_type: str,
     include_custom_baskets: bool,
 ) -> dict[str, object]:
+    sector_ids = sorted(ohlcv["sector_id"].dropna().astype(str).unique().tolist()) if "sector_id" in ohlcv.columns else []
+    custom_ids = [sector_id for sector_id in sector_ids if sector_id.startswith("custom:")]
     base_params: dict[str, object] = {
         "n_states": int(config.n_states),
         "train_window_days": config.train_window_days,
@@ -289,13 +300,13 @@ def _build_walk_forward_cache_params(
         "feature_scope_id": feature_scope_id,
         "feature_scope_type": feature_scope_type,
         "include_custom_baskets": bool(include_custom_baskets),
-        "data_snapshot_hash": _digest_frame(
-            ohlcv,
-            ["sector_id", "trade_date", "open", "high", "low", "close", "volume", "amount", "pct_chg", "turnover", "source"],
+        "data_snapshot_hash": compute_sector_ohlcv_snapshot_hash(storage, sector_ids, start_ts, end_ts),
+        "universe_membership_hash": compute_universe_membership_hash(storage, universe_id, as_of_date=end_ts),
+        "custom_basket_membership_hash": (
+            compute_custom_basket_membership_hash(storage, custom_ids, as_of_date=end_ts) if include_custom_baskets else None
         ),
-        "universe_membership_hash": _digest_universe_membership(ohlcv, universe_id, include_custom_baskets),
-        "custom_basket_membership_hash": _digest_custom_basket_membership(ohlcv, include_custom_baskets),
-        "calendar_hash": _digest_trade_calendar(trade_dates),
+        "calendar_hash": compute_calendar_hash(trade_dates),
+        "custom_basket_membership_policy": "current_snapshot" if include_custom_baskets else None,
         "feature_lineage_hash": _feature_lineage_hash(features, feature_version, feature_scope_id, feature_scope_type),
     }
     return _cache_params_with_lineage(base_params)
@@ -403,7 +414,9 @@ def _write_walk_forward_cache(
                 "lineage_hash": params["lineage_hash"],
                 "feature_lineage_hash": params["feature_lineage_hash"],
                 "universe_membership_hash": params["universe_membership_hash"],
+                "custom_basket_membership_hash": params.get("custom_basket_membership_hash"),
                 "data_snapshot_hash": params["data_snapshot_hash"],
+                "calendar_hash": params["calendar_hash"],
                 "cache_status": "completed",
                 "signal_count": signal_count,
                 "row_count": row_count,
@@ -624,6 +637,7 @@ def run_sector_rotation_backtest(
         state_dates = base_signal_dates
         wf_config = WalkForwardConfig(n_states=n_states, train_window_days=train_window_days, retrain_frequency=retrain_frequency)
         cache_params = _build_walk_forward_cache_params(
+            storage=storage,
             ohlcv=ohlcv,
             features=features,
             trade_dates=trade_dates,
