@@ -12,6 +12,7 @@ Logical root: docs/
 4. Codex must read `docs/runtime/LOCAL_DB_HANDOFF.md` before any local DB-backed validation.
 5. No Stage package may fetch external data or modify HMM/HSMM training algorithms unless a later data/model package explicitly allows it.
 6. DuckDB and WAL files must not be committed.
+7. True Stage03R work remains blocked until Stage03 preflight reports `Stage03PreflightVerdict: PASS`.
 
 ## Work Packages
 
@@ -43,6 +44,10 @@ Logical root: docs/
 | STAGE03PF-WP11 | 03PF | WP11 | archived | v1 | docs/work_packages/stage03_preflight/STAGE03PF_BATCH_03_READINESS_UI_UNIVERSE_EVIDENCE.md | Codex WP11 | accepted |
 | STAGE03PF-WP12 | 03PF | WP12 | active | v1 | docs/work_packages/stage03_preflight/STAGE03PF_BATCH_03_READINESS_UI_UNIVERSE_EVIDENCE.md | Codex WP12 | reopened_by_wp13_gate |
 | STAGE03PF-WP13 | 03PF | WP13 | active | v1 | docs/work_packages/stage03_preflight/STAGE03PF_BATCH_99_FINAL_GATE.md | Codex Gate | blocked |
+| STAGE03R-WP0 | 03R | WP0 | blocked_until_stage03pf_pass | v1 | docs/work_packages/stage03r/STAGE03R_EXECUTION_INDEX.md | Codex Stage03R | planned |
+| STAGE03R-WP1 | 03R | WP1 | blocked_until_stage03r_wp0 | v1 | docs/work_packages/stage03r/STAGE03R_EXECUTION_INDEX.md | Codex Stage03R | planned |
+| STAGE03R-WP2 | 03R | WP2 | blocked_until_stage03r_wp1 | v1 | docs/work_packages/stage03r/STAGE03R_EXECUTION_INDEX.md | Codex Stage03R | planned |
+| STAGE03R-WP3 | 03R | WP3 | blocked_until_stage03r_wp2 | v1 | docs/work_packages/stage03r/STAGE03R_EXECUTION_INDEX.md | Codex Stage03R | planned |
 
 ## Current Stage 02 Focus
 
@@ -71,20 +76,35 @@ Tracked risks carried forward:
 
 ## Current Stage 03 Preflight Focus
 
-Stage03 remains blocked. WP13 final gate produced `Stage03PreflightVerdict: BLOCKED`.
+Stage03 remains blocked. WP13 rerun produced `Stage03PreflightVerdict: BLOCKED` after audit hardening.
 
-Accepted preflight packages:
+Open blocker repair PRs:
 
-- WP0, WP1, WP2, WP3, WP4, WP5, WP8, WP9, WP11.
+- PR #36: `STAGE03PF-GATEFIX-B1`, A2 lifecycle tail status schema.
+- PR #37: `STAGE03PF-GATEFIX-B2`, A5 forward-return causal semantics.
 
-Blocking packages reopened by WP13:
+These PRs should not be merged independently while their GitHub Actions remain red. A combined A2+A5 validation branch or stacked PR should prove the preflight gate passes.
 
-- WP6: HSMM run atomicity synthetic failure is preempted by missing persisted OHLCV snapshot lineage.
-- WP7: cascade cleanup and completed-run rerun policy tests fail in the integrated gate.
-- WP10: universe/data snapshot digest raises on empty synthetic snapshot frames before HSMM atomicity/cascade behavior can be asserted.
-- WP12: full-suite UI text expectation still references the legacy `prob_trend_up` label.
+No true Stage03R package is active. Duration Hazard, low-cost break detection, and decision engine work remain blocked until Stage03 preflight passes.
 
-No true Stage03 package is active. Duration Hazard, BOCPD, Decision Engine, Robust HMM, Sticky HMM, and new training work remain blocked until WP13 passes.
+## Future Stage03R Route
+
+The future route is now hazard-first:
+
+```text
+Freeze HSMM as lifecycle interpretation layer
+-> promote Duration Hazard as primary lifecycle exit engine
+-> validate with risk/calibration/held-out discipline
+-> default to ordinal tendency or abstain when support is insufficient
+-> then move to low-cost break detection and simplified decision engine
+```
+
+Canonical documents:
+
+```text
+docs/roadmap/STAGE03R_ROUTE_ADJUSTMENT_20260603.md
+docs/work_packages/stage03r/STAGE03R_EXECUTION_INDEX.md
+```
 
 ## Return Contract
 
@@ -109,3 +129,4 @@ Each Codex thread must report:
 | 2026-06-02 | Stage 02 WP-C accepted and WP-D final acceptance activated. | ChatGPT |
 | 2026-06-02 | Stage 02 final acceptance paused; WP-E causal cache lineage repair activated. | ChatGPT |
 | 2026-06-03 | Stage03 preflight WP13 gate recorded BLOCKED verdict and reopened WP6/WP7/WP10/WP12. | ChatGPT |
+| 2026-06-03 | Recorded Stage03R hazard-first route as future direction, blocked until Stage03 preflight pass. | ChatGPT |
