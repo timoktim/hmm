@@ -5,6 +5,7 @@ import pandas as pd
 from src.data_pipeline.storage import DuckDBStorage
 from src.data_pipeline.universe import custom_basket_sector_meta, universe_sector_ids
 from src.scoring.sector_ranker import rank_sectors
+from src.ui.run_context import list_valid_walk_forward_caches
 
 
 STATE_ORDER = ["TrendUp", "Neutral", "RiskOff"]
@@ -68,15 +69,26 @@ def load_sector_states_for_analysis(
     universe_id: str | None = None,
     source: str = "in_sample_display",
     cache_key: str | None = None,
+    expected_lineage_hash: str | None = None,
+    expected_feature_lineage_hash: str | None = None,
 ) -> pd.DataFrame:
     if source == "walk_forward":
         if cache_key is None:
+            return pd.DataFrame()
+        valid_caches = list_valid_walk_forward_caches(
+            storage,
+            universe_id,
+            expected_lineage_hash=expected_lineage_hash,
+            expected_feature_lineage_hash=expected_feature_lineage_hash,
+        )
+        if valid_caches.empty or not valid_caches["cache_key"].astype(str).eq(str(cache_key)).any():
             return pd.DataFrame()
         states = storage.read_df(
             """
             SELECT ? AS run_id, sector_id, trade_date, state_label,
                    prob_trend_up, prob_neutral, prob_risk_off, next_state_probs_json,
-                   COALESCE(state_source, 'causal_backtest') AS state_source
+                   COALESCE(state_source, 'causal_backtest') AS state_source,
+                   lineage_hash, feature_lineage_hash, max_observation_date_used
             FROM walk_forward_state_cache
             WHERE cache_key = ?
             ORDER BY sector_id, trade_date

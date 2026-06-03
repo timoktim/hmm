@@ -6,6 +6,7 @@ import pandas as pd
 import streamlit as st
 
 from src.data_pipeline.storage import DuckDBStorage
+from src.ui.run_context import list_valid_walk_forward_caches
 
 
 @dataclass(frozen=True)
@@ -22,28 +23,8 @@ class ModelWorkflowStatus:
 
 
 def _latest_cache_for_scope(storage: DuckDBStorage, universe_id: str | None = None) -> pd.DataFrame:
-    if universe_id:
-        return storage.read_df(
-            """
-            SELECT cache_key, row_count, end_date, created_at
-            FROM walk_forward_cache_runs
-            WHERE universe_id = ?
-              AND row_count > 0
-            ORDER BY created_at DESC
-            LIMIT 1
-            """,
-            [universe_id],
-        )
-    return storage.read_df(
-        """
-        SELECT cache_key, row_count, end_date, created_at
-        FROM walk_forward_cache_runs
-        WHERE (universe_id IS NULL OR universe_id IN ('', 'all'))
-          AND row_count > 0
-        ORDER BY created_at DESC
-        LIMIT 1
-        """
-    )
+    caches = list_valid_walk_forward_caches(storage, universe_id)
+    return caches.head(1).reset_index(drop=True).copy() if not caches.empty else pd.DataFrame()
 
 
 def build_model_workflow_status(storage: DuckDBStorage, universe_id: str | None = None) -> ModelWorkflowStatus:

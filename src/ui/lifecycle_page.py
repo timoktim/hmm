@@ -7,6 +7,7 @@ from src.data_pipeline.storage import DuckDBStorage
 from src.ui.components.data_status_bar import render_data_status_bar
 from src.ui.evidence_badges import readiness_badge
 from src.ui.readiness_policy import evaluate_hsmm_lifecycle_field_display, is_numeric_p_exit_field
+from src.ui.run_context import latest_completed_hsmm_lifecycle_run, list_completed_hsmm_lifecycle_profiles
 
 
 LIFECYCLE_UI_COLUMNS = """
@@ -63,7 +64,9 @@ def _format_share(value: object) -> str:
     return f"{float(numeric):.1%}"
 
 
-def _latest_lifecycle_run(storage: DuckDBStorage) -> str | None:
+def _latest_lifecycle_run(storage: DuckDBStorage, require_profile_metadata: bool = False) -> str | None:
+    if require_profile_metadata:
+        return latest_completed_hsmm_lifecycle_run(storage)
     run = storage.read_df(
         """
         SELECT ui.run_id
@@ -300,23 +303,16 @@ def render_lifecycle_page(storage: DuckDBStorage, universe_id: str | None = None
         "输出不是排序、交易建议或价格方向判断。"
     )
 
-    run_id_default = _latest_lifecycle_run(storage)
+    run_id_default = _latest_lifecycle_run(storage, require_profile_metadata=True)
     if not run_id_default:
         render_data_status_bar(storage, run_id=None, universe_id=universe_id)
         st.warning("尚未生成状态生命周期数据。请先运行 HSMM 生命周期 UI 数据生成命令。")
         return
     render_data_status_bar(storage, run_id=run_id_default, universe_id=universe_id)
 
-    available_runs = storage.read_df(
-        """
-        SELECT DISTINCT ui.run_id
-        FROM hsmm_lifecycle_ui_daily ui
-        JOIN hsmm_model_runs runs
-          ON runs.run_id = ui.run_id
-         AND runs.run_status = 'completed'
-        ORDER BY ui.run_id
-        """
-    )
+    available_runs = list_completed_hsmm_lifecycle_profiles(storage)
+    if not available_runs.empty:
+        available_runs = available_runs.drop_duplicates("run_id").sort_values("run_id")
     run_options = available_runs["run_id"].astype(str).tolist() if not available_runs.empty else [run_id_default]
     default_index = run_options.index(run_id_default) if run_id_default in run_options else 0
     c1, c2, c3 = st.columns([2, 1, 1])
