@@ -44,8 +44,8 @@ Logical root: docs/
 | STAGE03PF-WP11 | 03PF | WP11 | archived | v1 | docs/work_packages/stage03_preflight/STAGE03PF_BATCH_03_READINESS_UI_UNIVERSE_EVIDENCE.md | Codex WP11 | accepted |
 | STAGE03PF-WP12 | 03PF | WP12 | archived | v1 | docs/work_packages/stage03_preflight/STAGE03PF_BATCH_03_READINESS_UI_UNIVERSE_EVIDENCE.md | Codex WP12 | accepted_by_pr38_gate |
 | STAGE03PF-WP13 | 03PF | WP13 | archived | v1 | docs/work_packages/stage03_preflight/STAGE03PF_BATCH_99_FINAL_GATE.md | Codex Gate | accepted_by_pr38_gate |
-| STAGE03R-WP0 | 03R | WP0 | active | v1 | docs/work_packages/stage03r/STAGE03R_WP0_scope_freeze_signal_contract.md | Codex Stage03R-WP0 | pending |
-| STAGE03R-WP1 | 03R | WP1 | blocked_until_stage03r_wp0 | v1 | docs/work_packages/stage03r/STAGE03R_EXECUTION_INDEX.md | Codex Stage03R | planned |
+| STAGE03R-WP0 | 03R | WP0 | archived | v1 | docs/work_packages/stage03r/STAGE03R_WP0_scope_freeze_signal_contract.md | Codex Stage03R-WP0 | accepted |
+| STAGE03R-WP1 | 03R | WP1 | active | v1 | docs/work_packages/stage03r/STAGE03R_WP1_exit_target_dataset_v1.md | Codex Stage03R-WP1 | pending |
 | STAGE03R-WP2 | 03R | WP2 | blocked_until_stage03r_wp1 | v1 | docs/work_packages/stage03r/STAGE03R_EXECUTION_INDEX.md | Codex Stage03R | planned |
 | STAGE03R-WP3 | 03R | WP3 | blocked_until_stage03r_wp2 | v1 | docs/work_packages/stage03r/STAGE03R_EXECUTION_INDEX.md | Codex Stage03R | planned |
 
@@ -61,11 +61,11 @@ BlockingPackages: none
 
 Active:
 
-- STAGE03R-WP0: Scope Freeze and Signal Contract.
+- STAGE03R-WP1: Exit Target Dataset v1.
 
-Blocked until WP0:
+Blocked until WP1:
 
-- STAGE03R-WP1 and later Duration Hazard packages.
+- STAGE03R-WP2 and later Duration Hazard packages.
 
 ## Future Stage03R Route
 
@@ -85,6 +85,7 @@ Canonical documents:
 docs/roadmap/STAGE03R_ROUTE_ADJUSTMENT_20260603.md
 docs/work_packages/stage03r/STAGE03R_EXECUTION_INDEX.md
 docs/work_packages/stage03r/STAGE03R_WP0_scope_freeze_signal_contract.md
+docs/work_packages/stage03r/STAGE03R_WP1_exit_target_dataset_v1.md
 ```
 
 ## Return Contract
@@ -112,3 +113,4 @@ Each Codex thread must report:
 | 2026-06-03 | Stage03 preflight WP13 gate recorded BLOCKED verdict and reopened WP6/WP7/WP10/WP12. | ChatGPT |
 | 2026-06-03 | Recorded Stage03R hazard-first route as future direction, blocked until Stage03 preflight pass. | ChatGPT |
 | 2026-06-03 | PR #38 passed Stage03 preflight gate; activated Stage03R WP0. | ChatGPT |
+| 2026-06-04 | PR #39 merged WP0 scope freeze; activated Stage03R WP1 exit target dataset. | ChatGPT |
