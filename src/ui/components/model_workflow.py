@@ -6,6 +6,7 @@ import pandas as pd
 import streamlit as st
 
 from src.data_pipeline.storage import DuckDBStorage
+from src.evaluation.evidence_registry import describe_artifact_evidence
 from src.ui.run_context import list_valid_walk_forward_caches
 
 
@@ -17,6 +18,9 @@ class ModelWorkflowStatus:
     causal_cache_key: str | None
     causal_cache_rows: int
     causal_cache_end: str
+    causal_cache_evidence_level: str
+    causal_cache_readiness_status: str
+    causal_cache_evidence_status: str
     market_run_id: str | None
     market_train_end: str
     next_action: str
@@ -40,10 +44,23 @@ def build_model_workflow_status(storage: DuckDBStorage, universe_id: str | None 
         cache_key = None
         cache_rows = 0
         cache_end = "无"
+        cache_evidence = {
+            "evidence_level": "legacy/debug",
+            "readiness_status": "missing",
+            "selection_status": "missing_cache",
+        }
     else:
         cache_key = str(cache.loc[0, "cache_key"])
         cache_rows = int(cache.loc[0, "row_count"] or 0)
         cache_end = str(cache.loc[0].get("end_date") or "无")
+        cache_evidence = describe_artifact_evidence(
+            str(storage.db_path),
+            run_id=cache_key,
+            lineage_hash=str(cache.loc[0].get("lineage_hash") or ""),
+            artifact_type="walk_forward_cache",
+            feature_scope_id=str(cache.loc[0].get("feature_scope_id") or ""),
+            universe_id=cache.loc[0].get("universe_id"),
+        )
 
     market_run = storage.read_df("SELECT run_id, train_end FROM market_regime_runs ORDER BY created_at DESC LIMIT 1")
     if market_run.empty:
@@ -69,6 +86,9 @@ def build_model_workflow_status(storage: DuckDBStorage, universe_id: str | None 
         causal_cache_key=cache_key,
         causal_cache_rows=cache_rows,
         causal_cache_end=cache_end,
+        causal_cache_evidence_level=str(cache_evidence.get("evidence_level") or "legacy/debug"),
+        causal_cache_readiness_status=str(cache_evidence.get("readiness_status") or "missing"),
+        causal_cache_evidence_status=str(cache_evidence.get("selection_status") or "legacy_missing_evidence"),
         market_run_id=market_run_id,
         market_train_end=market_train_end,
         next_action=next_action,
@@ -104,6 +124,8 @@ def render_model_workflow(storage: DuckDBStorage, universe_id: str | None = None
                 "标识": status.causal_cache_key or "无",
                 "截至日期": status.causal_cache_end,
                 "行数": status.causal_cache_rows,
+                "证据层级": status.causal_cache_evidence_level,
+                "证据状态": status.causal_cache_evidence_status,
             },
             {
                 "环节": "大盘 HMM run",
