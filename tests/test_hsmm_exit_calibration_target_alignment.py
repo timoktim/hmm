@@ -88,6 +88,9 @@ def test_allow_in_sample_must_be_explicit() -> None:
     scored = apply_exit_calibrator(dataset, calibrator)
 
     assert calibrator.metadata["allow_in_sample"] is True
-    assert calibrator.metadata["calibration_status"] == "usable"
-    assert scored["calibrated_p_exit"].notna().all()
-    assert scored["probability_status"].eq("usable_probability").all()
+    assert calibrator.metadata["calibration_status"] == "exploratory"
+    assert calibrator.metadata["readiness_status"] == "research_only"
+    assert calibrator.metadata["usable_probability"] is False
+    assert scored["calibrated_p_exit"].isna().all()
+    assert scored["probability_status"].eq("raw_only").all()
+    assert scored["readiness_status"].eq("research_only").all()

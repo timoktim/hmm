@@ -104,6 +104,12 @@ def _actual_exit_within_trading_rows(
 def _add_buckets(df: pd.DataFrame) -> pd.DataFrame:
     out = df.copy()
     age_source = "duration_model_age_days" if "duration_model_age_days" in out.columns else "state_age_days"
+    if age_source not in out.columns:
+        out[age_source] = np.nan
+    if "duration_percentile" not in out.columns:
+        out["duration_percentile"] = np.nan
+    if "raw_p_exit" not in out.columns:
+        out["raw_p_exit"] = np.nan
     out["state_age_bucket"] = pd.cut(pd.to_numeric(out[age_source], errors="coerce"), bins=AGE_BINS, labels=AGE_LABELS)
     out["duration_percentile_bucket"] = pd.cut(pd.to_numeric(out["duration_percentile"], errors="coerce"), bins=DURATION_BINS, labels=DURATION_LABELS)
     out["raw_p_exit_bucket"] = pd.cut(pd.to_numeric(out["raw_p_exit"], errors="coerce"), bins=PROB_BINS, labels=PROB_LABELS)
@@ -276,7 +282,23 @@ def fit_empirical_exit_calibrator(
     else:
         excluded_post_train_positive_count = 0
         censored_row_count = 0 if allow_in_sample else int(len(calibration_df))
-    usable = bool(target_aligned and not train.empty and (train_end_date is not None or allow_in_sample))
+    usable = bool(target_aligned and not train.empty and train_end_date is not None)
+    exploratory_in_sample = bool(target_aligned and not train.empty and train_end_date is None and allow_in_sample)
+    if usable:
+        calibration_status = "usable"
+        probability_status = "usable_probability"
+        readiness_status = "internal_only"
+        evidence_level = "internal_diagnostic"
+    elif exploratory_in_sample:
+        calibration_status = "exploratory"
+        probability_status = "raw_only"
+        readiness_status = "research_only"
+        evidence_level = "exploratory"
+    else:
+        calibration_status = "failed"
+        probability_status = "invalid"
+        readiness_status = "blocked"
+        evidence_level = "exploratory"
     metadata = {
         "train_start": str(pd.to_datetime(train["trade_date"]).min().date()) if not train.empty else None,
         "train_end": str(pd.to_datetime(train["trade_date"]).max().date()) if not train.empty else None,
@@ -291,7 +313,10 @@ def fit_empirical_exit_calibrator(
         "excluded_post_train_horizon_count": excluded_post_train_horizon_count,
         "excluded_post_train_positive_count": excluded_post_train_positive_count,
         "allow_in_sample": bool(allow_in_sample),
-        "calibration_status": "usable" if usable else "failed",
+        "calibration_status": calibration_status,
+        "probability_status": probability_status,
+        "readiness_status": readiness_status,
+        "evidence_level": evidence_level,
         "usable_probability": usable,
     }
     return EmpiricalExitCalibrator(
@@ -333,9 +358,10 @@ def apply_exit_calibrator(calibration_df: pd.DataFrame, calibrator: EmpiricalExi
         return calibration_df.copy()
     out = _add_buckets(calibration_df)
     out["calibration_status"] = calibrator.metadata.get("calibration_status", "unknown")
+    out["readiness_status"] = calibrator.metadata.get("readiness_status", "blocked")
     if not bool(calibrator.metadata.get("usable_probability")):
         out["calibrated_p_exit"] = np.nan
-        out["probability_status"] = "invalid"
+        out["probability_status"] = calibrator.metadata.get("probability_status", "invalid")
         return out
     out["calibrated_p_exit"] = out.apply(lambda row: _lookup_rate(row, calibrator), axis=1)
     out["calibrated_p_exit"] = pd.to_numeric(out["calibrated_p_exit"], errors="coerce").clip(0.0, 1.0)
