@@ -72,7 +72,7 @@ def _seed_eval_base(storage: DuckDBStorage) -> pd.DatetimeIndex:
     return dates
 
 
-def _seed_cache(storage: DuckDBStorage, dates: pd.DatetimeIndex, *, state_source: str = "causal_backtest", metadata: bool = True) -> None:
+def _seed_cache(storage: DuckDBStorage, dates: pd.DatetimeIndex, *, state_source: str = "causal_walk_forward", metadata: bool = True) -> None:
     cache_row = {
         "cache_key": "cache",
         "n_states": 3,
@@ -165,6 +165,20 @@ def test_causal_mode_rejects_in_sample_states(tmp_path):
     assert out.empty
     assert out.attrs["readiness_status"] == "research_only"
     assert out.attrs["state_source"] == "in_sample_explanation"
+
+
+def test_causal_mode_rejects_legacy_walk_forward_state_source(tmp_path):
+    storage = DuckDBStorage(tmp_path / "test.duckdb")
+    storage.init_schema()
+    dates = _seed_eval_base(storage)
+    _seed_cache(storage, dates, state_source="causal_backtest")
+
+    out = evaluate_forward_returns(storage, "r", horizons=(5,), evaluation_mode="causal", cache_key="cache")
+
+    assert out.empty
+    assert out.attrs["readiness_status"] == "research_only"
+    assert out.attrs["state_source"] == "unknown_due_to_missing_metadata"
+    assert "causal_walk_forward" in out.attrs["warning"]
 
 
 def test_causal_mode_records_causal_walk_forward_metadata(tmp_path):
