@@ -49,7 +49,7 @@ def _sector_transition_matrix(storage: DuckDBStorage, run_id: str | None) -> pd.
     return pd.DataFrame(
         rows,
         index=[f"当前 {display_state_label(label)}" for label in ordered],
-        columns=[f"下一状态：{display_state_label(label)}" for label in ordered],
+        columns=[f"模型迁移分布：{display_state_label(label)}" for label in ordered],
     )
 
 
@@ -209,14 +209,14 @@ def render_sector_detail(storage: DuckDBStorage, universe_id: str | None = None)
             latest = history.iloc[-1]
             c1, c2, c3 = st.columns(3)
             c1.metric("当前状态", display_state_label(latest["state_label"]))
-            c2.metric("趋势状态置信度", format_probability(latest["prob_trend_up"]))
-            c3.metric("风险回避状态置信度", format_probability(latest["prob_risk_off"]))
+            c2.metric("TrendUp 状态后验", format_probability(latest["prob_trend_up"]))
+            c3.metric("压力状态后验", format_probability(latest["prob_risk_off"]))
             state_source = latest.get("state_source", "in_sample_display")
             if state_source == "in_sample_display":
                 st.warning("当前状态来源为训练样本内展示，仅用于观察模型拟合，不是因果回测状态。")
             else:
                 st.info("当前状态来源为因果 walk-forward。")
-            st.caption("下一状态 JSON 属于内部转移矩阵字段；Stage 00 不在 UI 中展示为预测概率。")
+            st.caption("模型迁移分布 JSON 属于内部转移矩阵字段；Stage 00 不把它展示为价格方向、收益或交易概率。")
             history_display = history.tail(60).drop(columns=["next_state_probs_json"], errors="ignore")
             history_display = format_probability_columns(
                 history_display,
@@ -254,9 +254,9 @@ def render_sector_detail(storage: DuckDBStorage, universe_id: str | None = None)
             c1.metric("当前状态已持续交易日", int(current["trading_days"]))
             c2.metric("最近一次切换日期", str(current["start_date"].date()))
             c3.metric("过去一年趋势段数", int((past_year["state_label"] == "TrendUp").sum()))
-            c4.metric("过去一年风险段数", int((past_year["state_label"] == "RiskOff").sum()))
+            c4.metric("过去一年压力状态段数", int((past_year["state_label"] == "RiskOff").sum()))
             c5.metric("趋势段平均持续", f"{segments.loc[segments['state_label'].eq('TrendUp'), 'trading_days'].mean():.1f}")
-            c6.metric("风险段平均持续", f"{segments.loc[segments['state_label'].eq('RiskOff'), 'trading_days'].mean():.1f}")
+            c6.metric("压力状态段平均持续", f"{segments.loc[segments['state_label'].eq('RiskOff'), 'trading_days'].mean():.1f}")
             table = segments.copy()
             table["state_label"] = table["state_label"].map(display_state_label)
             table["prev_state_label"] = table["prev_state_label"].map(lambda x: "" if pd.isna(x) else display_state_label(x))
