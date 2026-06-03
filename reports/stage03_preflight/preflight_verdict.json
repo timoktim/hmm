@@ -1,58 +1,54 @@
 {
-  "wp": "STAGE03PF-WP13",
+  "wp": "STAGE03PF-WP13-RERUN",
   "status": "fail",
-  "branch": "stage03pf/wp13-stage03-preflight-gate",
+  "branch": "stage03pf/wp13-rerun-after-audit-hardening",
   "base": {
     "ref": "origin/main",
-    "commit": "f84b5d0",
-    "description": "Merge pull request #26 from timoktim/stage03pf/wp12-sql-ui-text-hygiene"
+    "commit": "d6d2a79",
+    "description": "Merge pull request #34 from timoktim/stage03pf/a6-ci-dependency-private-api-guard"
   },
   "Stage03PreflightVerdict": "BLOCKED",
+  "ready_for_stage03": false,
   "BlockingPackages": [
-    "WP6",
-    "WP7",
-    "WP10",
-    "WP12"
+    "A2",
+    "A5"
   ],
   "DeferredPackages": [],
   "package_status": {
-    "P0": {
-      "status": "blocked",
-      "packages": {
-        "WP0": "accepted_on_main",
-        "WP1": "accepted_on_main",
-        "WP2": "accepted_on_main",
-        "WP3": "accepted_on_main",
-        "WP4": "accepted_on_main",
-        "WP6": "reopened_by_wp13_gate",
-        "WP7": "reopened_by_wp13_gate"
-      }
+    "WP0_WP13": {
+      "WP0": "accepted_on_main",
+      "WP1": "accepted_on_main",
+      "WP2": "accepted_on_main",
+      "WP3": "accepted_on_main",
+      "WP4": "accepted_on_main",
+      "WP5": "accepted_on_main",
+      "WP6": "accepted_on_main",
+      "WP7": "affected_by_A2_lifecycle_schema_blocker",
+      "WP8": "accepted_on_main",
+      "WP9": "accepted_on_main",
+      "WP10": "accepted_on_main",
+      "WP11": "accepted_on_main",
+      "WP12": "accepted_on_main",
+      "WP13": "rerun_blocked"
     },
-    "P1": {
-      "status": "blocked",
-      "packages": {
-        "WP5": "accepted_on_main",
-        "WP8": "accepted_on_main",
-        "WP9": "accepted_on_main",
-        "WP10": "reopened_by_wp13_gate",
-        "WP11": "accepted_on_main"
-      }
-    },
-    "P2_P3": {
-      "status": "blocked",
-      "packages": {
-        "WP12": "reopened_by_wp13_gate"
-      }
+    "WP0A": "accepted_on_main",
+    "A1_A6": {
+      "A1": "accepted_on_main",
+      "A2": "blocked_by_gate_failure",
+      "A3": "accepted_on_main",
+      "A4": "accepted_on_main",
+      "A5": "blocked_by_full_pytest_failure",
+      "A6": "accepted_on_main"
     }
   },
   "gate_status": {
     "legacy_debug_cache_status": "pass",
     "hmm_cache_read_policy_status": "pass",
-    "hsmm_latest_asof_target_status": "pass",
-    "hsmm_run_atomicity_status": "blocked",
+    "hsmm_latest_asof_target_status": "blocked",
+    "hsmm_run_atomicity_status": "pass",
     "probability_readiness_gate_status": "pass",
-    "ui_analysis_selector_status": "pass_with_full_suite_follow_up",
-    "universe_data_lineage_status": "blocked",
+    "ui_analysis_selector_status": "pass",
+    "universe_data_lineage_status": "pass",
     "evidence_registry_status": "pass",
     "private_path_hygiene_status": "pass"
   },
@@ -65,66 +61,71 @@
         "status": "pass"
       },
       {
+        "command": ".venv/bin/python -m compileall -q src tests",
+        "status": "pass"
+      },
+      {
         "command": "bash scripts/stage03_preflight_gate.sh",
         "status": "fail",
         "results": {
-          "compileall": "pass",
           "focused_pytest": {
-            "passed": 63,
-            "failed": 3
+            "passed": 66,
+            "failed": 1
           },
           "private_path_hygiene": "pass",
           "stage01_no_private_db": "pass"
         }
       },
       {
-        "command": ".venv/bin/pytest -q",
-        "status": "fail",
-        "results": {
-          "passed": 335,
-          "failed": 5,
-          "skipped": 2,
-          "warnings": 25
-        }
-      },
-      {
         "command": "bash scripts/check_no_private_paths.sh",
         "status": "pass",
-        "scanned_files": 60
+        "scanned_files": 65
       },
       {
         "command": "bash scripts/validate_stage01_no_private_db.sh",
         "status": "pass",
         "private_db_required": false,
         "external_data_fetch": false
+      },
+      {
+        "command": ".venv/bin/pytest -q",
+        "status": "fail",
+        "results": {
+          "passed": 394,
+          "failed": 5,
+          "skipped": 2,
+          "warnings": 27
+        }
       }
     ],
     "failing_tests": [
-      "tests/test_hsmm_run_atomicity.py::test_hsmm_walk_forward_marks_failed_on_exception",
-      "tests/test_hsmm_cascade_cleanup.py::test_duplicate_completed_run_id_fails_by_default",
-      "tests/test_hsmm_cascade_cleanup.py::test_overwrite_cleans_first_and_then_writes_completed_run",
-      "tests/test_hsmm_calibration_stability.py::test_same_run_id_rerun_clears_stale_hsmm_rows",
-      "tests/test_market_regime.py::test_ui_column_rename_mapping"
+      {
+        "test": "tests/test_hsmm_cascade_cleanup.py::test_lifecycle_report_rerun_does_not_keep_old_profile_rows",
+        "package": "A2/WP7 integration",
+        "reason": "hsmm_lifecycle_ui_daily does not contain duration_tail_status_1d emitted by lifecycle output."
+      },
+      {
+        "test": "tests/test_hsmm_lifecycle_asof.py::test_profile_metadata_contains_cutoff",
+        "package": "A2",
+        "reason": "Missing lifecycle persistence column family for duration_tail_status_*."
+      },
+      {
+        "test": "tests/test_hsmm_lifecycle_ui_integration.py::test_lifecycle_cli_outputs_and_ui_contract",
+        "package": "A2",
+        "reason": "Missing lifecycle persistence column family for duration_tail_status_*."
+      },
+      {
+        "test": "tests/test_vnext_convergence.py::test_model_evaluation_forward_returns",
+        "package": "A5",
+        "reason": "Forward-return evaluation returns no rows for the legacy in-sample state input used by the test."
+      },
+      {
+        "test": "tests/test_vnext_state_screener.py::test_evaluate_forward_returns_uses_walk_forward_cache",
+        "package": "A5",
+        "reason": "State source semantics emit causal_walk_forward while the legacy test expects walk_forward."
+      }
     ]
   },
-  "blocking_reasons": [
-    {
-      "package": "WP6",
-      "reason": "HSMM run atomicity failure path is preempted by missing persisted OHLCV snapshot lineage in synthetic tests."
-    },
-    {
-      "package": "WP7",
-      "reason": "Completed-run duplicate and overwrite cascade tests fail before cascade policy can be asserted; full-suite legacy same-run rerun semantics also conflict with the current completed-run reuse policy."
-    },
-    {
-      "package": "WP10",
-      "reason": "Universe/data snapshot hash handling raises on empty synthetic snapshot frames."
-    },
-    {
-      "package": "WP12",
-      "reason": "Full-suite UI text expectation still references the old probability label."
-    }
-  ],
   "boundaries": {
     "external_data_fetch": "no",
     "training_algorithm_modified": "no",

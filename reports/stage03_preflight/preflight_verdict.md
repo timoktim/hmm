@@ -1,113 +1,106 @@
-# Stage03 Preflight Verdict
+# Stage03 Preflight Rerun Verdict
 
-WP: STAGE03PF-WP13
-Branch: stage03pf/wp13-stage03-preflight-gate
-Base: origin/main at f84b5d0
+WP: STAGE03PF-WP13-RERUN
+Branch: stage03pf/wp13-rerun-after-audit-hardening
+Base: origin/main at d6d2a79
 Status: fail
 
 Stage03PreflightVerdict: BLOCKED
-BlockingPackages: [WP6, WP7, WP10, WP12]
+ready_for_stage03: false
+BlockingPackages: [A2, A5]
 DeferredPackages: []
 
 ## Summary
 
-Stage03 preflight hardening is not ready to open true Stage03 work. The final gate script compiled successfully and completed the private-path and no-private-DB checks, but the required focused pytest gate failed in the integrated HSMM run atomicity, cascade cleanup, and universe/data lineage path. The optional full-suite validation also failed and found one stale UI text expectation.
+Stage03 preflight remains blocked after WP0A and audit hardening A1-A6 merged. The original WP13 blockers were reduced, but the rerun still found hard failures in HSMM lifecycle persistence after A2 tail-status outputs and in A5 forward-return causal semantics.
 
-No Duration Hazard, BOCPD, Decision Engine, Robust HMM, Sticky HMM, or new training algorithm work is activated by this verdict.
+This rerun does not activate true Stage03 work. Duration Hazard, BOCPD, Decision Engine, Robust HMM, Sticky HMM, and new training work remain blocked until a later WP13 gate reports `Stage03PreflightVerdict: PASS`.
 
-## Package Status
+## WP0-WP13 Status
 
-P0 package status: blocked
+- WP0: accepted_on_main
+- WP1: accepted_on_main
+- WP2: accepted_on_main
+- WP3: accepted_on_main
+- WP4: accepted_on_main
+- WP5: accepted_on_main
+- WP6: accepted_on_main
+- WP7: affected_by_A2_lifecycle_schema_blocker
+- WP8: accepted_on_main
+- WP9: accepted_on_main
+- WP10: accepted_on_main
+- WP11: accepted_on_main
+- WP12: accepted_on_main
+- WP13: rerun_blocked
 
-- WP0 Baseline Freeze: accepted on main.
-- WP1 Lineage Core: accepted on main.
-- WP2 HMM Walk-forward Cache Contract: accepted on main.
-- WP3 Cached State / Feature Merge Guard: accepted on main.
-- WP4 HSMM As-of Exit Target Contract: accepted on main.
-- WP6 HSMM Run Status and Atomicity: reopened by WP13 gate.
-- WP7 HSMM Cascade Cleanup / Rerun Policy: reopened by WP13 gate.
+## WP0A Status
 
-P1 package status: blocked
+- WP0A OHLCV Ingestion Validation Contract: accepted_on_main
 
-- WP5 HSMM p_exit Tail Semantics and Prefix Causality Tests: accepted on main.
-- WP8 Probability Readiness Lineage: accepted on main.
-- WP9 UI and Analysis Selection Gate: accepted on main.
-- WP10 Universe/Data Snapshot Lineage: reopened by WP13 gate.
-- WP11 Evidence Registry Minimal Contract: accepted on main.
+## A1-A6 Status
 
-P2/P3 package status: blocked
-
-- WP12 SQL Identifier Hardening and Legacy Probability Wording: reopened by WP13 gate because full pytest still contains a stale UI label expectation.
+- A1 HSMM Exit Calibration Target and Horizon Safety: accepted_on_main
+- A2 HSMM Duration Tail and Right-Censoring Semantics: blocked_by_gate_failure
+- A3 Market Breadth Coverage Semantics: accepted_on_main
+- A4 Custom Basket Index Semantics and Low-Coverage Guard: accepted_on_main
+- A5 Backtest Evaluation Causal Semantics: blocked_by_full_pytest_failure
+- A6 CI Dependency and Private API Guard: accepted_on_main
 
 ## Gate Status
 
-legacy/debug cache status: pass
+- legacy/debug cache status: pass
+- HMM cache read policy status: pass
+- HSMM latest_asof target status: blocked
+- HSMM run atomicity status: pass
+- probability readiness gate status: pass
+- UI/analysis selector status: pass
+- universe/data lineage status: pass
+- evidence registry status: pass
+- private path hygiene status: pass
 
-- Legacy cache rows remain fail-closed by policy and are not treated as valid backtest or readiness artifacts.
-- Stage02 causal cache lineage risk remains fail-closed unless native or strict inferred linkage exists.
+## Failed Tests
 
-HMM cache read policy status: pass
+Focused gate failed:
 
-- Focused HMM cache and feature-guard tests passed in the WP13 gate.
-- Legacy, mismatched, running, row-count-mismatched, and causal-violating cache rows remain rejected by the covered gate tests.
+- `tests/test_hsmm_cascade_cleanup.py::test_lifecycle_report_rerun_does_not_keep_old_profile_rows`
+  - package: A2 / WP7 integration
+  - reason: `hsmm_lifecycle_ui_daily` does not contain `duration_tail_status_1d` emitted by lifecycle output after duration-tail hardening.
 
-HSMM latest_asof target status: pass
+Full pytest additionally failed:
 
-- Focused as-of target tests passed in the WP13 gate.
-- latest_asof empirical targets remain limited to observed positive or observed negative outcomes.
-
-HSMM run atomicity status: blocked
-
-- `tests/test_hsmm_run_atomicity.py::test_hsmm_walk_forward_marks_failed_on_exception` failed.
-- The synthetic failure is preempted by universe/data snapshot lineage digest construction before the intended run-status failure path is asserted.
-
-probability readiness gate status: pass
-
-- Focused probability readiness lineage and strictness tests passed in the WP13 gate.
-- Raw or calibrated p_exit remains gated by readiness metadata.
-
-UI/analysis selector status: pass with full-suite follow-up
-
-- Focused UI readiness selector and analysis cache selector tests passed in the WP13 gate.
-- Full pytest failed `tests/test_market_regime.py::test_ui_column_rename_mapping` because the legacy expected label is stale against the current posterior wording policy.
-
-universe/data lineage status: blocked
-
-- `tests/test_hsmm_run_atomicity.py::test_hsmm_walk_forward_marks_failed_on_exception` failed with `ValueError: No objects to concatenate`.
-- `tests/test_hsmm_cascade_cleanup.py::test_duplicate_completed_run_id_fails_by_default` failed with the same lineage digest precondition error.
-- `tests/test_hsmm_cascade_cleanup.py::test_overwrite_cleans_first_and_then_writes_completed_run` failed with the same lineage digest precondition error.
-- The integrated gate shows that empty synthetic snapshot frames are not handled before HSMM atomicity and cascade behavior can be validated.
-
-evidence registry status: pass
-
-- Focused evidence registry contract tests passed in the WP13 gate.
-- Invalid readiness artifacts remain excluded by the covered selectors.
-
-private path hygiene status: pass
-
-- `bash scripts/check_no_private_paths.sh`: pass, scanned_files=60.
-- `bash scripts/validate_stage01_no_private_db.sh`: pass, private_db_required=no, external_data_fetch=no.
+- `tests/test_hsmm_lifecycle_asof.py::test_profile_metadata_contains_cutoff`
+  - package: A2
+  - reason: same missing lifecycle persistence column family for `duration_tail_status_*`.
+- `tests/test_hsmm_lifecycle_ui_integration.py::test_lifecycle_cli_outputs_and_ui_contract`
+  - package: A2
+  - reason: same missing lifecycle persistence column family for `duration_tail_status_*`.
+- `tests/test_vnext_convergence.py::test_model_evaluation_forward_returns`
+  - package: A5
+  - reason: forward-return evaluation now returns no rows for the legacy in-sample state input used by the test.
+- `tests/test_vnext_state_screener.py::test_evaluate_forward_returns_uses_walk_forward_cache`
+  - package: A5
+  - reason: state source semantics now emit `causal_walk_forward` while the legacy test expects `walk_forward`.
 
 ## Validation Commands
 
 - `git fetch origin`: pass.
-- `git worktree add -b stage03pf/wp13-stage03-preflight-gate <clean-worktree> origin/main`: pass.
+- `git worktree add -b stage03pf/wp13-rerun-after-audit-hardening <clean-worktree> origin/main`: pass.
 - `git diff --check`: pass.
+- `.venv/bin/python -m compileall -q src tests`: pass.
 - `bash scripts/stage03_preflight_gate.sh`: fail.
-  - compileall: pass.
-  - focused pytest: 63 passed, 3 failed.
-  - private path hygiene: pass.
-  - no-private-DB Stage01 validation: pass.
-- `.venv/bin/pytest -q`: fail, 335 passed, 2 skipped, 5 failed, 25 warnings.
+  - focused pytest: 66 passed, 1 failed.
+  - private path hygiene inside script: pass.
+  - no-private-DB validation inside script: pass.
+- `bash scripts/check_no_private_paths.sh`: pass, scanned_files=65.
+- `bash scripts/validate_stage01_no_private_db.sh`: pass, private_db_required=no, external_data_fetch=no.
+- `.venv/bin/pytest -q`: fail, 394 passed, 2 skipped, 5 failed, 27 warnings.
 
-The local shell did not provide global `python` or `pytest`, so the gate script used `.venv/bin/python` and `.venv/bin/pytest`.
+The local shell did not provide global `python` or `pytest`, so this rerun used `.venv/bin/python` and `.venv/bin/pytest`.
 
 ## BlockingPackages
 
-- WP6: HSMM run atomicity failure path is preempted by missing persisted OHLCV snapshot lineage in synthetic tests.
-- WP7: completed-run duplicate and overwrite cascade tests fail before cascade policy can be asserted.
-- WP10: universe/data snapshot hash handling raises on empty synthetic snapshot frames.
-- WP12: full-suite UI text expectation still references the old probability label.
+- A2: lifecycle output emits duration-tail status columns that are missing from the persisted `hsmm_lifecycle_ui_daily` schema.
+- A5: forward-return causal semantics and legacy state_source expectations remain inconsistent.
 
 ## DeferredPackages
 
