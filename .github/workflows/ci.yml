@@ -6,6 +6,7 @@ on:
     branches:
       - main
       - "stage02/**"
+      - "stage03pf/**"
 
 jobs:
   validation:
@@ -31,11 +32,37 @@ jobs:
       - name: Compile source and tests
         run: python -m compileall -q src tests
 
+      - name: Dependency compatibility guard
+        run: python -m src.utils.dependency_guard
+
+      - name: Dependency and hmmlearn private API guard tests
+        run: pytest -q tests/test_dependency_guard.py tests/test_hmm_private_api_guard.py
+
       - name: Stage 01 diagnostic tests without private DB
         run: pytest -q tests/test_hmm_confidence.py tests/test_hmm_label_alignment.py tests/test_hmm_churn_dwell.py
 
       - name: UI readiness boundary tests
         run: pytest -q tests/test_ui_readiness_policy.py tests/test_ui_causal_boundary.py
+
+      - name: Stage 03 preflight tests without private DB
+        run: |
+          pytest -q \
+            tests/test_lineage_hash_contract.py \
+            tests/test_walk_forward_cache_contract.py \
+            tests/test_hmm_walk_forward_cache_contract.py \
+            tests/test_hmm_cached_state_feature_guard.py \
+            tests/test_hsmm_lifecycle_asof.py \
+            tests/test_hsmm_run_atomicity.py \
+            tests/test_hsmm_cascade_cleanup.py \
+            tests/test_hsmm_duration_tail_semantics.py \
+            tests/test_probability_readiness_lineage.py \
+            tests/test_probability_gate_strictness.py \
+            tests/test_ui_readiness_selection.py \
+            tests/test_analysis_cache_selection.py \
+            tests/test_evidence_registry.py \
+            tests/test_evidence_registry_contract.py \
+            tests/test_ohlcv_validation.py \
+            tests/test_ohlcv_update_validation_coverage.py
 
       - name: Private path hygiene pytest
         run: pytest -q tests/test_private_path_hygiene.py
