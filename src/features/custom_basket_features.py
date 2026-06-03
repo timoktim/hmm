@@ -3,7 +3,12 @@ from __future__ import annotations
 import pandas as pd
 
 from src.data_pipeline.storage import DuckDBStorage
+from src.data_pipeline.validators import validate_ohlcv
 from src.utils.dates import normalize_yyyymmdd
+
+
+CUSTOM_BASKET_SOURCE_REQUIRED_COLUMNS = {"stock_code", "trade_date", "close"}
+CUSTOM_BASKET_OUTPUT_REQUIRED_COLUMNS = {"basket_id", "trade_date", "close"}
 
 
 def build_custom_basket_ohlcv(
@@ -33,6 +38,12 @@ def build_custom_basket_ohlcv(
     )
     if stocks.empty:
         return pd.DataFrame()
+    validate_ohlcv(
+        stocks,
+        f"custom basket source {basket_id}",
+        entity_key="stock_code",
+        required_columns=CUSTOM_BASKET_SOURCE_REQUIRED_COLUMNS,
+    )
     stocks["trade_date"] = pd.to_datetime(stocks["trade_date"])
     stocks = stocks.sort_values(["stock_code", "trade_date"])
     stocks["daily_ret"] = stocks.groupby("stock_code")["close"].pct_change()
@@ -74,6 +85,12 @@ def build_custom_basket_ohlcv(
     out["created_at"] = pd.Timestamp.now()
     out["trade_date"] = out["trade_date"].dt.date
     out = out[["basket_id", "trade_date", "close", "daily_ret", "volume", "amount", "member_count", "created_at"]]
+    validate_ohlcv(
+        out,
+        f"custom basket {basket_id}",
+        entity_key="basket_id",
+        required_columns=CUSTOM_BASKET_OUTPUT_REQUIRED_COLUMNS,
+    )
     storage.upsert_custom_basket_ohlcv(out)
     return out
 

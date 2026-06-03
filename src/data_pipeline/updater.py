@@ -219,7 +219,7 @@ def _update_boards_impl(
     def fetch_hist(job: dict[str, object]) -> tuple[dict[str, object], object]:
         sector_name = str(job["sector_name"])
         hist_res = client.board_hist(board_type, sector_name, str(job["start_date"]), end_date)  # type: ignore[arg-type]
-        validate_ohlcv(hist_res.data, sector_name)
+        validate_ohlcv(hist_res.data, sector_name, entity_key="sector_id")
         return job, hist_res
 
     worker_count = _bounded_workers(workers)
@@ -388,6 +388,7 @@ def update_stock_histories(
             )
         try:
             res = client.stock_hist(code, actual_start, end_date)
+            validate_ohlcv(res.data, code, entity_key="stock_code")
             storage.upsert_df("stock_ohlcv", res.data, ["stock_code", "trade_date"])
             stale_reads += int(res.stale)
             cache_hits += int(res.from_cache)
@@ -439,9 +440,13 @@ def update_market_benchmark(
         else:
             actual_start = start_date
         res = client.market_benchmark_hist(benchmark_id, actual_start, end_date, force_refresh=True)
-        storage.upsert_df("market_benchmark_ohlcv", res.data, ["benchmark_id", "trade_date"])
+        data = res.data.copy()
+        if "benchmark_id" not in data.columns:
+            data["benchmark_id"] = benchmark_id
+        validate_ohlcv(data, benchmark_id, entity_key="benchmark_id")
+        storage.upsert_df("market_benchmark_ohlcv", data, ["benchmark_id", "trade_date"])
         storage.clear_fetch_failure("benchmark", "market", benchmark_id, "market_benchmark_hist")
-        return BenchmarkUpdateSummary(benchmark_id=benchmark_id, rows=len(res.data), stale=res.stale)
+        return BenchmarkUpdateSummary(benchmark_id=benchmark_id, rows=len(data), stale=res.stale)
     except Exception as exc:
         storage.record_fetch_failure("benchmark", "market", benchmark_id, "market_benchmark_hist", exc)
         logger.exception("更新市场基准失败: {}", benchmark_id)
