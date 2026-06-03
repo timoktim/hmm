@@ -1154,7 +1154,7 @@ def run_hsmm_diagnostics(
     current_profile = state_current_profile(states)
     duration_profile = state_duration_profile(episodes)
     censored_profile = censored_episode_profile(episodes)
-    exit_dataset = build_exit_calibration_dataset(states, horizons)
+    exit_dataset = build_exit_calibration_dataset(states, horizons, target_type="state_id_exit")
     calibrated_summary = pd.DataFrame()
     calibration_split = pd.DataFrame()
     calibrator_metadata: dict[str, object] = {"enabled": bool(enable_exit_calibration)}
@@ -1168,7 +1168,13 @@ def run_hsmm_diagnostics(
         validation = exit_dataset[pd.to_datetime(exit_dataset["trade_date"]) > train_end].copy()
         if validation.empty:
             validation = exit_dataset.copy()
-        calibrator = fit_empirical_exit_calibrator(exit_dataset, min_bucket_count=10, train_end_date=train_end)
+        calibrator = fit_empirical_exit_calibrator(
+            exit_dataset,
+            min_bucket_count=10,
+            train_end_date=train_end,
+            allow_in_sample=False,
+            target_type="state_id_exit",
+        )
         calibrated = apply_exit_calibrator(validation, calibrator)
         raw_summary = summarize_exit_calibration(validation, "raw_p_exit", "raw")
         calibrated_summary = summarize_exit_calibration(calibrated, "calibrated_p_exit", "calibrated")
@@ -1183,6 +1189,12 @@ def run_hsmm_diagnostics(
                     "train_row_count": int((pd.to_datetime(exit_dataset["trade_date"]) <= train_end).sum()),
                     "valid_row_count": int(len(validation)),
                     "calibration_train_ratio": float(calibration_train_ratio),
+                    "target_type": calibrator.metadata.get("target_type"),
+                    "train_label_cutoff_policy": calibrator.metadata.get("train_label_cutoff_policy"),
+                    "censored_row_count": calibrator.metadata.get("censored_row_count"),
+                    "excluded_post_train_horizon_count": calibrator.metadata.get("excluded_post_train_horizon_count"),
+                    "allow_in_sample": calibrator.metadata.get("allow_in_sample"),
+                    "usable_probability": calibrator.metadata.get("usable_probability"),
                 }
             ]
         )

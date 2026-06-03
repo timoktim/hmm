@@ -12,6 +12,12 @@ from src.data_pipeline.storage import DuckDBStorage
 
 DEFAULT_HORIZONS = (1, 3, 5, 10, 20)
 DEFAULT_EXIT_TYPES = ("state_id", "display_label")
+TARGET_TYPE_BY_EXIT_TYPE = {
+    "state_id": "state_id_exit",
+    "state_id_exit": "state_id_exit",
+    "display_label": "display_label_exit",
+    "display_label_exit": "display_label_exit",
+}
 
 
 def parse_horizons(raw: str | None) -> tuple[int, ...]:
@@ -24,10 +30,10 @@ def parse_exit_types(raw: str | None) -> tuple[str, ...]:
     if not raw:
         return DEFAULT_EXIT_TYPES
     exit_types = tuple(x.strip() for x in str(raw).split(",") if x.strip())
-    invalid = [x for x in exit_types if x not in {"state_id", "display_label"}]
+    invalid = [x for x in exit_types if x not in TARGET_TYPE_BY_EXIT_TYPE]
     if invalid:
         raise ValueError(f"Unsupported exit types: {invalid}")
-    return exit_types
+    return tuple("state_id" if TARGET_TYPE_BY_EXIT_TYPE[x] == "state_id_exit" else "display_label" for x in exit_types)
 
 
 def read_hsmm_states(storage: DuckDBStorage, run_id: str) -> pd.DataFrame:
@@ -62,24 +68,32 @@ def _left_censored_context_for_group(group: pd.DataFrame, episodes: pd.DataFrame
     return out
 
 
-def _raw_score(row: pd.Series, horizon: int, exit_type: str) -> float:
-    raw_col = f"raw_p_exit_{horizon}d"
-    fallback_col = f"p_exit_{horizon}d"
-    value = row.get(raw_col, row.get(fallback_col, np.nan))
-    try:
-        return float(value)
-    except Exception:
-        return np.nan
+def _target_type(exit_type: str) -> str:
+    return TARGET_TYPE_BY_EXIT_TYPE[str(exit_type)]
 
 
-def _raw_score_series(group: pd.DataFrame, horizon: int) -> pd.Series:
-    raw_col = f"raw_p_exit_{horizon}d"
-    fallback_col = f"p_exit_{horizon}d"
-    if raw_col in group.columns:
-        return pd.to_numeric(group[raw_col], errors="coerce")
-    if fallback_col in group.columns:
-        return pd.to_numeric(group[fallback_col], errors="coerce")
-    return pd.Series(np.nan, index=group.index)
+def _raw_score_series(group: pd.DataFrame, horizon: int, target_type: str) -> tuple[pd.Series, str | None]:
+    columns = set(group.columns)
+    if target_type == "state_id_exit":
+        candidates = [
+            f"raw_p_exit_state_id_exit_{horizon}d",
+            f"raw_p_exit_state_id_{horizon}d",
+            f"p_exit_state_id_exit_{horizon}d",
+            f"p_exit_state_id_{horizon}d",
+            f"raw_p_exit_{horizon}d",
+            f"p_exit_{horizon}d",
+        ]
+    else:
+        candidates = [
+            f"raw_p_exit_display_label_exit_{horizon}d",
+            f"raw_p_exit_display_label_{horizon}d",
+            f"p_exit_display_label_exit_{horizon}d",
+            f"p_exit_display_label_{horizon}d",
+        ]
+    for column in candidates:
+        if column in columns:
+            return pd.to_numeric(group[column], errors="coerce"), target_type
+    return pd.Series(np.nan, index=group.index), None
 
 
 def _first_exit(
@@ -244,14 +258,16 @@ def build_exit_targets(
             base["display_state_age_days"] = base.get("label_state_age_days", group.get("state_age_days"))
         base["is_left_censored_context"] = left_context.to_numpy(dtype=bool)
         for horizon in horizons:
-            state_score = _raw_score_series(group, horizon)
-            label_score = state_score.copy()
             for exit_type in exit_types:
+                target_type = _target_type(exit_type)
+                score, raw_score_target_type = _raw_score_series(group, horizon, target_type)
                 exits = _first_exit_arrays(group, horizon, exit_type)
                 frame = base.copy()
                 frame["horizon_days"] = int(horizon)
                 frame["exit_type"] = exit_type
+                frame["target_type"] = target_type
                 frame["actual_exit_within_h"] = exits["actual"]
+                frame["actual_exit_target_type"] = target_type
                 frame["actual_next_state_id"] = exits["next_state_id"]
                 frame["actual_next_state_label"] = exits["next_state_label"]
                 frame["realized_exit_date"] = exits["exit_dates"]
@@ -267,9 +283,14 @@ def build_exit_targets(
                         strict=False,
                     )
                 ]
-                frame["raw_exit_score"] = state_score.to_numpy(dtype=float) if exit_type == "state_id" else label_score.to_numpy(dtype=float)
+                frame["raw_exit_score"] = score.to_numpy(dtype=float)
+                frame["raw_exit_score_target_type"] = raw_score_target_type
+                state_score, state_basis = _raw_score_series(group, horizon, "state_id_exit")
+                label_score, label_basis = _raw_score_series(group, horizon, "display_label_exit")
                 frame["raw_state_exit_score"] = state_score.to_numpy(dtype=float)
+                frame["raw_state_exit_score_target_type"] = state_basis
                 frame["raw_label_exit_score"] = label_score.to_numpy(dtype=float)
+                frame["raw_label_exit_score_target_type"] = label_basis
                 frames.append(frame)
     out = pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
     if not out.empty:

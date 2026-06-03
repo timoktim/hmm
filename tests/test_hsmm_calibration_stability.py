@@ -87,7 +87,7 @@ def test_same_run_id_rerun_clears_stale_hsmm_rows(tmp_path):
         "run_id": "same_run",
     }
     run_hsmm_walk_forward(HSMMWalkForwardConfig(**base, end_date="2024-02-25"), storage=storage)
-    run_hsmm_walk_forward(HSMMWalkForwardConfig(**base, end_date="2024-02-18"), storage=storage)
+    run_hsmm_walk_forward(HSMMWalkForwardConfig(**base, end_date="2024-02-18", overwrite=True), storage=storage)
 
     latest = storage.read_df("SELECT max(trade_date) AS max_date FROM hsmm_state_daily WHERE run_id = 'same_run'")
     assert pd.Timestamp(latest.loc[0, "max_date"]) == pd.Timestamp("2024-02-18")
@@ -397,6 +397,7 @@ def test_exit_calibrator_outputs_raw_and_calibrated_probabilities():
         {
             "sector_code": ["A"] * len(dates),
             "trade_date": dates,
+            "state_id": [1] * 10 + [2] * 10 + [1] * 10,
             "state_label": ["Trend"] * 10 + ["Stress"] * 10 + ["Trend"] * 10,
             "state_phase": ["early"] * len(dates),
             "state_age_days": list(range(1, 11)) * 3,
@@ -406,19 +407,20 @@ def test_exit_calibrator_outputs_raw_and_calibrated_probabilities():
     )
 
     dataset = build_exit_calibration_dataset(states, horizons=(1,))
-    calibrator = fit_empirical_exit_calibrator(dataset, min_bucket_count=1)
+    calibrator = fit_empirical_exit_calibrator(dataset, min_bucket_count=1, train_end_date="2024-01-20")
     calibrated = apply_exit_calibrator(dataset, calibrator)
     raw_summary = summarize_exit_calibration(dataset, "raw_p_exit", "raw")
     calibrated_summary = summarize_exit_calibration(calibrated, "calibrated_p_exit", "calibrated")
 
+    assert calibrator.metadata["usable_probability"] is True
     assert "calibrated_p_exit" in calibrated.columns
     assert calibrated["calibrated_p_exit"].between(0, 1).all()
     assert set(raw_summary["probability_type"]) == {"raw"}
     assert set(calibrated_summary["probability_type"]) == {"calibrated"}
 
 
-def test_exit_calibrator_uses_only_train_period_and_backs_off_small_buckets():
-    df = pd.DataFrame(
+def _small_exit_calibration_frame() -> pd.DataFrame:
+    return pd.DataFrame(
         {
             "sector_code": ["A"] * 8,
             "trade_date": pd.date_range("2024-01-01", periods=8, freq="D"),
@@ -432,9 +434,49 @@ def test_exit_calibrator_uses_only_train_period_and_backs_off_small_buckets():
         }
     )
 
+
+def test_exit_calibrator_excludes_horizon_crossing_train_end_date():
+    df = _small_exit_calibration_frame()
+
     calibrator = fit_empirical_exit_calibrator(df, min_bucket_count=20, train_end_date="2024-01-04")
     out = apply_exit_calibrator(df[df["trade_date"] > pd.Timestamp("2024-01-04")], calibrator)
 
-    assert calibrator.metadata["training_rows"] == 4
+    assert calibrator.metadata["training_rows"] == 3
+    assert calibrator.metadata["train_end"] == "2024-01-03"
+    assert calibrator.metadata["excluded_post_train_horizon_count"] == 5
+    assert calibrator.metadata["calibration_status"] == "usable"
     assert out["calibrated_p_exit"].notna().all()
     assert out["calibrated_p_exit"].between(0, 1).all()
+    assert out["probability_status"].eq("usable_probability").all()
+
+
+def test_exit_calibrator_backs_off_small_buckets_when_horizon_inside_cutoff():
+    df = _small_exit_calibration_frame()
+
+    calibrator = fit_empirical_exit_calibrator(df, min_bucket_count=20, train_end_date="2024-01-05")
+    out = apply_exit_calibrator(df[df["trade_date"] > pd.Timestamp("2024-01-05")], calibrator)
+
+    assert calibrator.metadata["training_rows"] == 4
+    assert calibrator.metadata["train_end"] == "2024-01-04"
+    assert calibrator.metadata["calibration_status"] == "usable"
+    assert calibrator.specific.empty
+    assert not calibrator.global_rate.empty
+    assert out["calibrated_p_exit"].notna().all()
+    assert out["calibrated_p_exit"].between(0, 1).all()
+    assert out["probability_status"].eq("usable_probability").all()
+
+
+def test_exit_calibrator_allow_in_sample_is_explicit_research_only():
+    df = _small_exit_calibration_frame()
+
+    calibrator = fit_empirical_exit_calibrator(df, min_bucket_count=20, allow_in_sample=True)
+    out = apply_exit_calibrator(df, calibrator)
+
+    assert calibrator.metadata["allow_in_sample"] is True
+    assert calibrator.metadata["training_rows"] == 8
+    assert calibrator.metadata["calibration_status"] == "exploratory"
+    assert calibrator.metadata["readiness_status"] == "research_only"
+    assert calibrator.metadata["usable_probability"] is False
+    assert out["calibrated_p_exit"].isna().all()
+    assert out["probability_status"].eq("raw_only").all()
+    assert out["readiness_status"].eq("research_only").all()

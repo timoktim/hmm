@@ -215,7 +215,8 @@ def compute_sector_ohlcv_snapshot_hash(
                 [*custom_ids, start, end],
             )
         )
-    ohlcv = pd.concat([frame for frame in frames if not frame.empty], ignore_index=True) if frames else pd.DataFrame()
+    non_empty_frames = [frame for frame in frames if not frame.empty]
+    ohlcv = pd.concat(non_empty_frames, ignore_index=True) if non_empty_frames else pd.DataFrame()
     return _frame_digest(
         ohlcv,
         [
