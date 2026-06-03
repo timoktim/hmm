@@ -10,7 +10,7 @@ import streamlit as st
 from src.data_pipeline.market_updater import DEFAULT_MARKET_INDEX_CODES, update_all_a_stock_universe, update_market_breadth, update_market_indices
 from src.data_pipeline.storage import DuckDBStorage
 from src.data_sources.akshare_client import MARKET_INDEXES
-from src.features.market_features import build_market_features, latest_market_index_status
+from src.features.market_features import COVERAGE_MODE_FULL_MARKET, COVERAGE_MODE_LOCAL_SAMPLE, build_market_features, latest_market_index_status, normalize_breadth_coverage_columns
 from src.models.market_hmm import latest_market_regime, market_regime_history, train_market_hmm
 from src.ui.components.data_status_bar import render_data_status_bar
 from src.ui.components.operation_result import render_operation_result
@@ -29,11 +29,25 @@ STATE_TEXT = {
 FULL_MARKET_BREADTH_UI_ENABLED = True
 
 
-def market_width_visibility_by_coverage(coverage_level: str | None) -> tuple[bool, str]:
+def market_width_visibility_by_coverage(
+    coverage_level: str | None,
+    coverage_mode: str | None = None,
+    full_market_coverage_ratio: object | None = None,
+) -> tuple[bool, str]:
+    mode = str(coverage_mode or "").strip()
+    if mode == COVERAGE_MODE_LOCAL_SAMPLE:
+        return False, "当前宽度是 local_sample，只代表本地已抓取股票样本，不代表全 A 覆盖。"
     level = str(coverage_level or "insufficient")
-    if level == "full_market":
+    if not mode and full_market_coverage_ratio is None:
+        if level == "full_market":
+            return True, "当前宽度可按全市场宽度解读。"
+        return False, "当前宽度只代表本地已抓取股票样本，不代表全 A 市场。"
+    ratio = pd.to_numeric(pd.Series([full_market_coverage_ratio]), errors="coerce").iloc[0]
+    if mode == COVERAGE_MODE_FULL_MARKET and level == "full_market" and pd.notna(ratio) and float(ratio) >= 0.8:
         return True, "当前宽度可按全市场宽度解读。"
-    return False, "当前宽度只代表本地已抓取股票样本，不代表全 A 市场。"
+    if mode == COVERAGE_MODE_FULL_MARKET:
+        return False, "当前全 A 宽度覆盖率不可用或不足，不能按完整全市场宽度解读。"
+    return False, "当前宽度覆盖模式未知，不能按完整全市场宽度解读。"
 
 
 def can_update_full_market_breadth(storage: DuckDBStorage) -> bool:
@@ -44,7 +58,7 @@ def can_update_full_market_breadth(storage: DuckDBStorage) -> bool:
 def latest60_full_market_breadth_available(storage: DuckDBStorage) -> tuple[bool, str]:
     breadth = storage.read_df(
         """
-        SELECT trade_date, breadth_mode, coverage_level, coverage_ratio, effective_count
+        SELECT *
         FROM market_breadth_daily
         WHERE breadth_mode = 'full_market'
         ORDER BY trade_date DESC
@@ -55,14 +69,19 @@ def latest60_full_market_breadth_available(storage: DuckDBStorage) -> tuple[bool
         return False, "缺少宽度数据，大盘 HMM 将使用纯指数特征。"
     if len(breadth) < 60:
         return False, f"全 A 市场宽度最近样本不足 60 日（当前 {len(breadth)} 日），大盘 HMM 将使用纯指数特征。"
-    mode_ok = breadth["breadth_mode"].fillna("local_sample").astype(str).eq("full_market").all()
-    level_ok = breadth["coverage_level"].fillna("insufficient").astype(str).eq("full_market").all()
-    ratio_ok = pd.to_numeric(breadth.get("coverage_ratio", 0), errors="coerce").fillna(0).ge(0.8).all()
-    if mode_ok and level_ok and ratio_ok:
+    breadth = normalize_breadth_coverage_columns(breadth)
+    usable = breadth["full_market_coverage_usable"].fillna(False)
+    if usable.all():
         return True, "最近60日已有全市场宽度，可用于大盘 HMM。"
+    usable_days = int(usable.sum())
+    if usable_days >= 20:
+        return True, f"最近60日全市场宽度有 {60 - usable_days} 日覆盖不足；训练会仅在具备全市场覆盖的日期使用宽度特征。"
     latest = breadth.iloc[0]
     effective = int(latest.get("effective_count") or 0)
-    return False, f"当前宽度仅覆盖本地样本 {effective} 只股票，未达到全市场宽度标准。大盘 HMM 将使用纯指数特征。"
+    mode = str(latest.get("coverage_mode") or latest.get("breadth_mode") or "unknown")
+    if mode != "full_market":
+        return False, f"当前宽度模式为 {mode}，仅覆盖本地样本 {effective} 只股票，不代表全 A 覆盖。大盘 HMM 将使用纯指数特征。"
+    return False, f"全 A 市场宽度可用日期不足（最近60日仅 {usable_days} 日满足覆盖要求）。大盘 HMM 将使用纯指数特征。"
 
 
 def breadth_chart_diagnostics(breadth: pd.DataFrame) -> dict[str, object]:
@@ -228,6 +247,7 @@ def render_market_regime(storage: DuckDBStorage) -> None:
         st.warning("暂无市场宽度数据。市场宽度依赖个股行情数据。当前个股行情覆盖不足，宽度指标可能不完整。")
     else:
         breadth["trade_date"] = pd.to_datetime(breadth["trade_date"])
+        breadth = normalize_breadth_coverage_columns(breadth)
         modes = [m for m in ["full_market", "local_sample"] if m in set(breadth["breadth_mode"].fillna("local_sample").astype(str))]
         mode_labels = {"full_market": "全 A 市场宽度", "local_sample": "本地样本宽度"}
         latest_run = _latest_run(storage)
@@ -252,29 +272,36 @@ def render_market_regime(storage: DuckDBStorage) -> None:
                     latest_effective_count = latest_breadth.get("total_count")
                 latest_total_count = latest_breadth.get("total_count")
                 latest_expected_count = latest_breadth.get("expected_count")
-                latest_coverage_ratio = latest_breadth.get("coverage_ratio")
-                source_label = "全市场" if mode == "full_market" and latest_coverage_level == "full_market" else "本地样本"
+                latest_coverage_mode = str(latest_breadth.get("coverage_mode") or mode or "unknown")
+                latest_full_market_coverage_ratio = latest_breadth.get("full_market_coverage_ratio")
+                latest_local_sample_internal_coverage = latest_breadth.get("local_sample_internal_coverage")
+                source_label = "全市场" if latest_coverage_mode == "full_market" and latest_coverage_level == "full_market" else "本地样本"
                 latest60 = mode_breadth.tail(60)
-                latest60_full = bool(
-                    mode == "full_market"
-                    and latest60["coverage_level"].fillna("insufficient").astype(str).eq("full_market").all()
-                    and pd.to_numeric(latest60.get("coverage_ratio", 0), errors="coerce").fillna(0).ge(0.8).all()
-                ) if "coverage_level" in latest60.columns else False
+                latest60_full = bool(mode == "full_market" and latest60["full_market_coverage_usable"].fillna(False).all()) if "full_market_coverage_usable" in latest60.columns else False
 
                 b1, b2, b3, b4, b5, b6 = st.columns(6)
                 b1.metric("最近交易日", str(latest_breadth["trade_date"].date()))
                 b2.metric("指标来源", source_label)
                 b3.metric("有效/应覆盖", f"{int(latest_effective_count) if pd.notna(latest_effective_count) else 0}/{int(latest_expected_count) if pd.notna(latest_expected_count) else int(latest_total_count) if pd.notna(latest_total_count) else 0}")
-                b4.metric("覆盖率", "无" if pd.isna(latest_coverage_ratio) else f"{float(latest_coverage_ratio):.1%}")
+                if latest_coverage_mode == "local_sample":
+                    b4.metric("样本内部覆盖率", "无" if pd.isna(latest_local_sample_internal_coverage) else f"{float(latest_local_sample_internal_coverage):.1%}")
+                else:
+                    b4.metric("全市场覆盖率", "无" if pd.isna(latest_full_market_coverage_ratio) else f"{float(latest_full_market_coverage_ratio):.1%}")
                 b5.metric("最近60日全市场", "是" if latest60_full else "否")
                 b6.metric("HMM 实际用宽度", "是" if latest_model_used_breadth and mode == "full_market" else "否")
                 if latest_warning:
                     st.warning(latest_warning)
-                if source_label != "全市场":
-                    st.warning("当前宽度只代表本地已抓取股票样本，不代表全 A 市场。")
+                if latest_coverage_mode == "local_sample":
+                    st.warning("当前宽度是 local_sample，只代表本地已抓取股票样本；样本内部覆盖率不代表全 A 覆盖。")
+                elif source_label != "全市场":
+                    st.warning("当前宽度不能按完整全 A 市场覆盖解读。")
                 if pd.notna(latest_effective_count) and int(latest_effective_count) < 500:
                     st.error("当前有效股票数不足 500，仅能作为样本观察，不应解释为市场宽度。")
-                is_full_width, width_message = market_width_visibility_by_coverage(latest_coverage_level if mode == "full_market" else "partial_sample")
+                is_full_width, width_message = market_width_visibility_by_coverage(
+                    latest_coverage_level,
+                    coverage_mode=latest_coverage_mode,
+                    full_market_coverage_ratio=latest_full_market_coverage_ratio,
+                )
                 if not is_full_width:
                     st.warning(width_message)
                 st.caption("涨跌停数量为近似估计，暂未区分 ST、创业板、科创板、北交所涨跌幅限制。")

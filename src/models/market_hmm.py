@@ -14,7 +14,14 @@ import pandas as pd
 
 from src.config import project_relative_path, settings
 from src.data_pipeline.storage import DuckDBStorage, json_dumps
-from src.features.market_features import BREADTH_FEATURE_COLUMNS, MARKET_FEATURE_VERSION, available_market_feature_columns, build_market_features
+from src.features.market_features import (
+    BREADTH_FEATURE_COLUMNS,
+    COVERAGE_MODE_FULL_MARKET,
+    MARKET_FEATURE_VERSION,
+    available_market_feature_columns,
+    build_market_features,
+    normalize_breadth_coverage_columns,
+)
 from src.models.hmm_model import filtered_predict_proba
 from src.models.preprocessing import FeaturePreprocessor
 from src.utils.dates import normalize_yyyymmdd
@@ -30,6 +37,15 @@ class MarketHMMTrainResult:
     used_breadth: bool
     index_coverage_warning: str = ""
     breadth_coverage_warning: str = ""
+
+
+@dataclass(frozen=True)
+class BreadthCoverageReadiness:
+    can_use_breadth: bool
+    warning: str
+    usable_days: int = 0
+    checked_days: int = 0
+    coverage_mode: str = COVERAGE_MODE_FULL_MARKET
 
 
 MAJOR_INDEX_CODES = {
@@ -67,45 +83,86 @@ def _major_index_coverage(
     return counts, sufficient, warning
 
 
-def _recent_breadth_warning(storage: DuckDBStorage, end: pd.Timestamp) -> str:
+def _recent_breadth_readiness(
+    storage: DuckDBStorage,
+    end: pd.Timestamp,
+    *,
+    strict_policy: bool = False,
+    min_recent_days: int = 60,
+    min_usable_days: int = 20,
+) -> BreadthCoverageReadiness:
     breadth = storage.read_df(
         """
-        SELECT trade_date, coverage_level, total_count, effective_count, expected_count,
-               coverage_ratio, breadth_mode, coverage_warning
+        SELECT *
         FROM market_breadth_daily
         WHERE trade_date <= ?
           AND breadth_mode = 'full_market'
         ORDER BY trade_date DESC
-        LIMIT 60
+        LIMIT ?
         """,
-        [end.date()],
+        [end.date(), int(min_recent_days)],
     )
     if breadth.empty:
-        return "缺少全 A 市场宽度数据，本次模型已自动改用纯指数特征。"
-    if len(breadth) < 60:
-        return f"全 A 市场宽度最近样本不足 60 日（当前 {len(breadth)} 日），本次模型已自动改用纯指数特征。"
-    coverage = breadth["coverage_level"].fillna("insufficient").astype(str)
-    mode = breadth["breadth_mode"].fillna("local_sample").astype(str) if "breadth_mode" in breadth.columns else pd.Series("local_sample", index=breadth.index)
-    ratio = pd.to_numeric(breadth.get("coverage_ratio", pd.Series(0.0, index=breadth.index)), errors="coerce").fillna(0.0)
-    if coverage.eq("full_market").all() and mode.eq("full_market").all() and (ratio >= 0.8).all():
-        return ""
+        return BreadthCoverageReadiness(False, "缺少全 A 市场宽度数据，本次模型已自动改用纯指数特征。")
+    breadth = normalize_breadth_coverage_columns(breadth)
+    checked_days = len(breadth)
+    if checked_days < min_recent_days:
+        return BreadthCoverageReadiness(
+            False,
+            f"全 A 市场宽度最近样本不足 {min_recent_days} 日（当前 {checked_days} 日），本次模型已自动改用纯指数特征。",
+            checked_days=checked_days,
+        )
+    usable = breadth["full_market_coverage_usable"].fillna(False)
+    usable_days = int(usable.sum())
+    if usable.all():
+        return BreadthCoverageReadiness(True, "", usable_days=usable_days, checked_days=checked_days)
     latest = breadth.iloc[0]
 
     def as_int(value: object) -> int:
         return 0 if pd.isna(value) else int(value)
 
-    def as_float(value: object) -> float:
-        return 0.0 if pd.isna(value) else float(value)
-
     effective_value = latest.get("effective_count")
     effective = as_int(effective_value if pd.notna(effective_value) else latest.get("total_count"))
-    mode_value = latest.get("breadth_mode")
-    latest_mode = "local_sample" if pd.isna(mode_value) else str(mode_value)
+    mode_value = latest.get("coverage_mode", latest.get("breadth_mode"))
+    latest_mode = "unknown" if pd.isna(mode_value) else str(mode_value)
     if latest_mode != "full_market":
-        return f"当前宽度仅覆盖本地样本 {effective} 只股票，未达到全市场宽度标准。本次大盘 HMM 已使用纯指数特征。"
+        return BreadthCoverageReadiness(
+            False,
+            f"当前宽度模式为 {latest_mode}，仅覆盖本地样本 {effective} 只股票，不能作为全市场宽度。本次大盘 HMM 已使用纯指数特征。",
+            usable_days=usable_days,
+            checked_days=checked_days,
+            coverage_mode=latest_mode,
+        )
     expected = as_int(latest.get("expected_count"))
-    latest_ratio = as_float(latest.get("coverage_ratio"))
-    return f"当前全 A 宽度覆盖不足：应覆盖 {expected} 只，有效 {effective} 只，覆盖率 {latest_ratio:.1%}。本次大盘 HMM 已使用纯指数特征。"
+    latest_ratio_value = latest.get("full_market_coverage_ratio")
+    latest_ratio = None if pd.isna(latest_ratio_value) else float(latest_ratio_value)
+    if strict_policy:
+        ratio_text = "不可用" if latest_ratio is None else f"{latest_ratio:.1%}"
+        return BreadthCoverageReadiness(
+            False,
+            f"严格覆盖策略下全 A 宽度存在覆盖不足日期：最新应覆盖 {expected} 只，有效 {effective} 只，覆盖率 {ratio_text}。本次大盘 HMM 已使用纯指数特征。",
+            usable_days=usable_days,
+            checked_days=checked_days,
+        )
+    if usable_days >= int(min_usable_days):
+        bad_days = checked_days - usable_days
+        return BreadthCoverageReadiness(
+            True,
+            f"全 A 宽度最近 {checked_days} 日中有 {bad_days} 日覆盖不足；训练将仅在具备全市场覆盖的日期使用宽度特征。",
+            usable_days=usable_days,
+            checked_days=checked_days,
+        )
+    ratio_text = "不可用" if latest_ratio is None else f"{latest_ratio:.1%}"
+    return BreadthCoverageReadiness(
+        False,
+        f"全 A 宽度可用日期不足：最近 {checked_days} 日仅 {usable_days} 日满足全市场覆盖；最新应覆盖 {expected} 只，有效 {effective} 只，覆盖率 {ratio_text}。本次大盘 HMM 已使用纯指数特征。",
+        usable_days=usable_days,
+        checked_days=checked_days,
+    )
+
+
+def _recent_breadth_warning(storage: DuckDBStorage, end: pd.Timestamp) -> str:
+    return _recent_breadth_readiness(storage, end).warning
 
 
 def label_market_states(feature_df: pd.DataFrame, state_col: str = "state_id", use_breadth: bool = True) -> dict[int, str]:
@@ -175,6 +232,7 @@ def train_market_hmm(
     random_state: int = 42,
     n_iter: int = 300,
     allow_insufficient_index_coverage: bool = False,
+    strict_breadth_coverage: bool = False,
     storage: DuckDBStorage | None = None,
     progress_callback: ProgressCallback | None = None,
 ) -> MarketHMMTrainResult:
@@ -199,8 +257,9 @@ def train_market_hmm(
     if index_coverage_warning and len(sufficient_major_indices) < 2 and not allow_insufficient_index_coverage:
         raise ValueError(index_coverage_warning + " 如仍要训练，请勾选“允许指数覆盖不足时训练”。")
     progress(30, "检查市场宽度", major_indices=len(sufficient_major_indices))
-    breadth_coverage_warning = _recent_breadth_warning(storage, end) if use_breadth else ""
-    effective_use_breadth = bool(use_breadth and not breadth_coverage_warning)
+    breadth_readiness = _recent_breadth_readiness(storage, end, strict_policy=strict_breadth_coverage) if use_breadth else BreadthCoverageReadiness(False, "")
+    breadth_coverage_warning = breadth_readiness.warning if use_breadth else ""
+    effective_use_breadth = bool(use_breadth and breadth_readiness.can_use_breadth)
     df = features[(features["trade_date"] >= start) & (features["trade_date"] <= end)].copy()
     progress(45, "构建特征", sample_rows=len(df))
     feature_columns = available_market_feature_columns(df, use_breadth=effective_use_breadth)
@@ -288,6 +347,10 @@ def train_market_hmm(
                         "feature_columns": feature_columns,
                         "used_breadth": used_breadth,
                         "requested_breadth": bool(use_breadth),
+                        "strict_breadth_coverage": bool(strict_breadth_coverage),
+                        "breadth_coverage_mode": breadth_readiness.coverage_mode,
+                        "breadth_usable_days": breadth_readiness.usable_days,
+                        "breadth_checked_days": breadth_readiness.checked_days,
                         "breadth_coverage_warning": breadth_coverage_warning,
                         "index_coverage_warning": index_coverage_warning,
                         "major_index_counts": major_counts,
