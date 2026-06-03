@@ -112,19 +112,30 @@ def _coverage_level(
     mode: str,
     effective_count: float,
     expected_count: float | None,
-    coverage_ratio: float | None,
+    full_market_coverage_ratio: float | None,
 ) -> str:
     effective = 0 if pd.isna(effective_count) else int(effective_count)
-    ratio = 0.0 if coverage_ratio is None or pd.isna(coverage_ratio) else float(coverage_ratio)
+    ratio = None if full_market_coverage_ratio is None or pd.isna(full_market_coverage_ratio) else float(full_market_coverage_ratio)
     if mode == "full_market":
+        if expected_count is None or pd.isna(expected_count) or ratio is None:
+            return "unavailable"
         if ratio >= 0.8 and effective >= 2500:
             return "full_market"
         if ratio >= 0.4:
             return "partial_sample"
         return "insufficient"
-    if effective >= 500:
-        return "partial_sample"
-    return "insufficient"
+    if mode == "local_sample":
+        if effective >= 500:
+            return "local_sample"
+        return "insufficient"
+    return "unknown"
+
+
+def _ensure_market_breadth_coverage_columns(storage: DuckDBStorage) -> None:
+    with storage.connect() as con:
+        con.execute("ALTER TABLE market_breadth_daily ADD COLUMN IF NOT EXISTS coverage_mode TEXT")
+        con.execute("ALTER TABLE market_breadth_daily ADD COLUMN IF NOT EXISTS local_sample_internal_coverage DOUBLE")
+        con.execute("ALTER TABLE market_breadth_daily ADD COLUMN IF NOT EXISTS full_market_coverage_ratio DOUBLE")
 
 
 def update_all_a_stock_universe(
@@ -317,6 +328,7 @@ def update_market_breadth(
 ) -> MarketUpdateSummary:
     storage = storage or DuckDBStorage()
     storage.init_schema()
+    _ensure_market_breadth_coverage_columns(storage)
     if mode not in {"local_sample", "full_market"}:
         raise ValueError("market breadth mode must be local_sample or full_market")
     start = normalize_yyyymmdd(start_date)
@@ -373,14 +385,16 @@ def update_market_breadth(
     amount_mean = daily["amount_total"].rolling(20, min_periods=10).mean()
     amount_std = daily["amount_total"].rolling(20, min_periods=10).std(ddof=0)
     daily["amount_z_20d"] = (daily["amount_total"] - amount_mean) / amount_std.replace(0, pd.NA)
-    daily["expected_count"] = int(expected_count) if expected_count is not None else daily["total_count"]
+    daily["coverage_mode"] = mode
+    daily["expected_count"] = int(expected_count) if expected_count is not None else pd.NA
+    daily["local_sample_internal_coverage"] = daily["effective_count"] / daily["total_count"].replace(0, pd.NA)
+    daily["full_market_coverage_ratio"] = pd.NA
     if mode == "full_market":
-        daily["coverage_ratio"] = daily["effective_count"] / daily["expected_count"].replace(0, pd.NA)
-    else:
-        daily["coverage_ratio"] = daily["effective_count"] / daily["total_count"].replace(0, pd.NA)
+        daily["full_market_coverage_ratio"] = daily["effective_count"] / daily["expected_count"].replace(0, pd.NA)
+    daily["coverage_ratio"] = daily["full_market_coverage_ratio"]
     daily["breadth_mode"] = mode
     daily["coverage_level"] = [
-        _coverage_level(mode, row.effective_count, row.expected_count, row.coverage_ratio)
+        _coverage_level(mode, row.effective_count, row.expected_count, row.full_market_coverage_ratio)
         for row in daily.itertuples(index=False)
     ]
     daily["coverage_warning"] = ""
@@ -393,7 +407,7 @@ def update_market_breadth(
             lambda row: (
                 f"全 A 宽度覆盖不足：应覆盖 {int(row['expected_count']) if pd.notna(row['expected_count']) else 0} 只，"
                 f"有效 {int(row['effective_count']) if pd.notna(row['effective_count']) else 0} 只，"
-                f"覆盖率 {float(row['coverage_ratio']) if pd.notna(row['coverage_ratio']) else 0.0:.1%}。"
+                f"覆盖率 {float(row['full_market_coverage_ratio']) if pd.notna(row['full_market_coverage_ratio']) else 0.0:.1%}。"
             ),
             axis=1,
         )
@@ -420,6 +434,9 @@ def update_market_breadth(
             "ma20_valid_count",
             "expected_count",
             "coverage_ratio",
+            "coverage_mode",
+            "local_sample_internal_coverage",
+            "full_market_coverage_ratio",
             "breadth_mode",
             "up_ratio",
             "above_ma20_ratio",

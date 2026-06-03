@@ -30,6 +30,10 @@ BASE_MARKET_FEATURE_COLUMNS = [
     "cross_index_dispersion_20d",
 ]
 BREADTH_FEATURE_COLUMNS = ["up_ratio", "above_ma20_ratio", "amount_z_20d"]
+COVERAGE_MODE_FULL_MARKET = "full_market"
+COVERAGE_MODE_LOCAL_SAMPLE = "local_sample"
+COVERAGE_MODE_UNKNOWN = "unknown"
+COVERAGE_MODES = {COVERAGE_MODE_FULL_MARKET, COVERAGE_MODE_LOCAL_SAMPLE, COVERAGE_MODE_UNKNOWN}
 
 
 def _index_features(df: pd.DataFrame, alias: str) -> pd.DataFrame:
@@ -74,6 +78,51 @@ def available_market_feature_columns(features: pd.DataFrame, use_breadth: bool =
         seen.add(col)
         if col in features.columns and features[col].notna().sum() >= 20:
             out.append(col)
+    return out
+
+
+def normalize_coverage_mode(value: object) -> str:
+    text = "" if pd.isna(value) else str(value).strip()
+    if text in {COVERAGE_MODE_FULL_MARKET, COVERAGE_MODE_LOCAL_SAMPLE}:
+        return text
+    return COVERAGE_MODE_UNKNOWN
+
+
+def normalize_breadth_coverage_columns(breadth: pd.DataFrame) -> pd.DataFrame:
+    if breadth.empty:
+        return breadth.copy()
+    out = breadth.copy()
+    if "coverage_mode" not in out.columns:
+        if "breadth_mode" in out.columns:
+            out["coverage_mode"] = out["breadth_mode"].map(normalize_coverage_mode)
+        else:
+            out["coverage_mode"] = COVERAGE_MODE_UNKNOWN
+    else:
+        out["coverage_mode"] = out["coverage_mode"].map(normalize_coverage_mode)
+
+    legacy_ratio = pd.to_numeric(out.get("coverage_ratio", pd.Series(pd.NA, index=out.index)), errors="coerce")
+    if "full_market_coverage_ratio" not in out.columns:
+        out["full_market_coverage_ratio"] = pd.NA
+    out["full_market_coverage_ratio"] = pd.to_numeric(out["full_market_coverage_ratio"], errors="coerce")
+    full_mask = out["coverage_mode"].eq(COVERAGE_MODE_FULL_MARKET) & out["full_market_coverage_ratio"].isna()
+    out.loc[full_mask, "full_market_coverage_ratio"] = legacy_ratio.loc[full_mask]
+
+    if "local_sample_internal_coverage" not in out.columns:
+        out["local_sample_internal_coverage"] = pd.NA
+    out["local_sample_internal_coverage"] = pd.to_numeric(out["local_sample_internal_coverage"], errors="coerce")
+    local_mask = out["coverage_mode"].eq(COVERAGE_MODE_LOCAL_SAMPLE) & out["local_sample_internal_coverage"].isna()
+    if local_mask.any():
+        total = pd.to_numeric(out.get("total_count", pd.Series(pd.NA, index=out.index)), errors="coerce")
+        effective = pd.to_numeric(out.get("effective_count", pd.Series(pd.NA, index=out.index)), errors="coerce")
+        derived_local = effective / total.replace(0, pd.NA)
+        out.loc[local_mask, "local_sample_internal_coverage"] = legacy_ratio.where(legacy_ratio.notna(), derived_local).loc[local_mask]
+
+    coverage_level = out.get("coverage_level", pd.Series("", index=out.index)).fillna("").astype(str)
+    out["full_market_coverage_usable"] = (
+        out["coverage_mode"].eq(COVERAGE_MODE_FULL_MARKET)
+        & coverage_level.eq("full_market")
+        & pd.to_numeric(out["full_market_coverage_ratio"], errors="coerce").ge(0.8)
+    )
     return out
 
 
@@ -141,9 +190,33 @@ def build_market_features(
         )
     if not breadth.empty:
         breadth["trade_date"] = pd.to_datetime(breadth["trade_date"])
+        breadth = normalize_breadth_coverage_columns(breadth)
         breadth = breadth.drop_duplicates(subset=["trade_date"], keep="last")
+        if breadth_mode == COVERAGE_MODE_FULL_MARKET:
+            unusable = ~breadth["full_market_coverage_usable"].fillna(False)
+            for column in BREADTH_FEATURE_COLUMNS:
+                if column in breadth.columns:
+                    breadth.loc[unusable, column] = pd.NA
+        breadth_columns = [
+            "trade_date",
+            "up_ratio",
+            "above_ma20_ratio",
+            "amount_z_20d",
+            "limit_up_count",
+            "limit_down_count",
+            "total_count",
+            "effective_count",
+            "expected_count",
+            "coverage_mode",
+            "local_sample_internal_coverage",
+            "full_market_coverage_ratio",
+            "full_market_coverage_usable",
+            "coverage_level",
+            "coverage_warning",
+        ]
+        breadth_columns = [column for column in breadth_columns if column in breadth.columns]
         features = features.merge(
-            breadth[["trade_date", "up_ratio", "above_ma20_ratio", "amount_z_20d", "limit_up_count", "limit_down_count", "total_count"]],
+            breadth[breadth_columns],
             on="trade_date",
             how="left",
         )
