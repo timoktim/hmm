@@ -329,6 +329,8 @@ def fit_empirical_exit_calibrator(
 
 
 def _lookup_rate(row: pd.Series, calibrator: EmpiricalExitCalibrator) -> float:
+    if pd.isna(pd.to_numeric(pd.Series([row.get("raw_p_exit")]), errors="coerce").iloc[0]):
+        return np.nan
     target_type = str(row.get("target_type") or calibrator.metadata.get("target_type") or "state_id_exit")
     tables = [
         (
@@ -365,7 +367,7 @@ def apply_exit_calibrator(calibration_df: pd.DataFrame, calibrator: EmpiricalExi
         return out
     out["calibrated_p_exit"] = out.apply(lambda row: _lookup_rate(row, calibrator), axis=1)
     out["calibrated_p_exit"] = pd.to_numeric(out["calibrated_p_exit"], errors="coerce").clip(0.0, 1.0)
-    out["probability_status"] = "usable_probability"
+    out["probability_status"] = np.where(out["calibrated_p_exit"].notna(), "usable_probability", "unavailable")
     return out
 
 

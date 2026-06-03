@@ -49,6 +49,8 @@ PROBABILITY_READINESS_VALID_STATUSES = {
     "insufficient_sample",
     "missing",
     "tail_censored",
+    "beyond_duration_support",
+    "unavailable",
 }
 NEXT_STATE_TENDENCIES = ("Trend", "Neutral", "Stress", "Repair", "Mixed", "Unavailable")
 FORBIDDEN_UI_TERMS = ("上涨概率", "下跌概率", "买入", "卖出", "交易信号", "推荐买入", "推荐板块", "目标收益", "胜率", "RiskOff")
@@ -542,6 +544,10 @@ def _raw_basis(status: object) -> str:
         return "raw_rank_excluded_ordinal_only"
     if value == "tail_censored":
         return "tail_censored_beyond_duration_support"
+    if value == "beyond_duration_support":
+        return "raw_rank_excluded_beyond_duration_support"
+    if value == "unavailable":
+        return "raw_rank_excluded_unavailable"
     if value == "invalid":
         return "raw_rank_excluded_invalid"
     if value == "insufficient_sample":
@@ -639,6 +645,22 @@ def _exit_tendency_long(
 
     duration_map = _completed_duration_map(profile_episodes)
     target_base = targets.copy()
+    state_status_cols = [
+        "sector_code",
+        "trade_date",
+        "duration_percentile_status",
+        "duration_tail_status",
+        *[f"raw_p_exit_{horizon}d_status" for horizon in horizons],
+    ]
+    state_status_cols = [col for col in state_status_cols if col in states.columns]
+    if {"sector_code", "trade_date"}.issubset(state_status_cols) and len(state_status_cols) > 2:
+        state_status = states[state_status_cols].copy()
+        state_status["trade_date"] = pd.to_datetime(state_status["trade_date"])
+        target_base = target_base.merge(
+            state_status.drop_duplicates(["sector_code", "trade_date"]),
+            on=["sector_code", "trade_date"],
+            how="left",
+        )
     target_base["duration_percentile_display"] = [
         _duration_percentile(duration_map.get(str(label), pd.Series(dtype=float)), age)
         for label, age in zip(target_base["state_label"], target_base["display_state_age_days"], strict=False)
@@ -664,9 +686,42 @@ def _exit_tendency_long(
             model_duration_percentile = pd.to_numeric(h["duration_percentile"], errors="coerce")
         else:
             model_duration_percentile = pd.Series(np.nan, index=h.index)
-        h["tail_censored"] = model_duration_percentile.ge(1.0) & h["raw_exit_score_value"].isna()
+        duration_percentile_status = (
+            h["duration_percentile_status"].fillna("").astype(str)
+            if "duration_percentile_status" in h.columns
+            else pd.Series("", index=h.index, dtype=object)
+        )
+        duration_tail_status = (
+            h["duration_tail_status"].fillna("").astype(str)
+            if "duration_tail_status" in h.columns
+            else pd.Series("", index=h.index, dtype=object)
+        )
+        raw_status_col = f"raw_p_exit_{horizon}d_status"
+        raw_tail_status = (
+            h[raw_status_col].fillna("").astype(str)
+            if raw_status_col in h.columns
+            else pd.Series("", index=h.index, dtype=object)
+        )
+        beyond_support = (
+            duration_tail_status.eq("beyond_duration_support")
+            | duration_percentile_status.eq("beyond_support")
+            | raw_tail_status.eq("beyond_duration_support")
+            | model_duration_percentile.ge(1.0)
+        )
+        raw_undefined_tail = raw_tail_status.isin(["beyond_duration_support", "tail_censored", "unavailable"]) | (
+            beyond_support & h["raw_exit_score_value"].isna()
+        )
+        h["tail_censored"] = beyond_support & raw_undefined_tail
+        unavailable_tail = raw_tail_status.eq("unavailable") & ~h["tail_censored"]
+        h["duration_tail_status"] = np.select(
+            [h["tail_censored"], unavailable_tail],
+            ["tail_censored", "unavailable"],
+            default=np.where(duration_tail_status.ne(""), duration_tail_status, "within_duration_support"),
+        )
         h.loc[h["tail_censored"], "probability_status"] = "tail_censored"
+        h.loc[unavailable_tail, "probability_status"] = "unavailable"
         h.loc[h["tail_censored"], "raw_score_allowed"] = False
+        h.loc[raw_undefined_tail, "raw_score_allowed"] = False
         h["raw_score_used"] = h["raw_score_allowed"] & h["raw_exit_rank_score_unmasked"].notna()
         h["raw_exit_rank_score"] = np.where(h["raw_score_used"], h["raw_exit_rank_score_unmasked"], np.nan)
         h = h.merge(
@@ -703,6 +758,8 @@ def _exit_tendency_long(
         h["exit_tendency_basis"] = "age_percentile+empirical_exit_rate+" + h["raw_basis"].astype(str)
         h.loc[h["tail_censored"], "exit_tendency_score"] = np.nan
         h.loc[h["tail_censored"], "exit_tendency_basis"] = "tail_censored_beyond_duration_support"
+        h.loc[unavailable_tail, "exit_tendency_score"] = np.nan
+        h.loc[unavailable_tail, "exit_tendency_basis"] = "unavailable_duration_tail"
         tendency_parts = [
             _score_to_relative_tendency(group, config)
             for _, group in h.groupby(["state_label", "horizon_days"], observed=True)
@@ -712,6 +769,7 @@ def _exit_tendency_long(
         else:
             h["exit_tendency"] = "unavailable"
         h.loc[h["tail_censored"], "exit_tendency"] = "unavailable"
+        h.loc[unavailable_tail, "exit_tendency"] = "unavailable"
         long_rows.append(
             h[
                 [
@@ -728,6 +786,7 @@ def _exit_tendency_long(
                     "raw_exit_rank_score",
                     "raw_score_used",
                     "probability_status",
+                    "duration_tail_status",
                     "raw_basis",
                     "sample_count",
                     "label_sample_count",
@@ -995,6 +1054,7 @@ def build_lifecycle_ui_frame(
             ("exit_tendency_score", "exit_tendency_score"),
             ("exit_tendency_basis", "exit_tendency_basis"),
             ("probability_status", "probability_status"),
+            ("duration_tail_status", "duration_tail_status"),
             ("raw_score_used", "raw_score_used"),
             ("raw_basis", "raw_basis"),
         ]:
@@ -1012,6 +1072,7 @@ def build_lifecycle_ui_frame(
             f"exit_tendency_score_{horizon}d": np.nan,
             f"exit_tendency_basis_{horizon}d": "unavailable",
             f"probability_status_{horizon}d": "missing",
+            f"duration_tail_status_{horizon}d": "unavailable",
             f"raw_score_used_{horizon}d": False,
             f"raw_basis_{horizon}d": "raw_rank_excluded_missing_policy",
         }
