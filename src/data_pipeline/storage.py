@@ -44,6 +44,14 @@ def _quote_identifier(identifier: str) -> str:
     return f'"{text}"'
 
 
+def _normalize_stock_code(value: object) -> str:
+    text = str(value).strip().upper()
+    match = re.search(r"(\d{1,6})", text)
+    if match:
+        return match.group(1).zfill(6)
+    return text.zfill(6)
+
+
 @contextmanager
 def _schema_file_lock(lock_path: Path):
     lock_path.parent.mkdir(parents=True, exist_ok=True)
@@ -631,6 +639,7 @@ class DuckDBStorage:
                   basket_name TEXT NOT NULL,
                   description TEXT,
                   index_method TEXT DEFAULT 'equal_weight',
+                  membership_policy TEXT DEFAULT 'fixed_weight_zero_return',
                   created_at TIMESTAMP,
                   updated_at TIMESTAMP
                 );
@@ -654,10 +663,12 @@ class DuckDBStorage:
             for column_sql in [
                 "ALTER TABLE user_universe_items ADD COLUMN IF NOT EXISTS valid_from DATE",
                 "ALTER TABLE user_universe_items ADD COLUMN IF NOT EXISTS valid_to DATE",
+                "ALTER TABLE custom_stock_basket ADD COLUMN IF NOT EXISTS membership_policy TEXT DEFAULT 'fixed_weight_zero_return'",
                 "ALTER TABLE custom_stock_basket_members ADD COLUMN IF NOT EXISTS valid_from DATE",
                 "ALTER TABLE custom_stock_basket_members ADD COLUMN IF NOT EXISTS valid_to DATE",
             ]:
                 con.execute(column_sql)
+            con.execute("UPDATE custom_stock_basket SET membership_policy = 'fixed_weight_zero_return' WHERE membership_policy IS NULL")
             con.execute(
                 """
                 CREATE TABLE IF NOT EXISTS custom_basket_ohlcv (
@@ -668,11 +679,24 @@ class DuckDBStorage:
                   volume DOUBLE,
                   amount DOUBLE,
                   member_count INTEGER,
+                  coverage_ratio DOUBLE,
+                  missing_member_count INTEGER,
+                  low_coverage_warning BOOLEAN DEFAULT FALSE,
+                  membership_policy TEXT,
+                  index_method_effective TEXT,
                   created_at TIMESTAMP,
                   PRIMARY KEY (basket_id, trade_date)
                 );
                 """
             )
+            for column_sql in [
+                "ALTER TABLE custom_basket_ohlcv ADD COLUMN IF NOT EXISTS coverage_ratio DOUBLE",
+                "ALTER TABLE custom_basket_ohlcv ADD COLUMN IF NOT EXISTS missing_member_count INTEGER",
+                "ALTER TABLE custom_basket_ohlcv ADD COLUMN IF NOT EXISTS low_coverage_warning BOOLEAN DEFAULT FALSE",
+                "ALTER TABLE custom_basket_ohlcv ADD COLUMN IF NOT EXISTS membership_policy TEXT",
+                "ALTER TABLE custom_basket_ohlcv ADD COLUMN IF NOT EXISTS index_method_effective TEXT",
+            ]:
+                con.execute(column_sql)
             con.execute(
                 """
                 CREATE TABLE IF NOT EXISTS hsmm_model_runs (
@@ -1587,9 +1611,27 @@ class DuckDBStorage:
     def list_universe_items(self, universe_id: str) -> pd.DataFrame:
         return self.read_df("SELECT * FROM user_universe_items WHERE universe_id = ? ORDER BY item_type, item_name", [universe_id])
 
-    def create_custom_stock_basket(self, name: str, description: str = "", index_method: str = "equal_weight") -> str:
+    def create_custom_stock_basket(
+        self,
+        name: str,
+        description: str = "",
+        index_method: str = "equal_weight",
+        membership_policy: str = "fixed_weight_zero_return",
+    ) -> str:
         basket_id = self._id("custom", name)
-        df = pd.DataFrame([{"basket_id": basket_id, "basket_name": name, "description": description, "index_method": index_method, "created_at": pd.Timestamp.now(), "updated_at": pd.Timestamp.now()}])
+        df = pd.DataFrame(
+            [
+                {
+                    "basket_id": basket_id,
+                    "basket_name": name,
+                    "description": description,
+                    "index_method": index_method,
+                    "membership_policy": membership_policy,
+                    "created_at": pd.Timestamp.now(),
+                    "updated_at": pd.Timestamp.now(),
+                }
+            ]
+        )
         self.upsert_df("custom_stock_basket", df, ["basket_id"])
         return basket_id
 
@@ -1598,7 +1640,7 @@ class DuckDBStorage:
         if df.empty:
             return
         df["basket_id"] = basket_id
-        df["stock_code"] = df["stock_code"].astype(str).str.extract(r"(\d{6})", expand=False).fillna(df["stock_code"].astype(str)).str.zfill(6)
+        df["stock_code"] = df["stock_code"].map(_normalize_stock_code)
         if "stock_name" not in df.columns:
             df["stock_name"] = ""
         if "weight" not in df.columns:
@@ -1612,7 +1654,7 @@ class DuckDBStorage:
 
     def remove_basket_member(self, basket_id: str, stock_code: str) -> None:
         with _DB_WRITE_LOCK, self.connect() as con:
-            con.execute("DELETE FROM custom_stock_basket_members WHERE basket_id = ? AND stock_code = ?", [basket_id, str(stock_code).zfill(6)])
+            con.execute("DELETE FROM custom_stock_basket_members WHERE basket_id = ? AND stock_code = ?", [basket_id, _normalize_stock_code(stock_code)])
             con.execute("UPDATE custom_stock_basket SET updated_at = now() WHERE basket_id = ?", [basket_id])
 
     def list_basket_members(self, basket_id: str) -> pd.DataFrame:
