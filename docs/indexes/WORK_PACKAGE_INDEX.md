@@ -12,7 +12,7 @@ Logical root: docs/
 4. Codex must read `docs/runtime/LOCAL_DB_HANDOFF.md` before any local DB-backed validation.
 5. No Stage package may fetch external data or modify HMM/HSMM training algorithms unless a later data/model package explicitly allows it.
 6. DuckDB and WAL files must not be committed.
-7. True Stage03R work remains blocked until Stage03 preflight reports `Stage03PreflightVerdict: PASS`.
+7. Stage03R is hazard-first: HSMM stays lifecycle interpretation, Duration Hazard becomes the planned primary exit engine.
 
 ## Work Packages
 
@@ -36,60 +36,40 @@ Logical root: docs/
 | STAGE03PF-WP3 | 03PF | WP3 | archived | v1 | docs/work_packages/stage03_preflight/STAGE03PF_BATCH_01_HMM_CACHE_LINEAGE.md | Codex WP3 | accepted |
 | STAGE03PF-WP4 | 03PF | WP4 | archived | v1 | docs/work_packages/stage03_preflight/STAGE03PF_BATCH_02_HSMM_ASOF_ATOMICITY.md | Codex WP4 | accepted |
 | STAGE03PF-WP5 | 03PF | WP5 | archived | v1 | docs/work_packages/stage03_preflight/STAGE03PF_BATCH_02_HSMM_ASOF_ATOMICITY.md | Codex WP5 | accepted |
-| STAGE03PF-WP6 | 03PF | WP6 | active | v1 | docs/work_packages/stage03_preflight/STAGE03PF_BATCH_02_HSMM_ASOF_ATOMICITY.md | Codex WP6 | reopened_by_wp13_gate |
-| STAGE03PF-WP7 | 03PF | WP7 | active | v1 | docs/work_packages/stage03_preflight/STAGE03PF_BATCH_02_HSMM_ASOF_ATOMICITY.md | Codex WP7 | reopened_by_wp13_gate |
+| STAGE03PF-WP6 | 03PF | WP6 | archived | v1 | docs/work_packages/stage03_preflight/STAGE03PF_BATCH_02_HSMM_ASOF_ATOMICITY.md | Codex WP6 | accepted_by_pr38_gate |
+| STAGE03PF-WP7 | 03PF | WP7 | archived | v1 | docs/work_packages/stage03_preflight/STAGE03PF_BATCH_02_HSMM_ASOF_ATOMICITY.md | Codex WP7 | accepted_by_pr38_gate |
 | STAGE03PF-WP8 | 03PF | WP8 | archived | v1 | docs/work_packages/stage03_preflight/STAGE03PF_BATCH_03_READINESS_UI_UNIVERSE_EVIDENCE.md | Codex WP8 | accepted |
 | STAGE03PF-WP9 | 03PF | WP9 | archived | v1 | docs/work_packages/stage03_preflight/STAGE03PF_BATCH_03_READINESS_UI_UNIVERSE_EVIDENCE.md | Codex WP9 | accepted |
-| STAGE03PF-WP10 | 03PF | WP10 | active | v1 | docs/work_packages/stage03_preflight/STAGE03PF_BATCH_03_READINESS_UI_UNIVERSE_EVIDENCE.md | Codex WP10 | reopened_by_wp13_gate |
+| STAGE03PF-WP10 | 03PF | WP10 | archived | v1 | docs/work_packages/stage03_preflight/STAGE03PF_BATCH_03_READINESS_UI_UNIVERSE_EVIDENCE.md | Codex WP10 | accepted_by_pr38_gate |
 | STAGE03PF-WP11 | 03PF | WP11 | archived | v1 | docs/work_packages/stage03_preflight/STAGE03PF_BATCH_03_READINESS_UI_UNIVERSE_EVIDENCE.md | Codex WP11 | accepted |
-| STAGE03PF-WP12 | 03PF | WP12 | active | v1 | docs/work_packages/stage03_preflight/STAGE03PF_BATCH_03_READINESS_UI_UNIVERSE_EVIDENCE.md | Codex WP12 | reopened_by_wp13_gate |
-| STAGE03PF-WP13 | 03PF | WP13 | active | v1 | docs/work_packages/stage03_preflight/STAGE03PF_BATCH_99_FINAL_GATE.md | Codex Gate | blocked |
-| STAGE03R-WP0 | 03R | WP0 | blocked_until_stage03pf_pass | v1 | docs/work_packages/stage03r/STAGE03R_EXECUTION_INDEX.md | Codex Stage03R | planned |
+| STAGE03PF-WP12 | 03PF | WP12 | archived | v1 | docs/work_packages/stage03_preflight/STAGE03PF_BATCH_03_READINESS_UI_UNIVERSE_EVIDENCE.md | Codex WP12 | accepted_by_pr38_gate |
+| STAGE03PF-WP13 | 03PF | WP13 | archived | v1 | docs/work_packages/stage03_preflight/STAGE03PF_BATCH_99_FINAL_GATE.md | Codex Gate | accepted_by_pr38_gate |
+| STAGE03R-WP0 | 03R | WP0 | active | v1 | docs/work_packages/stage03r/STAGE03R_WP0_scope_freeze_signal_contract.md | Codex Stage03R-WP0 | pending |
 | STAGE03R-WP1 | 03R | WP1 | blocked_until_stage03r_wp0 | v1 | docs/work_packages/stage03r/STAGE03R_EXECUTION_INDEX.md | Codex Stage03R | planned |
 | STAGE03R-WP2 | 03R | WP2 | blocked_until_stage03r_wp1 | v1 | docs/work_packages/stage03r/STAGE03R_EXECUTION_INDEX.md | Codex Stage03R | planned |
 | STAGE03R-WP3 | 03R | WP3 | blocked_until_stage03r_wp2 | v1 | docs/work_packages/stage03r/STAGE03R_EXECUTION_INDEX.md | Codex Stage03R | planned |
 
-## Current Stage 02 Focus
+## Current Stage 03R Focus
 
-Stage 02 final acceptance is paused because causal cache lineage is a readiness blocker.
+Stage03 preflight passed via PR #38:
 
-Completed:
-
-- WP-A: causal cache contract audit.
-- WP-B: CI-safe validation and local DB artifact policy.
-- WP-C: conservative readiness gate integration.
+```text
+Stage03PreflightVerdict: PASS
+pytest -q: 400 passed, 2 skipped, 27 warnings
+BlockingPackages: none
+```
 
 Active:
 
-- WP-E: causal cache lineage repair / backfill contract.
+- STAGE03R-WP0: Scope Freeze and Signal Contract.
 
-Blocked:
+Blocked until WP0:
 
-- WP-D: final Stage 02 integration summary and hard issue review. Resume after WP-E is accepted.
-
-Tracked risks carried forward:
-
-- Causal cache rows exist but are not linked to the resolved HMM run id.
-- Causal cache coverage is partial.
-- Label alignment ambiguity remains high.
-- CI does not use the private V0 DB.
-
-## Current Stage 03 Preflight Focus
-
-Stage03 remains blocked. WP13 rerun produced `Stage03PreflightVerdict: BLOCKED` after audit hardening.
-
-Open blocker repair PRs:
-
-- PR #36: `STAGE03PF-GATEFIX-B1`, A2 lifecycle tail status schema.
-- PR #37: `STAGE03PF-GATEFIX-B2`, A5 forward-return causal semantics.
-
-These PRs should not be merged independently while their GitHub Actions remain red. A combined A2+A5 validation branch or stacked PR should prove the preflight gate passes.
-
-No true Stage03R package is active. Duration Hazard, low-cost break detection, and decision engine work remain blocked until Stage03 preflight passes.
+- STAGE03R-WP1 and later Duration Hazard packages.
 
 ## Future Stage03R Route
 
-The future route is now hazard-first:
+The route is hazard-first:
 
 ```text
 Freeze HSMM as lifecycle interpretation layer
@@ -104,6 +84,7 @@ Canonical documents:
 ```text
 docs/roadmap/STAGE03R_ROUTE_ADJUSTMENT_20260603.md
 docs/work_packages/stage03r/STAGE03R_EXECUTION_INDEX.md
+docs/work_packages/stage03r/STAGE03R_WP0_scope_freeze_signal_contract.md
 ```
 
 ## Return Contract
@@ -130,3 +111,4 @@ Each Codex thread must report:
 | 2026-06-02 | Stage 02 final acceptance paused; WP-E causal cache lineage repair activated. | ChatGPT |
 | 2026-06-03 | Stage03 preflight WP13 gate recorded BLOCKED verdict and reopened WP6/WP7/WP10/WP12. | ChatGPT |
 | 2026-06-03 | Recorded Stage03R hazard-first route as future direction, blocked until Stage03 preflight pass. | ChatGPT |
+| 2026-06-03 | PR #38 passed Stage03 preflight gate; activated Stage03R WP0. | ChatGPT |
