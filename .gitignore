@@ -47,5 +47,6 @@ reports/**
 !reports/stage03r/
 !reports/stage03r/*.md
 !reports/stage03r/*.json
+!reports/stage03r/*.csv
 
 *.zip
