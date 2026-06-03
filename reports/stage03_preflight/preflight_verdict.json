@@ -1,0 +1,134 @@
+{
+  "wp": "STAGE03PF-WP13",
+  "status": "fail",
+  "branch": "stage03pf/wp13-stage03-preflight-gate",
+  "base": {
+    "ref": "origin/main",
+    "commit": "f84b5d0",
+    "description": "Merge pull request #26 from timoktim/stage03pf/wp12-sql-ui-text-hygiene"
+  },
+  "Stage03PreflightVerdict": "BLOCKED",
+  "BlockingPackages": [
+    "WP6",
+    "WP7",
+    "WP10",
+    "WP12"
+  ],
+  "DeferredPackages": [],
+  "package_status": {
+    "P0": {
+      "status": "blocked",
+      "packages": {
+        "WP0": "accepted_on_main",
+        "WP1": "accepted_on_main",
+        "WP2": "accepted_on_main",
+        "WP3": "accepted_on_main",
+        "WP4": "accepted_on_main",
+        "WP6": "reopened_by_wp13_gate",
+        "WP7": "reopened_by_wp13_gate"
+      }
+    },
+    "P1": {
+      "status": "blocked",
+      "packages": {
+        "WP5": "accepted_on_main",
+        "WP8": "accepted_on_main",
+        "WP9": "accepted_on_main",
+        "WP10": "reopened_by_wp13_gate",
+        "WP11": "accepted_on_main"
+      }
+    },
+    "P2_P3": {
+      "status": "blocked",
+      "packages": {
+        "WP12": "reopened_by_wp13_gate"
+      }
+    }
+  },
+  "gate_status": {
+    "legacy_debug_cache_status": "pass",
+    "hmm_cache_read_policy_status": "pass",
+    "hsmm_latest_asof_target_status": "pass",
+    "hsmm_run_atomicity_status": "blocked",
+    "probability_readiness_gate_status": "pass",
+    "ui_analysis_selector_status": "pass_with_full_suite_follow_up",
+    "universe_data_lineage_status": "blocked",
+    "evidence_registry_status": "pass",
+    "private_path_hygiene_status": "pass"
+  },
+  "validation": {
+    "python_fallback_used": true,
+    "pytest_fallback_used": true,
+    "commands": [
+      {
+        "command": "git diff --check",
+        "status": "pass"
+      },
+      {
+        "command": "bash scripts/stage03_preflight_gate.sh",
+        "status": "fail",
+        "results": {
+          "compileall": "pass",
+          "focused_pytest": {
+            "passed": 63,
+            "failed": 3
+          },
+          "private_path_hygiene": "pass",
+          "stage01_no_private_db": "pass"
+        }
+      },
+      {
+        "command": ".venv/bin/pytest -q",
+        "status": "fail",
+        "results": {
+          "passed": 335,
+          "failed": 5,
+          "skipped": 2,
+          "warnings": 25
+        }
+      },
+      {
+        "command": "bash scripts/check_no_private_paths.sh",
+        "status": "pass",
+        "scanned_files": 60
+      },
+      {
+        "command": "bash scripts/validate_stage01_no_private_db.sh",
+        "status": "pass",
+        "private_db_required": false,
+        "external_data_fetch": false
+      }
+    ],
+    "failing_tests": [
+      "tests/test_hsmm_run_atomicity.py::test_hsmm_walk_forward_marks_failed_on_exception",
+      "tests/test_hsmm_cascade_cleanup.py::test_duplicate_completed_run_id_fails_by_default",
+      "tests/test_hsmm_cascade_cleanup.py::test_overwrite_cleans_first_and_then_writes_completed_run",
+      "tests/test_hsmm_calibration_stability.py::test_same_run_id_rerun_clears_stale_hsmm_rows",
+      "tests/test_market_regime.py::test_ui_column_rename_mapping"
+    ]
+  },
+  "blocking_reasons": [
+    {
+      "package": "WP6",
+      "reason": "HSMM run atomicity failure path is preempted by missing persisted OHLCV snapshot lineage in synthetic tests."
+    },
+    {
+      "package": "WP7",
+      "reason": "Completed-run duplicate and overwrite cascade tests fail before cascade policy can be asserted; full-suite legacy same-run rerun semantics also conflict with the current completed-run reuse policy."
+    },
+    {
+      "package": "WP10",
+      "reason": "Universe/data snapshot hash handling raises on empty synthetic snapshot frames."
+    },
+    {
+      "package": "WP12",
+      "reason": "Full-suite UI text expectation still references the old probability label."
+    }
+  ],
+  "boundaries": {
+    "external_data_fetch": "no",
+    "training_algorithm_modified": "no",
+    "DuckDB_committed": "no",
+    "source_code_modified": "no"
+  }
+}
