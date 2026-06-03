@@ -4,6 +4,7 @@ WP: STAGE03PF-WP13-RERUN
 Branch: stage03pf/wp13-rerun-after-audit-hardening
 Base: origin/main at d6d2a79
 Status: fail
+Rerun confirmation: re-executed on 2026-06-03 after explicit user request; origin/main remained at d6d2a79 and the existing clean branch was reused.
 
 Stage03PreflightVerdict: BLOCKED
 ready_for_stage03: false
@@ -84,7 +85,7 @@ Full pytest additionally failed:
 ## Validation Commands
 
 - `git fetch origin`: pass.
-- `git worktree add -b stage03pf/wp13-rerun-after-audit-hardening <clean-worktree> origin/main`: pass.
+- Branch setup: existing clean `stage03pf/wp13-rerun-after-audit-hardening` branch reused because the requested branch already existed; origin/main was unchanged at d6d2a79.
 - `git diff --check`: pass.
 - `.venv/bin/python -m compileall -q src tests`: pass.
 - `bash scripts/stage03_preflight_gate.sh`: fail.

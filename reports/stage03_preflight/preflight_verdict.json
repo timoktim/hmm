@@ -7,6 +7,12 @@
     "commit": "d6d2a79",
     "description": "Merge pull request #34 from timoktim/stage03pf/a6-ci-dependency-private-api-guard"
   },
+  "rerun_confirmation": {
+    "date": "2026-06-03",
+    "origin_main_commit": "d6d2a79",
+    "origin_main_changed_since_previous_rerun": false,
+    "branch_reused": true
+  },
   "Stage03PreflightVerdict": "BLOCKED",
   "ready_for_stage03": false,
   "BlockingPackages": [
@@ -56,6 +62,11 @@
     "python_fallback_used": true,
     "pytest_fallback_used": true,
     "commands": [
+      {
+        "command": "branch setup",
+        "status": "pass",
+        "note": "Existing clean stage03pf/wp13-rerun-after-audit-hardening branch reused because the requested branch already existed and origin/main was unchanged at d6d2a79."
+      },
       {
         "command": "git diff --check",
         "status": "pass"
