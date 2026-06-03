@@ -25,6 +25,7 @@ from src.features.market_features import (
 from src.models.hmm_model import filtered_predict_proba
 from src.models.preprocessing import FeaturePreprocessor
 from src.utils.dates import normalize_yyyymmdd
+from src.utils.dependency_guard import last_monitor_log_prob, monitor_converged
 
 
 @dataclass
@@ -341,8 +342,8 @@ def train_market_hmm(
                 "created_at": pd.Timestamp.now(),
                 "metrics_json": json_dumps(
                     {
-                        "converged": bool(model.monitor_.converged),
-                        "log_prob": float(model.monitor_.history[-1]),
+                        "converged": monitor_converged(model),
+                        "log_prob": last_monitor_log_prob(model),
                         "state_labels": labels,
                         "feature_columns": feature_columns,
                         "used_breadth": used_breadth,

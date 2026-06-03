@@ -20,6 +20,7 @@ from src.features.sector_features import FEATURE_COLUMNS, add_sector_features, e
 from src.models.preprocessing import FeaturePreprocessor
 from src.models.state_labeler import label_states, summarize_state_history
 from src.utils.dates import normalize_yyyymmdd
+from src.utils.dependency_guard import last_monitor_log_prob, monitor_converged, require_hmmlearn_log_likelihood
 
 
 @dataclass
@@ -105,7 +106,7 @@ def filtered_predict_proba(model: object, x: np.ndarray, lengths: list[int] | No
     if x.size == 0:
         return np.empty((0, getattr(model, "n_components", 0)))
     lengths = lengths or [len(x)]
-    log_likelihood = model._compute_log_likelihood(x)
+    log_likelihood = require_hmmlearn_log_likelihood(model, x)
     log_start = np.log(np.asarray(model.startprob_, dtype=float).clip(1e-300, None))
     log_trans = np.log(np.asarray(model.transmat_, dtype=float).clip(1e-300, None))
     out = np.zeros_like(log_likelihood, dtype=float)
@@ -127,11 +128,7 @@ def filtered_predict_proba(model: object, x: np.ndarray, lengths: list[int] | No
 
 
 def _last_log_prob(model: object) -> float:
-    history = list(getattr(getattr(model, "monitor_", None), "history", []) or [])
-    if not history:
-        return float("-inf")
-    value = float(history[-1])
-    return value if np.isfinite(value) else float("-inf")
+    return last_monitor_log_prob(model)
 
 
 def fit_hmm_with_restarts(
@@ -176,7 +173,7 @@ def fit_hmm_with_restarts(
             candidates.append({"random_state": seed, "log_prob": None, "converged": False, "error": str(exc)[:300]})
             continue
         log_prob = _last_log_prob(model)
-        converged = bool(getattr(getattr(model, "monitor_", None), "converged", False))
+        converged = monitor_converged(model)
         candidates.append({"random_state": seed, "log_prob": log_prob, "converged": converged})
         if best_model is None or log_prob > best_log_prob:
             best_model = model
@@ -318,7 +315,7 @@ def train_hmm(
                 "created_at": pd.Timestamp.now(),
                 "metrics_json": json_dumps(
                     {
-                        "converged": bool(model.monitor_.converged),
+                        "converged": monitor_converged(model),
                         "log_prob": float(fit_result.best_log_prob),
                         "n_init": int(n_init),
                         "random_state": int(random_state),
