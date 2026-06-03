@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import hashlib
+import re
 import tempfile
 import threading
 import time
@@ -17,6 +18,7 @@ from src.config import settings
 
 
 _DB_WRITE_LOCK = threading.RLock()
+_SQL_IDENTIFIER_RE = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
 
 HSMM_RUN_CASCADE_TABLES = (
@@ -33,6 +35,13 @@ HSMM_RUN_CASCADE_TABLES = (
     "hsmm_lifecycle_duration_profile",
     "hsmm_next_state_tendency_profile",
 )
+
+
+def _quote_identifier(identifier: str) -> str:
+    text = str(identifier)
+    if not _SQL_IDENTIFIER_RE.fullmatch(text):
+        raise ValueError(f"Unsafe SQL identifier: {identifier!r}")
+    return f'"{text}"'
 
 
 @contextmanager
@@ -1352,25 +1361,32 @@ class DuckDBStorage:
             return
         cols = list(df.columns)
         key_cols = list(key_cols)
-        updates = [c for c in cols if c not in key_cols]
-        update_sql = ", ".join([f"{c}=excluded.{c}" for c in updates])
-        col_sql = ", ".join(cols)
+        missing_keys = [column for column in key_cols if column not in cols]
+        if missing_keys:
+            raise ValueError(f"upsert key columns missing from frame: {missing_keys}")
+        quoted_table = _quote_identifier(table)
+        quoted_cols = [_quote_identifier(column) for column in cols]
+        quoted_key_cols = [_quote_identifier(column) for column in key_cols]
+        updates = [(column, _quote_identifier(column)) for column in cols if column not in key_cols]
+        update_sql = ", ".join([f"{quoted}=excluded.{quoted}" for _, quoted in updates])
+        col_sql = ", ".join(quoted_cols)
+        key_sql = ", ".join(quoted_key_cols)
         with _DB_WRITE_LOCK, self.connect() as con:
             con.register("incoming", df)
             if update_sql:
                 con.execute(
                     f"""
-                    INSERT INTO {table} ({col_sql})
+                    INSERT INTO {quoted_table} ({col_sql})
                     SELECT {col_sql} FROM incoming
-                    ON CONFLICT ({", ".join(key_cols)}) DO UPDATE SET {update_sql}
+                    ON CONFLICT ({key_sql}) DO UPDATE SET {update_sql}
                     """
                 )
             else:
                 con.execute(
                     f"""
-                    INSERT INTO {table} ({col_sql})
+                    INSERT INTO {quoted_table} ({col_sql})
                     SELECT {col_sql} FROM incoming
-                    ON CONFLICT ({", ".join(key_cols)}) DO NOTHING
+                    ON CONFLICT ({key_sql}) DO NOTHING
                     """
                 )
 

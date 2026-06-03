@@ -2,7 +2,7 @@ from __future__ import annotations
 
 
 HELP_TEXTS = {
-    "trend_up_threshold": "只有趋势状态置信度高于该阈值的板块才会进入候选。阈值越高，筛选越严格，但可能错过早期机会。",
+    "trend_up_threshold": "只有 TrendUp 状态后验高于该阈值的板块才会进入候选。阈值越高，筛选越严格，但可能错过早期变化。",
     "top_n": "每次调仓时最多持有的板块数量。数量越少，组合越集中；数量越多，组合越分散。",
     "rebalance_every": "每隔多少个交易日重新选择板块。间隔越短，反应越快，但交易成本更高。",
     "train_window": "滚动训练时向前使用多少个交易日的数据。窗口越长，模型越稳定；窗口越短，对近期变化更敏感。",
@@ -16,7 +16,7 @@ HELP_TEXTS = {
     "market_indices": "选择参与大盘状态判断的主要指数。建议至少包含沪深300、中证500、中证1000，用于覆盖大盘、中盘和小盘风格。",
     "incremental_update": "开启后只更新最近缺失的数据，速度更快。关闭后会按起止日期重新抓取。",
     "lookback_days": "增量更新时向前回补的天数，用于修正最近几日可能变化的数据。",
-    "market_n_states": "模型将市场划分为几个隐藏状态。默认 3 个状态：风险偏好、中性震荡、风险回避。状态过多会提高不稳定性。",
+    "market_n_states": "模型将市场划分为几个隐藏状态。默认 3 个状态：风险偏好、中性震荡、压力状态。状态过多会提高不稳定性。",
     "random_state": "控制模型初始化结果，便于复现。一般不需要修改。",
     "hmm_n_init": "用不同随机种子重复训练 HMM，并保留似然最高的一次。次数越多越稳，但训练更慢。",
     "market_filter": "当前大盘状态仅作为风险提示，不直接改变板块排序或回测仓位。",
@@ -31,9 +31,9 @@ COLUMN_LABELS = {
     "sector_name": "板块名称",
     "state_label": "当前状态",
     "state_source": "状态来源",
-    "prob_trend_up": "趋势状态置信度",
-    "prob_neutral": "中性状态置信度",
-    "prob_risk_off": "风险回避状态置信度",
+    "prob_trend_up": "TrendUp 状态后验",
+    "prob_neutral": "中性状态后验",
+    "prob_risk_off": "压力状态后验",
     "sector_score": "板块评分",
     "sector_tag": "板块标签",
     "feature_scope_id": "特征作用域",
@@ -43,7 +43,7 @@ COLUMN_LABELS = {
     "vol_20d": "20日波动率",
     "drawdown_20d": "20日回撤",
     "ma20_slope": "20日均线斜率",
-    "next_state_probs_json": "下一状态置信度 JSON",
+    "next_state_probs_json": "模型迁移分布 JSON",
     "score": "个股评分",
     "rs_vs_sector_20d": "相对板块强弱",
     "rs_vs_index_20d": "相对大盘强弱",
@@ -78,7 +78,7 @@ COLUMN_LABELS = {
     "up_ratio": "上涨家数比例",
     "above_ma20_ratio": "高于20日均线比例",
     "amount_total": "全市场成交额",
-    "prob_risk_on": "风险偏好概率",
+    "prob_risk_on": "风险偏好状态后验",
     "annual_return": "年化收益",
     "annual_return_gross": "扣费前年化收益",
     "annual_return_net": "扣费后年化收益",
@@ -125,10 +125,10 @@ COLUMN_LABELS = {
     "ma20_valid_count": "均线有效股票数",
     "coverage_ratio": "覆盖率",
     "breadth_mode": "宽度模式",
-    "next_prob_trend_up": "下一趋势状态置信度",
-    "next_prob_neutral": "下一中性状态置信度",
-    "next_prob_risk_off": "下一风险回避状态置信度",
-    "next_prob_risk_on": "下一风险偏好概率",
+    "next_prob_trend_up": "模型迁移分布：TrendUp",
+    "next_prob_neutral": "模型迁移分布：中性状态",
+    "next_prob_risk_off": "模型迁移分布：压力状态",
+    "next_prob_risk_on": "模型迁移分布：风险偏好",
     "gap_1d": "跳空幅度",
     "intraday_ret": "日内收益",
     "is_limit_up": "近似涨停",
@@ -162,11 +162,11 @@ COLUMN_LABELS = {
     "trading_days": "交易日数量",
     "calendar_days": "自然日数量",
     "segment_return": "该段收益",
-    "avg_prob_trend_up": "平均趋势状态置信度",
-    "avg_prob_neutral": "平均中性状态置信度",
-    "avg_prob_risk_off": "平均风险回避状态置信度",
-    "prev_state_label": "上一状态",
-    "next_state_label": "下一状态",
+    "avg_prob_trend_up": "平均 TrendUp 状态后验",
+    "avg_prob_neutral": "平均中性状态后验",
+    "avg_prob_risk_off": "平均压力状态后验",
+    "prev_state_label": "上一展示状态",
+    "next_state_label": "后一展示状态",
     "missing_recent": "缺失最近行情",
 }
 
@@ -174,8 +174,8 @@ COLUMN_LABELS = {
 VALUE_LABELS = {
     "RiskOn": "风险偏好",
     "Neutral": "中性震荡",
-    "RiskOff": "风险回避",
-    "TrendUp": "趋势上行",
+    "RiskOff": "压力状态",
+    "TrendUp": "TrendUp 状态",
     "in_sample_display": "样本内展示",
     "causal_backtest": "因果回测",
     "all": "全市场",
@@ -204,10 +204,10 @@ VALUE_LABELS = {
 }
 
 PROBABILITY_LABELS = {
-    "prob_risk_on": "风险偏好概率",
-    "prob_neutral": "中性震荡概率",
-    "prob_risk_off": "风险回避状态置信度",
-    "prob_trend_up": "趋势状态置信度",
+    "prob_risk_on": "风险偏好状态后验",
+    "prob_neutral": "中性震荡状态后验",
+    "prob_risk_off": "压力状态后验",
+    "prob_trend_up": "TrendUp 状态后验",
 }
 
 
