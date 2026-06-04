@@ -30,7 +30,7 @@ non-overlap before final holdout consumption.
 
 - `reports/stage04/split_registry.json`
 - `reports/stage04/split_registry.md`
-- `reports/stage04/prospective_validation_ledger.jsonl`
+- `reports/stage04/prospective_validation_ledger.template.jsonl`
 - `src/evaluation/stage04_split_registry.py`
 - `tests/test_stage04_split_registry.py`
 

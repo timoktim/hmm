@@ -21,11 +21,15 @@ final_holdout_consumed: no
     20
   ],
   "labels_must_be_complete": "yes",
+  "max_label_horizon": 20,
+  "max_label_horizon_unit": "trading_days",
   "no_threshold_tuning_after_lock": "yes",
   "no_model_retraining_inside_locked_evaluation_path": "yes",
+  "no_HMM_HSMM_retraining_after_lock": "yes",
   "final_holdout_consumption_count_starts_at": 0,
   "final_holdout_consumed_in_wp0": "no",
   "external_data_fetch": "no",
+  "private_db_required_in_ci": "no",
   "locked_evaluation_path": "prospective_only"
 }
 ```
@@ -116,7 +120,7 @@ final_holdout_consumed: no
 ```json
 {
   "schema_version": "stage04_prospective_validation_ledger_v1",
-  "template_path": "reports/stage04/prospective_validation_ledger.jsonl",
+  "template_path": "reports/stage04/prospective_validation_ledger.template.jsonl",
   "local_daily_records_path": "reports/stage04/prospective_validation_ledger.local.jsonl",
   "committed_template_allowed": "yes",
   "daily_local_records_gitignored": "yes",

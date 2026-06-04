@@ -50,14 +50,19 @@ class Stage04Paths:
     target_leakage_audit: Path
 
 
-def default_stage04_paths(root: Path) -> Stage04Paths:
+def default_stage04_paths(
+    root: Path,
+    *,
+    final_gate_report: Path | None = None,
+    data_quality: Path | None = None,
+) -> Stage04Paths:
     stage03r = root / "reports/stage03r"
     return Stage04Paths(
         final_holdout_artifact=stage03r / "final_holdout_artifact.json",
-        final_gate_report=stage03r / "stage03r_final_gate_report.json",
+        final_gate_report=final_gate_report or stage03r / "stage03r_final_gate_report.json",
         risk_protocol=stage03r / "risk_validation_protocol.json",
         hazard_readiness=stage03r / "hazard_readiness_matrix_report.json",
-        data_quality=stage03r / "data_quality_ci_report.json",
+        data_quality=data_quality or stage03r / "data_quality_ci_report.json",
         hazard_vs_hsmm=stage03r / "hazard_vs_hsmm_report.json",
         age_bucket_baseline=stage03r / "age_bucket_baseline_report.json",
         hazard_calibration=stage03r / "hazard_isotonic_calibration_report.json",
@@ -91,6 +96,13 @@ def _git_head(root: Path) -> str:
         return subprocess.check_output(["git", "rev-parse", "HEAD"], cwd=root, text=True).strip()
     except Exception:
         return "unknown"
+
+
+def _git_ref(root: Path, ref: str) -> str | None:
+    try:
+        return subprocess.check_output(["git", "rev-parse", ref], cwd=root, text=True).strip()
+    except Exception:
+        return None
 
 
 def _as_date(value: Any) -> date | None:
@@ -186,6 +198,8 @@ def evaluate_prospective_holdout_candidate(
         blocking_issues.append("threshold tuning after split lock detected")
     if _as_yes(candidate.get("model_retrained_in_locked_evaluation_path")):
         blocking_issues.append("model retraining inside locked evaluation path detected")
+    if _as_yes(candidate.get("HSMM_p_exit_used_for_decision")):
+        blocking_issues.append("HSMM p_exit decision usage detected")
     if _as_yes(candidate.get("final_holdout_consumed")):
         blocking_issues.append("WP0 cannot consume final holdout")
 
@@ -220,9 +234,15 @@ def build_split_registry(
     *,
     root: Path,
     frozen_stage03r_commit: str | None = None,
-    ledger_template_path: str = "reports/stage04/prospective_validation_ledger.jsonl",
+    ledger_template_path: str = "reports/stage04/prospective_validation_ledger.template.jsonl",
+    stage03r_final_gate_path: Path | None = None,
+    data_quality_path: Path | None = None,
 ) -> dict[str, Any]:
-    paths = default_stage04_paths(root)
+    paths = default_stage04_paths(
+        root,
+        final_gate_report=stage03r_final_gate_path,
+        data_quality=data_quality_path,
+    )
     artifacts = {
         "final_holdout_artifact": _load_json(paths.final_holdout_artifact),
         "final_gate": _load_json(paths.final_gate_report),
@@ -257,11 +277,26 @@ def build_split_registry(
         "registry_version": REGISTRY_VERSION,
         "index_id": INDEX_ID,
         "status": "locked",
-        "frozen_stage03r_commit": frozen_stage03r_commit or _git_head(root),
+        "frozen_stage03r_commit": frozen_stage03r_commit or _git_ref(root, "origin/main") or _git_head(root),
         "frozen_stage03r_merge_pr": "#51",
+        "stage03r_final_gate_verdict": final_gate.get("final_verdict"),
+        "engineering_gate_verdict": final_gate.get("engineering_gate_verdict"),
+        "empirical_promotion_verdict": final_gate.get("empirical_promotion_verdict"),
         "evidence_cutoff_date": evidence_cutoff,
         "evidence_cutoff_source": "max_reconstructed_validation_end_date from Stage03R WP10.1 non-overlap evidence",
         "max_reconstructed_validation_end_date": max_validation_end,
+        "future_holdout_start_rule": "strictly_after_evidence_cutoff_date",
+        "expected_horizons": EXPECTED_HORIZONS,
+        "max_label_horizon": 20,
+        "max_label_horizon_unit": "trading_days",
+        "final_holdout_consumption_count": 0,
+        "threshold_tuning_after_lock": "forbidden",
+        "model_retraining_after_lock": "forbidden",
+        "HMM_HSMM_retraining_after_lock": "forbidden",
+        "HSMM_p_exit_used_for_decision": "no",
+        "decision_surface_output": "no",
+        "external_data_fetch": "no",
+        "private_db_required_in_ci": "no",
         "accepted_artifact_versions": accepted_versions,
         "stage03r_final_gate": {
             "engineering_gate_verdict": final_gate.get("engineering_gate_verdict"),
@@ -285,11 +320,15 @@ def build_split_registry(
             "minimum_candidate_holdout_start_date": min_start,
             "required_label_horizons": EXPECTED_HORIZONS,
             "labels_must_be_complete": "yes",
+            "max_label_horizon": 20,
+            "max_label_horizon_unit": "trading_days",
             "no_threshold_tuning_after_lock": "yes",
             "no_model_retraining_inside_locked_evaluation_path": "yes",
+            "no_HMM_HSMM_retraining_after_lock": "yes",
             "final_holdout_consumption_count_starts_at": 0,
             "final_holdout_consumed_in_wp0": "no",
             "external_data_fetch": "no",
+            "private_db_required_in_ci": "no",
             "locked_evaluation_path": "prospective_only",
         },
         "prospective_validation_ledger": {
@@ -418,6 +457,8 @@ def run_cli(args: argparse.Namespace) -> int:
         root=root,
         frozen_stage03r_commit=args.frozen_stage03r_commit,
         ledger_template_path=args.ledger_template,
+        stage03r_final_gate_path=Path(args.stage03r_final_gate),
+        data_quality_path=Path(args.data_quality),
     )
     write_outputs(
         registry,
@@ -432,9 +473,11 @@ def build_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="Build Stage04 WP0 split registry")
     parser.add_argument("--root", default=".")
     parser.add_argument("--frozen-stage03r-commit", default=None)
+    parser.add_argument("--stage03r-final-gate", default="reports/stage03r/stage03r_final_gate_report.json")
+    parser.add_argument("--data-quality", default="reports/stage03r/data_quality_ci_report.json")
     parser.add_argument("--output", default="reports/stage04/split_registry.md")
     parser.add_argument("--summary-json", default="reports/stage04/split_registry.json")
-    parser.add_argument("--ledger-template", default="reports/stage04/prospective_validation_ledger.jsonl")
+    parser.add_argument("--ledger-template", default="reports/stage04/prospective_validation_ledger.template.jsonl")
     parser.add_argument("--no-fetch", action="store_true", default=False)
     return parser
 
