@@ -68,6 +68,7 @@ run_step "$PYTEST_CMD" -q \
 
 run_step bash scripts/check_no_private_paths.sh
 run_step bash scripts/validate_stage01_no_private_db.sh
+run_step bash scripts/stage03r_data_quality_ci_gate.sh
 
 if [[ $GATE_STATUS -eq 0 ]]; then
   echo "STAGE03_PREFLIGHT_GATE=pass python=${PYTHON_CMD} pytest=${PYTEST_CMD}"

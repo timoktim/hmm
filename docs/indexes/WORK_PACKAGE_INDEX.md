@@ -53,7 +53,9 @@ Logical root: docs/
 | STAGE03R-WP6 | 03R | WP6 | archived | v1 | docs/work_packages/stage03r/STAGE03R_EXECUTION_INDEX.md | Codex Stage03R-WP6 | accepted |
 | STAGE03R-WP6.1 | 03R | WP6.1 | archived | v1 | docs/work_packages/stage03r/STAGE03R_EXECUTION_INDEX.md | Codex Stage03R-WP6.1 | accepted |
 | STAGE03R-WP7 | 03R | WP7 | archived | v1 | docs/work_packages/stage03r/STAGE03R_EXECUTION_INDEX.md | Codex Stage03R-WP7 | accepted |
-| STAGE03R-WP8 | 03R | WP8 | active | v1 | docs/work_packages/stage03r/STAGE03R_EXECUTION_INDEX.md | Codex Stage03R-WP8 | pending |
+| STAGE03R-WP8 | 03R | WP8 | archived | v1 | docs/work_packages/stage03r/STAGE03R_EXECUTION_INDEX.md | Codex Stage03R-WP8 | accepted |
+| STAGE03R-WP9 | 03R | WP9 | active | v1 | docs/work_packages/stage03r/STAGE03R_EXECUTION_INDEX.md | Codex Stage03R-WP9 | pending |
+| STAGE03R-WP10 | 03R | WP10 | blocked_until_wp9 | v1 | docs/work_packages/stage03r/STAGE03R_EXECUTION_INDEX.md | Codex Stage03R-WP10 | pending |
 
 ## Current Stage 03R Focus
 
@@ -67,11 +69,11 @@ BlockingPackages: none
 
 Active:
 
-- STAGE03R-WP8: Risk Validation Protocol.
+- STAGE03R-WP9: Data Quality CI Invariants.
 
-Blocked until WP8 acceptance:
+Blocked until WP9 acceptance:
 
-- STAGE03R-WP9 data quality CI invariants and STAGE03R-WP10 final gate remain blocked per the Stage03R execution index.
+- STAGE03R-WP10 final gate remains blocked.
 
 ## Future Stage03R Route
 
@@ -130,3 +132,4 @@ Each Codex thread must report:
 | 2026-06-04 | Activated STAGE03R-WP6.1 supplement for multi-horizon hazard regeneration while WP7/WP8 remain blocked. | ChatGPT |
 | 2026-06-04 | PR #45 accepted WP6 and PR #46 accepted WP6.1; activated STAGE03R-WP7 while WP8 remains blocked. | ChatGPT |
 | 2026-06-04 | PR #47 accepted hazard_vs_hsmm_report_v1; archived STAGE03R-WP7 and activated STAGE03R-WP8 while WP9/WP10 remain blocked. | ChatGPT |
+| 2026-06-04 | PR #48 accepted risk_validation_protocol_v1; archived STAGE03R-WP8 and activated STAGE03R-WP9 while WP10 remains blocked. | ChatGPT |
