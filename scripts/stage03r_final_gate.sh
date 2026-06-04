@@ -37,18 +37,26 @@ if [[ -f reports/stage03r/final_holdout_artifact.json ]]; then
   FINAL_HOLDOUT_ARGS=(--final-holdout-artifact reports/stage03r/final_holdout_artifact.json)
 fi
 
-set +e
-"$PYTHON_CMD" -m src.evaluation.stage03r_final_gate \
-  "${DB_ARGS[@]}" \
-  "${FINAL_HOLDOUT_ARGS[@]}" \
-  --hazard-readiness reports/stage03r/hazard_readiness_matrix_report.json \
-  --hazard-vs-hsmm reports/stage03r/hazard_vs_hsmm_report.json \
-  --risk-protocol reports/stage03r/risk_validation_protocol.json \
-  --data-quality reports/stage03r/data_quality_ci_report.json \
-  --hazard-verdict reports/stage03r/multi_horizon_hazard_verdict.md \
-  --output reports/stage03r/stage03r_final_gate_report.md \
-  --summary-json reports/stage03r/stage03r_final_gate_report.json \
+CMD=(
+  "$PYTHON_CMD" -m src.evaluation.stage03r_final_gate
+  --hazard-readiness reports/stage03r/hazard_readiness_matrix_report.json
+  --hazard-vs-hsmm reports/stage03r/hazard_vs_hsmm_report.json
+  --risk-protocol reports/stage03r/risk_validation_protocol.json
+  --data-quality reports/stage03r/data_quality_ci_report.json
+  --hazard-verdict reports/stage03r/multi_horizon_hazard_verdict.md
+  --output reports/stage03r/stage03r_final_gate_report.md
+  --summary-json reports/stage03r/stage03r_final_gate_report.json
   --no-fetch
+)
+if [[ ${#DB_ARGS[@]} -gt 0 ]]; then
+  CMD+=("${DB_ARGS[@]}")
+fi
+if [[ ${#FINAL_HOLDOUT_ARGS[@]} -gt 0 ]]; then
+  CMD+=("${FINAL_HOLDOUT_ARGS[@]}")
+fi
+
+set +e
+"${CMD[@]}"
 status=$?
 set -e
 

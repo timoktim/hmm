@@ -24,17 +24,23 @@ if [[ -f data/db/a_share_hmm.duckdb ]]; then
   DB_ARGS=(--db data/db/a_share_hmm.duckdb)
 fi
 
-set +e
-"$PYTHON_CMD" -m src.evaluation.stage03r_data_quality_ci \
-  "${DB_ARGS[@]}" \
-  --hazard-readiness reports/stage03r/hazard_readiness_matrix_report.json \
-  --hazard-vs-hsmm reports/stage03r/hazard_vs_hsmm_report.json \
-  --risk-protocol reports/stage03r/risk_validation_protocol.json \
-  --hazard-verdict reports/stage03r/multi_horizon_hazard_verdict.md \
-  --hazard-prediction-sample reports/stage03r/duration_hazard_logistic_predictions_sample.csv \
-  --output reports/stage03r/data_quality_ci_report.md \
-  --summary-json reports/stage03r/data_quality_ci_report.json \
+CMD=(
+  "$PYTHON_CMD" -m src.evaluation.stage03r_data_quality_ci
+  --hazard-readiness reports/stage03r/hazard_readiness_matrix_report.json
+  --hazard-vs-hsmm reports/stage03r/hazard_vs_hsmm_report.json
+  --risk-protocol reports/stage03r/risk_validation_protocol.json
+  --hazard-verdict reports/stage03r/multi_horizon_hazard_verdict.md
+  --hazard-prediction-sample reports/stage03r/duration_hazard_logistic_predictions_sample.csv
+  --output reports/stage03r/data_quality_ci_report.md
+  --summary-json reports/stage03r/data_quality_ci_report.json
   --no-fetch
+)
+if [[ ${#DB_ARGS[@]} -gt 0 ]]; then
+  CMD+=("${DB_ARGS[@]}")
+fi
+
+set +e
+"${CMD[@]}"
 status=$?
 set -e
 
