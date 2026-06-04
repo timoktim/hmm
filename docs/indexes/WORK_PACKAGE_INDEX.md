@@ -55,7 +55,8 @@ Logical root: docs/
 | STAGE03R-WP7 | 03R | WP7 | archived | v1 | docs/work_packages/stage03r/STAGE03R_EXECUTION_INDEX.md | Codex Stage03R-WP7 | accepted |
 | STAGE03R-WP8 | 03R | WP8 | archived | v1 | docs/work_packages/stage03r/STAGE03R_EXECUTION_INDEX.md | Codex Stage03R-WP8 | accepted |
 | STAGE03R-WP9 | 03R | WP9 | archived | v1 | docs/work_packages/stage03r/STAGE03R_EXECUTION_INDEX.md | Codex Stage03R-WP9 | accepted |
-| STAGE03R-WP10 | 03R | WP10 | active | v1 | docs/work_packages/stage03r/STAGE03R_EXECUTION_INDEX.md | Codex Stage03R-WP10 | pending |
+| STAGE03R-WP10 | 03R | WP10 | archived | v1 | docs/work_packages/stage03r/STAGE03R_EXECUTION_INDEX.md | Codex Stage03R-WP10 | accepted |
+| STAGE03R-WP10.1 | 03R | WP10.1 | active | v1 | docs/work_packages/stage03r/STAGE03R_EXECUTION_INDEX.md | Codex Stage03R-WP10.1 | pending |
 
 ## Current Stage 03R Focus
 
@@ -69,11 +70,12 @@ BlockingPackages: none
 
 Active:
 
-- STAGE03R-WP10: Stage03R Final Gate.
+- STAGE03R-WP10.1: Final Holdout Artifact supplement.
 
 Accepted:
 
 - STAGE03R-WP9: PR #49, data_quality_ci_invariants_v1 accepted.
+- STAGE03R-WP10: PR #50, engineering_gate_verdict PASS, empirical_promotion_verdict DEFER, final_verdict DEFER.
 
 ## Future Stage03R Route
 
@@ -134,3 +136,4 @@ Each Codex thread must report:
 | 2026-06-04 | PR #47 accepted hazard_vs_hsmm_report_v1; archived STAGE03R-WP7 and activated STAGE03R-WP8 while WP9/WP10 remain blocked. | ChatGPT |
 | 2026-06-04 | PR #48 accepted risk_validation_protocol_v1; archived STAGE03R-WP8 and activated STAGE03R-WP9 while WP10 remains blocked. | ChatGPT |
 | 2026-06-04 | PR #49 accepted data_quality_ci_invariants_v1; archived STAGE03R-WP9 and activated STAGE03R-WP10 final gate. | ChatGPT |
+| 2026-06-04 | PR #50 accepted Stage03R WP10 final gate with engineering PASS and empirical DEFER; activated STAGE03R-WP10.1 final holdout artifact supplement. | ChatGPT |

@@ -14,6 +14,7 @@ WP6.1 evidence: PR #46, multi-horizon hazard regeneration accepted
 WP7 evidence: PR #47, hazard_vs_hsmm_report_v1 accepted
 WP8 evidence: PR #48, risk_validation_protocol_v1 accepted
 WP9 evidence: PR #49, data_quality_ci_invariants_v1 accepted
+WP10 evidence: PR #50, engineering_gate_verdict PASS, empirical_promotion_verdict DEFER, final_verdict DEFER
 
 ## Purpose
 
@@ -46,7 +47,8 @@ HMM causal regime context
 | STAGE03R-WP7 | Hazard vs HSMM Report | archived | stage03r/wp7-hazard-vs-hsmm-report | compare hazard to HSMM interpretation and age-bucket baseline |
 | STAGE03R-WP8 | Risk Validation Protocol | archived | stage03r/wp8-risk-validation-protocol | pre-register risk metrics and held-out final split discipline |
 | STAGE03R-WP9 | Data Quality CI Invariants | archived | stage03r/wp9-data-quality-ci-invariants | persistent CI checks for ingestion and target leakage invariants |
-| STAGE03R-WP10 | Stage03R Final Gate | active | stage03r/wp10-final-gate | final PASS/BLOCKED/DEFER verdict |
+| STAGE03R-WP10 | Stage03R Final Gate | archived | stage03r/wp10-final-gate | final PASS/BLOCKED/DEFER verdict |
+| STAGE03R-WP10.1 | Final Holdout Artifact | active | stage03r/wp10.1-final-holdout-artifact | explicit one-time final holdout artifact supplement |
 
 ## Execution rules
 
@@ -68,6 +70,7 @@ HMM causal regime context
 16. WP8 may pre-register risk/calibration validation metrics and final holdout discipline, but it must not tune thresholds, consume final holdout repeatedly, create a decision surface, or expand HSMM numeric p_exit responsibility.
 17. WP9 may add persistent CI-safe data-quality invariant checks, but it must not require private DuckDB availability, retrain models, tune thresholds, consume final holdout, or create a decision surface.
 18. WP10 may aggregate the accepted Stage03R evidence and emit the final PASS/BLOCKED/DEFER verdict, but it must not tune thresholds, retrain models, consume final holdout repeatedly, create trading signals, or expand HSMM numeric p_exit responsibility.
+19. WP10.1 may create a one-time final holdout artifact from read-only local DuckDB evidence, but it must not retrain models, tune thresholds, retry final holdout consumption, create decision outputs, or claim broad hazard superiority when non-overlap evidence is missing.
 
 ## Pass criteria for Stage03R
 
@@ -101,3 +104,4 @@ If hazard does not stand up, do not return to expanding HSMM numerical probabili
 | 2026-06-04 | Archived WP7 after PR #47 merge and activated WP8 risk validation protocol; WP9/WP10 remain blocked. | ChatGPT |
 | 2026-06-04 | Archived WP8 after PR #48 merge and activated WP9 data-quality CI invariants; WP10 remains blocked. | ChatGPT |
 | 2026-06-04 | Archived WP9 after PR #49 accepted data_quality_ci_invariants_v1 and activated WP10 final gate. | ChatGPT |
+| 2026-06-04 | Archived WP10 after PR #50 final gate engineering PASS / empirical DEFER and activated WP10.1 final holdout artifact supplement. | ChatGPT |

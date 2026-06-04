@@ -170,6 +170,37 @@ def test_final_holdout_cannot_be_consumed_repeatedly(tmp_path: Path) -> None:
     assert any("consumption count exceeds one" in issue for issue in summary["blocking_issues"])
 
 
+def test_final_gate_preserves_artifact_defer_when_non_overlap_not_proven(tmp_path: Path) -> None:
+    paths = _copy_public_artifacts(tmp_path)
+    final_holdout = tmp_path / "reports/stage03r/final_holdout_artifact.json"
+    final_holdout.write_text(
+        json.dumps(
+            {
+                "consumption_count": 1,
+                "consumed_in_wp10": "yes",
+                "tuned_on_holdout": "no",
+                "threshold_tuning_on_holdout": "no",
+                "model_retrained": "no",
+                "HMM_HSMM_retrained": "no",
+                "HSMM_p_exit_used_for_decision": "no",
+                "decision_surface_output": "no",
+                "external_data_fetch": "no",
+                "non_overlap_status": "not_proven",
+                "empirical_promotion_verdict": "DEFER",
+                "defer_reasons": ["non-overlap with prior calibration evidence is not proven"],
+                "blocking_issues": [],
+            }
+        ),
+        encoding="utf-8",
+    )
+
+    summary = _evaluate(paths, final_holdout_artifact=final_holdout)
+
+    assert summary["final_verdict"] == "DEFER"
+    assert summary["empirical_promotion_verdict"] == "DEFER"
+    assert any("non-overlap" in reason for reason in summary["defer_reasons"])
+
+
 def test_forbidden_output_terms_do_not_appear_in_final_outputs(tmp_path: Path) -> None:
     paths = _copy_public_artifacts(tmp_path)
     summary = _evaluate(paths)
