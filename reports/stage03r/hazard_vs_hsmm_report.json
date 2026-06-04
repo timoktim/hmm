@@ -160,7 +160,8 @@
       "exit_tendency_basis_10d",
       "exit_tendency_basis_20d"
     ],
-    "probability_status_columns": [
+    "hsmm_lifecycle_probability_status_policy": "diagnostic_only_not_decision_input",
+    "lifecycle_probability_status_columns_diagnostic_only": [
       "probability_status_1d",
       "probability_status_3d",
       "probability_status_5d",
@@ -183,12 +184,12 @@
           "low": 169159,
           "medium": 219346
         },
-        "probability_status_counts": {
+        "lifecycle_probability_status_counts_diagnostic_only": {
           "ordinal_only": 311526,
           "raw_only": 169987,
           "usable_probability": 75591
         },
-        "raw_score_used_counts": {
+        "raw_score_used_counts_diagnostic_only": {
           "False": 465354,
           "True": 91750
         },
@@ -202,11 +203,11 @@
           "low": 172730,
           "medium": 213698
         },
-        "probability_status_counts": {
+        "lifecycle_probability_status_counts_diagnostic_only": {
           "invalid": 58338,
           "ordinal_only": 498766
         },
-        "raw_score_used_counts": {
+        "raw_score_used_counts_diagnostic_only": {
           "False": 474231,
           "True": 82873
         },
@@ -220,10 +221,10 @@
           "low": 169429,
           "medium": 218452
         },
-        "probability_status_counts": {
+        "lifecycle_probability_status_counts_diagnostic_only": {
           "ordinal_only": 557104
         },
-        "raw_score_used_counts": {
+        "raw_score_used_counts_diagnostic_only": {
           "False": 465354,
           "True": 91750
         },
@@ -237,13 +238,13 @@
           "low": 183077,
           "medium": 201082
         },
-        "probability_status_counts": {
+        "lifecycle_probability_status_counts_diagnostic_only": {
           "invalid": 253188,
           "ordinal_only": 75591,
           "raw_only": 169987,
           "usable_probability": 58338
         },
-        "raw_score_used_counts": {
+        "raw_score_used_counts_diagnostic_only": {
           "False": 510774,
           "True": 46330
         },
@@ -257,11 +258,11 @@
           "low": 185341,
           "medium": 197901
         },
-        "probability_status_counts": {
+        "lifecycle_probability_status_counts_diagnostic_only": {
           "invalid": 253188,
           "raw_only": 303916
         },
-        "raw_score_used_counts": {
+        "raw_score_used_counts_diagnostic_only": {
           "False": 510774,
           "True": 46330
         },
@@ -296,7 +297,8 @@
         "low": 169159,
         "medium": 219346
       },
-      "hsmm_probability_status_counts": {
+      "hsmm_lifecycle_probability_status_policy": "diagnostic_only_not_decision_input",
+      "hsmm_lifecycle_probability_status_counts_diagnostic_only": {
         "ordinal_only": 311526,
         "raw_only": 169987,
         "usable_probability": 75591
@@ -321,7 +323,8 @@
         "low": 172730,
         "medium": 213698
       },
-      "hsmm_probability_status_counts": {
+      "hsmm_lifecycle_probability_status_policy": "diagnostic_only_not_decision_input",
+      "hsmm_lifecycle_probability_status_counts_diagnostic_only": {
         "invalid": 58338,
         "ordinal_only": 498766
       },
@@ -345,7 +348,8 @@
         "low": 169429,
         "medium": 218452
       },
-      "hsmm_probability_status_counts": {
+      "hsmm_lifecycle_probability_status_policy": "diagnostic_only_not_decision_input",
+      "hsmm_lifecycle_probability_status_counts_diagnostic_only": {
         "ordinal_only": 557104
       },
       "verdict": "hazard locally usable; HSMM ordinal context available; age-bucket baseline still checked; baseline_only majority preserved"
@@ -368,7 +372,8 @@
         "low": 183077,
         "medium": 201082
       },
-      "hsmm_probability_status_counts": {
+      "hsmm_lifecycle_probability_status_policy": "diagnostic_only_not_decision_input",
+      "hsmm_lifecycle_probability_status_counts_diagnostic_only": {
         "invalid": 253188,
         "ordinal_only": 75591,
         "raw_only": 169987,
@@ -394,7 +399,8 @@
         "low": 185341,
         "medium": 197901
       },
-      "hsmm_probability_status_counts": {
+      "hsmm_lifecycle_probability_status_policy": "diagnostic_only_not_decision_input",
+      "hsmm_lifecycle_probability_status_counts_diagnostic_only": {
         "invalid": 253188,
         "raw_only": 303916
       },

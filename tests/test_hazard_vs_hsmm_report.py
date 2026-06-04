@@ -85,7 +85,8 @@ def _hsmm_summary(*, p_exit: bool = False) -> dict[str, object]:
         "profile_policy_counts": [{"profile_mode": "latest_asof", "state_date_policy": "full_run", "row_count": 1000}],
         "p_exit_columns": ["raw_p_exit_1d"] if p_exit else [],
         "exit_tendency_columns": ["exit_tendency_1d", "exit_tendency_3d"],
-        "probability_status_columns": ["probability_status_1d"],
+        "hsmm_lifecycle_probability_status_policy": "diagnostic_only_not_decision_input",
+        "lifecycle_probability_status_columns_diagnostic_only": ["probability_status_1d"],
         "matched_numeric_artifact": "present" if p_exit else "missing",
         "hsmm_numeric_p_exit_policy": "diagnostic_only_not_decision_input" if p_exit else "not_available",
         "ordinal_tendency_available": "yes",
@@ -93,13 +94,13 @@ def _hsmm_summary(*, p_exit: bool = False) -> dict[str, object]:
             "1": {
                 "available": "yes",
                 "ordinal_tendency_counts": {"low": 700, "medium": 300},
-                "probability_status_counts": {"hidden": 1000},
+                "lifecycle_probability_status_counts_diagnostic_only": {"hidden": 1000},
                 "matched_hazard_slice_count": 2,
             },
             "3": {
                 "available": "yes",
                 "ordinal_tendency_counts": {"medium": 1000},
-                "probability_status_counts": {"hidden": 1000},
+                "lifecycle_probability_status_counts_diagnostic_only": {"hidden": 1000},
                 "matched_hazard_slice_count": 1,
             },
         },
@@ -216,3 +217,26 @@ def test_cli_writes_report_without_external_fetch(tmp_path: Path) -> None:
     assert output.exists()
     assert summary["boundary_flags"]["external_data_fetch"] == "no"
     assert summary["hsmm_lifecycle_availability"]["available"] == "no"
+
+
+def test_hsmm_lifecycle_probability_status_counts_are_diagnostic_only() -> None:
+    hsmm_summary = _hsmm_summary()
+    hsmm_summary["per_horizon"]["1"]["lifecycle_probability_status_counts_diagnostic_only"] = {
+        "usable_probability": 10,
+        "raw_only": 20,
+        "ordinal_only": 30,
+    }
+    result = evaluate_hazard_vs_hsmm(
+        hazard_readiness=_hazard_readiness(),
+        age_bucket_baseline=_age_bucket_baseline(),
+        hsmm_lifecycle_summary=hsmm_summary,
+    ).to_summary()
+    horizon = result["hazard_vs_hsmm_by_horizon"][0]
+
+    assert "hsmm_probability_status_counts" not in horizon
+    assert horizon["hsmm_lifecycle_probability_status_policy"] == "diagnostic_only_not_decision_input"
+    assert horizon["hsmm_lifecycle_probability_status_counts_diagnostic_only"] == {
+        "usable_probability": 10,
+        "raw_only": 20,
+        "ordinal_only": 30,
+    }

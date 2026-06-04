@@ -40,7 +40,20 @@ Age-bucket baseline remains stronger for the majority of slices; usable hazard p
   "ordinal_tendency_available": "yes",
   "matched_numeric_artifact": "missing",
   "hsmm_numeric_p_exit_policy": "not_available",
+  "hsmm_lifecycle_probability_status_policy": "diagnostic_only_not_decision_input",
   "p_exit_columns": [],
+  "lifecycle_probability_status_columns_diagnostic_only": [
+    "probability_status_1d",
+    "probability_status_3d",
+    "probability_status_5d",
+    "probability_status_10d",
+    "probability_status_20d",
+    "raw_score_used_1d",
+    "raw_score_used_3d",
+    "raw_score_used_5d",
+    "raw_score_used_10d",
+    "raw_score_used_20d"
+  ],
   "profile_policy_counts": [
     {
       "profile_mode": "latest_asof",
@@ -89,7 +102,8 @@ Age-bucket baseline remains stronger for the majority of slices; usable hazard p
       "low": 169159,
       "medium": 219346
     },
-    "hsmm_probability_status_counts": {
+    "hsmm_lifecycle_probability_status_policy": "diagnostic_only_not_decision_input",
+    "hsmm_lifecycle_probability_status_counts_diagnostic_only": {
       "ordinal_only": 311526,
       "raw_only": 169987,
       "usable_probability": 75591
@@ -114,7 +128,8 @@ Age-bucket baseline remains stronger for the majority of slices; usable hazard p
       "low": 172730,
       "medium": 213698
     },
-    "hsmm_probability_status_counts": {
+    "hsmm_lifecycle_probability_status_policy": "diagnostic_only_not_decision_input",
+    "hsmm_lifecycle_probability_status_counts_diagnostic_only": {
       "invalid": 58338,
       "ordinal_only": 498766
     },
@@ -138,7 +153,8 @@ Age-bucket baseline remains stronger for the majority of slices; usable hazard p
       "low": 169429,
       "medium": 218452
     },
-    "hsmm_probability_status_counts": {
+    "hsmm_lifecycle_probability_status_policy": "diagnostic_only_not_decision_input",
+    "hsmm_lifecycle_probability_status_counts_diagnostic_only": {
       "ordinal_only": 557104
     },
     "verdict": "hazard locally usable; HSMM ordinal context available; age-bucket baseline still checked; baseline_only majority preserved"
@@ -161,7 +177,8 @@ Age-bucket baseline remains stronger for the majority of slices; usable hazard p
       "low": 183077,
       "medium": 201082
     },
-    "hsmm_probability_status_counts": {
+    "hsmm_lifecycle_probability_status_policy": "diagnostic_only_not_decision_input",
+    "hsmm_lifecycle_probability_status_counts_diagnostic_only": {
       "invalid": 253188,
       "ordinal_only": 75591,
       "raw_only": 169987,
@@ -187,7 +204,8 @@ Age-bucket baseline remains stronger for the majority of slices; usable hazard p
       "low": 185341,
       "medium": 197901
     },
-    "hsmm_probability_status_counts": {
+    "hsmm_lifecycle_probability_status_policy": "diagnostic_only_not_decision_input",
+    "hsmm_lifecycle_probability_status_counts_diagnostic_only": {
       "invalid": 253188,
       "raw_only": 303916
     },

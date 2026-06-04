@@ -1,0 +1,299 @@
+{
+  "status": "pass",
+  "protocol_version": "risk_validation_protocol_v1",
+  "executive_protocol_verdict": "Stage03R WP8 is a pre-registered validation protocol. Hazard is locally usable, not broadly promoted; baseline-only and abstain rules remain conservative; HSMM lifecycle outputs remain interpretation-only.",
+  "input_artifacts": {
+    "hazard_readiness": "reports/stage03r/hazard_readiness_matrix_report.json",
+    "hazard_vs_hsmm": "reports/stage03r/hazard_vs_hsmm_report.json",
+    "hazard_verdict": "reports/stage03r/multi_horizon_hazard_verdict.md",
+    "hazard_readiness_version": "hazard_readiness_matrix_v1",
+    "hazard_vs_hsmm_report_version": "hazard_vs_hsmm_report_v1",
+    "hazard_verdict_present": "yes",
+    "no_fetch": "yes"
+  },
+  "readiness_status_summary": {
+    "readiness_version": "hazard_readiness_matrix_v1",
+    "row_count": 115,
+    "counts": {
+      "usable_probability": 21,
+      "ordinal_only": 0,
+      "baseline_only": 93,
+      "insufficient_sample": 1,
+      "invalid": 0
+    },
+    "by_horizon": {
+      "1": {
+        "usable_probability": 7,
+        "ordinal_only": 0,
+        "baseline_only": 16,
+        "insufficient_sample": 0,
+        "invalid": 0
+      },
+      "3": {
+        "usable_probability": 6,
+        "ordinal_only": 0,
+        "baseline_only": 17,
+        "insufficient_sample": 0,
+        "invalid": 0
+      },
+      "5": {
+        "usable_probability": 3,
+        "ordinal_only": 0,
+        "baseline_only": 20,
+        "insufficient_sample": 0,
+        "invalid": 0
+      },
+      "10": {
+        "usable_probability": 2,
+        "ordinal_only": 0,
+        "baseline_only": 21,
+        "insufficient_sample": 0,
+        "invalid": 0
+      },
+      "20": {
+        "usable_probability": 3,
+        "ordinal_only": 0,
+        "baseline_only": 19,
+        "insufficient_sample": 1,
+        "invalid": 0
+      }
+    },
+    "sample_support_by_horizon": {
+      "1": {
+        "slice_count": 23,
+        "min_sample_count": 188,
+        "total_sample_count": 116398,
+        "total_positive_count": 21130
+      },
+      "3": {
+        "slice_count": 23,
+        "min_sample_count": 186,
+        "total_sample_count": 116027,
+        "total_positive_count": 49441
+      },
+      "5": {
+        "slice_count": 23,
+        "min_sample_count": 184,
+        "total_sample_count": 115715,
+        "total_positive_count": 68707
+      },
+      "10": {
+        "slice_count": 23,
+        "min_sample_count": 182,
+        "total_sample_count": 115180,
+        "total_positive_count": 94119
+      },
+      "20": {
+        "slice_count": 23,
+        "min_sample_count": 182,
+        "total_sample_count": 114996,
+        "total_positive_count": 109051
+      }
+    },
+    "hazard_locally_usable": "yes",
+    "hazard_broadly_promoted": "no",
+    "baseline_only_majority": "yes"
+  },
+  "semantic_cleanup_summary": {
+    "hsmm_lifecycle_probability_status_policy": "diagnostic_only_not_decision_input",
+    "diagnostic_count_field": "hsmm_lifecycle_probability_status_counts_diagnostic_only",
+    "legacy_ambiguous_comparison_field_present_in_input": "no",
+    "unqualified_hsmm_lifecycle_status_in_protocol_summary": "no",
+    "hsmm_lifecycle_probability_status_counts_diagnostic_only_by_horizon": {
+      "1": {
+        "ordinal_only": 311526,
+        "raw_only": 169987,
+        "usable_probability": 75591
+      },
+      "3": {
+        "invalid": 58338,
+        "ordinal_only": 498766
+      },
+      "5": {
+        "ordinal_only": 557104
+      },
+      "10": {
+        "invalid": 253188,
+        "ordinal_only": 75591,
+        "raw_only": 169987,
+        "usable_probability": 58338
+      },
+      "20": {
+        "invalid": 253188,
+        "raw_only": 303916
+      }
+    },
+    "interpretation": "HSMM lifecycle status labels are diagnostic UI lifecycle labels, not hazard readiness approvals."
+  },
+  "pre_registered_metrics": [
+    {
+      "metric": "brier_score",
+      "scope": "per horizon/state/age_bucket readiness slice",
+      "rule": "calibrated hazard must not worsen raw hazard Brier; where a valid age-bucket baseline exists, it must not worsen that baseline."
+    },
+    {
+      "metric": "log_loss",
+      "scope": "valid non-degenerate slices only",
+      "rule": "compute only when labels and probabilities are inside valid numeric bounds; invalid or degenerate slices abstain from this metric."
+    },
+    {
+      "metric": "expected_calibration_error",
+      "scope": "validation folds and WP10 final-gate holdout",
+      "rule": "track calibration error with sample support; do not tune on the final holdout outside WP10."
+    },
+    {
+      "metric": "directional_separation",
+      "scope": "event vs non-event ranking diagnostics",
+      "rule": "higher exit tendency should separate realized exits from non-exits without replacing calibration checks."
+    },
+    {
+      "metric": "false_confidence_overconfidence",
+      "scope": "high-probability bins and sparse slices",
+      "rule": "flag confident probabilities that are poorly supported, miscalibrated, or worse than baseline."
+    },
+    {
+      "metric": "drawdown_downside_proxy",
+      "scope": "only if already available in causal inputs",
+      "rule": "summarize downside exposure descriptively; do not create an action overlay."
+    },
+    {
+      "metric": "abstain_coverage",
+      "scope": "all horizons and readiness statuses",
+      "rule": "measure how often the protocol abstains because slices are baseline-only, ordinal-only, insufficient, invalid, or HSMM-only context."
+    },
+    {
+      "metric": "sample_support",
+      "scope": "horizon/state/age_bucket/profile policy",
+      "rule": "report sample_count, positive_count, negative_count, event_rate, and censoring limitations before any future promotion."
+    }
+  ],
+  "split_and_final_holdout_discipline": {
+    "validation_folds": "calibration diagnostics may use validation folds.",
+    "final_holdout_consumption": "final holdout can be consumed only by an explicit WP10 final-gate run.",
+    "repeated_final_tuning_forbidden": "yes",
+    "threshold_tuning_in_wp8": "no",
+    "trial_accounting_required": "yes for any future model comparison before WP10."
+  },
+  "validation_rules_by_readiness_status": {
+    "usable_probability": {
+      "candidate_use": "local calibrated hazard probability only",
+      "pass_rule": "pass only if calibrated hazard does not worsen raw Brier and does not worsen valid age-bucket baseline Brier.",
+      "block_rule": "block or downgrade if support is sparse, calibration worsens, or baseline remains stronger.",
+      "wp8_action": "pre-register validation; no final promotion decision is made here."
+    },
+    "baseline_only": {
+      "candidate_use": "age-bucket empirical baseline remains the numeric fallback",
+      "pass_rule": "remain baseline-only unless future registered evidence supports hazard promotion.",
+      "block_rule": "do not convert to hazard probability in WP8."
+    },
+    "ordinal_only": {
+      "candidate_use": "ordinal tendency or qualitative lifecycle context",
+      "pass_rule": "retain non-numeric tendency; no numeric probability is fabricated.",
+      "block_rule": "block numeric use until sample and calibration evidence exist."
+    },
+    "insufficient_sample": {
+      "candidate_use": "abstain",
+      "pass_rule": "abstain is the only valid output.",
+      "block_rule": "any numeric promotion blocks the protocol."
+    },
+    "invalid": {
+      "candidate_use": "blocked evidence",
+      "pass_rule": "invalid rows cannot be consumed by WP10 except as failure evidence.",
+      "block_rule": "schema, leakage, or impossible metric violations block the slice."
+    }
+  },
+  "baseline_comparison_rules": {
+    "valid_baseline_required_fields": [
+      "age_bucket_baseline_brier",
+      "age_bucket_baseline_sample_count",
+      "age_bucket_baseline_event_rate"
+    ],
+    "comparison_rule": "usable hazard probability can pass only when calibrated hazard is not worse than a valid age-bucket baseline.",
+    "baseline_only_policy": "baseline-only remains baseline-only unless future registered evidence supports promotion.",
+    "current_majority_status": "baseline_only_majority"
+  },
+  "hsmm_interpretation_only_rules": {
+    "responsibility": "state age, lifecycle phase, duration profile, and ordinal exit tendency context",
+    "numeric_probability_policy": "HSMM numeric p_exit is not a decision input in Stage03R WP8.",
+    "lifecycle_probability_status_policy": "diagnostic_only_not_decision_input",
+    "diagnostic_count_field": "hsmm_lifecycle_probability_status_counts_diagnostic_only",
+    "allowed_wp8_use": "context only; may be cited as lifecycle interpretation evidence for WP10.",
+    "forbidden_wp8_use": "do not use HSMM raw or calibrated p_exit to rank, size, gate, or promote hazard slices."
+  },
+  "failure_abstain_rules": {
+    "insufficient_sample": "abstain and report sample ceiling.",
+    "invalid": "block and report validation failure.",
+    "ordinal_only": "retain ordinal tendency; do not fabricate numeric probability.",
+    "hsmm_interpretation_only": "context only; not a numeric approval source.",
+    "false_confidence": "block or downgrade confident probabilities that fail calibration, support, or baseline checks."
+  },
+  "what_wp8_does_not_do": [
+    "No external data fetch.",
+    "No HMM or HSMM retraining.",
+    "No training algorithm modification.",
+    "No threshold tuning.",
+    "No repeated final holdout evaluation.",
+    "No trading command, position sizing, ranking, or decision surface.",
+    "No HSMM numeric p_exit expansion."
+  ],
+  "wp10_handoff_contract": {
+    "contract_version": "wp10_final_gate_handoff_v1",
+    "required_inputs": [
+      "hazard_readiness_matrix_report.json",
+      "hazard_vs_hsmm_report.json",
+      "risk_validation_protocol.json",
+      "explicit final holdout artifact generated once for WP10"
+    ],
+    "required_protocol_fields": [
+      "readiness_status_summary",
+      "semantic_cleanup_summary",
+      "pre_registered_metrics",
+      "split_and_final_holdout_discipline",
+      "validation_rules_by_readiness_status",
+      "baseline_comparison_rules",
+      "hsmm_interpretation_only_rules",
+      "failure_abstain_rules",
+      "boundary_flags"
+    ],
+    "final_gate_allowed_actions": [
+      "evaluate pre-registered metrics on final holdout once",
+      "emit pass, block, or defer by readiness status",
+      "preserve abstain for unsupported slices"
+    ],
+    "final_gate_forbidden_actions": [
+      "tune on final holdout",
+      "expand HSMM numeric p_exit responsibility",
+      "claim broad hazard superiority without slice evidence"
+    ]
+  },
+  "local_db_validation": {
+    "db_path_used": "data/db/a_share_hmm.duckdb",
+    "db_found": "yes",
+    "opened_read_only": "yes",
+    "key_tables_checked": [
+      "hsmm_lifecycle_ui_daily"
+    ],
+    "row_counts": {
+      "hsmm_lifecycle_ui_daily": 557104
+    },
+    "protocol_requires_db": "no",
+    "external_data_fetch": "no",
+    "DuckDB_committed": "no"
+  },
+  "boundary_flags": {
+    "external_data_fetch": "no",
+    "training_algorithm_modified": "no",
+    "HMM_HSMM_retrained": "no",
+    "HSMM_p_exit_used_for_decision": "no",
+    "decision_surface_output": "no",
+    "downside_action_overlay_output": "no",
+    "DuckDB_committed": "no"
+  },
+  "warnings": [
+    "WP8 pre-registers validation only; it does not consume the final holdout.",
+    "Hazard probability remains local-slice usable only.",
+    "baseline-only remains the majority readiness status.",
+    "matched HSMM numeric p_exit artifact remains missing."
+  ],
+  "index_id": "STAGE03R-WP8"
+}

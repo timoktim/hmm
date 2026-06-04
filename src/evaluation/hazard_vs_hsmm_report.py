@@ -35,6 +35,7 @@ BOUNDARY_FLAGS = {
     "decision_ready_output": "no",
     "DuckDB_committed": "no",
 }
+HSMM_LIFECYCLE_PROBABILITY_STATUS_POLICY = "diagnostic_only_not_decision_input"
 
 
 @dataclass
@@ -154,7 +155,8 @@ def _empty_hsmm_summary(db_path: str | None = None) -> dict[str, Any]:
         "profile_policy_counts": [],
         "p_exit_columns": [],
         "exit_tendency_columns": [],
-        "probability_status_columns": [],
+        "hsmm_lifecycle_probability_status_policy": HSMM_LIFECYCLE_PROBABILITY_STATUS_POLICY,
+        "lifecycle_probability_status_columns_diagnostic_only": [],
         "matched_numeric_artifact": "missing",
         "hsmm_numeric_p_exit_policy": "not_available",
         "ordinal_tendency_available": "no",
@@ -246,8 +248,8 @@ def load_hsmm_lifecycle_summary(db_path: str | None, hazard_rows: Sequence[Mappi
                 per_horizon[str(horizon)] = {
                     "available": "no",
                     "ordinal_tendency_counts": {},
-                    "probability_status_counts": {},
-                    "raw_score_used_counts": {},
+                    "lifecycle_probability_status_counts_diagnostic_only": {},
+                    "raw_score_used_counts_diagnostic_only": {},
                 }
                 matched_slice_count_by_horizon[str(horizon)] = 0
                 continue
@@ -284,8 +286,8 @@ def load_hsmm_lifecycle_summary(db_path: str | None, hazard_rows: Sequence[Mappi
             per_horizon[str(horizon)] = {
                 "available": "yes",
                 "ordinal_tendency_counts": dict(sorted(tendency_counts.items())),
-                "probability_status_counts": dict(sorted(probability_counts.items())),
-                "raw_score_used_counts": dict(sorted(raw_counts.items())),
+                "lifecycle_probability_status_counts_diagnostic_only": dict(sorted(probability_counts.items())),
+                "raw_score_used_counts_diagnostic_only": dict(sorted(raw_counts.items())),
                 "matched_hazard_slice_count": len(matched_keys),
                 "hazard_slice_count": len(target_keys),
             }
@@ -299,7 +301,8 @@ def load_hsmm_lifecycle_summary(db_path: str | None, hazard_rows: Sequence[Mappi
             "profile_policy_counts": profile_policy_counts,
             "p_exit_columns": p_exit_columns,
             "exit_tendency_columns": exit_tendency_columns,
-            "probability_status_columns": probability_status_columns,
+            "hsmm_lifecycle_probability_status_policy": HSMM_LIFECYCLE_PROBABILITY_STATUS_POLICY,
+            "lifecycle_probability_status_columns_diagnostic_only": probability_status_columns,
             "matched_numeric_artifact": "present" if p_exit_columns else "missing",
             "hsmm_numeric_p_exit_policy": "diagnostic_only_not_decision_input" if p_exit_columns else "not_available",
             "ordinal_tendency_available": "yes" if exit_tendency_columns else "no",
@@ -347,6 +350,10 @@ def evaluate_hazard_vs_hsmm(
     for horizon_row in by_horizon:
         horizon = str(horizon_row["horizon_days"])
         hsmm_horizon = dict(hsmm_summary.get("per_horizon", {}).get(horizon, {}))
+        lifecycle_probability_counts = hsmm_horizon.get(
+            "lifecycle_probability_status_counts_diagnostic_only",
+            hsmm_horizon.get("probability_status_counts", {}),
+        )
         usable = horizon_row["usable_probability_count"]
         baseline = horizon_row["baseline_only_count"]
         if hsmm_horizon.get("available") == "yes" and usable > 0:
@@ -368,7 +375,11 @@ def evaluate_hazard_vs_hsmm(
                 "hsmm_lifecycle_available": hsmm_horizon.get("available", "no"),
                 "hsmm_matched_hazard_slice_count": hsmm_horizon.get("matched_hazard_slice_count", 0),
                 "hsmm_ordinal_tendency_counts": hsmm_horizon.get("ordinal_tendency_counts", {}),
-                "hsmm_probability_status_counts": hsmm_horizon.get("probability_status_counts", {}),
+                "hsmm_lifecycle_probability_status_policy": hsmm_summary.get(
+                    "hsmm_lifecycle_probability_status_policy",
+                    HSMM_LIFECYCLE_PROBABILITY_STATUS_POLICY,
+                ),
+                "hsmm_lifecycle_probability_status_counts_diagnostic_only": lifecycle_probability_counts,
                 "verdict": verdict,
             }
         )
@@ -465,7 +476,15 @@ def build_report_markdown(summary: Mapping[str, Any]) -> str:
                 "ordinal_tendency_available": hsmm.get("ordinal_tendency_available"),
                 "matched_numeric_artifact": hsmm.get("matched_numeric_artifact"),
                 "hsmm_numeric_p_exit_policy": hsmm.get("hsmm_numeric_p_exit_policy"),
+                "hsmm_lifecycle_probability_status_policy": hsmm.get(
+                    "hsmm_lifecycle_probability_status_policy",
+                    HSMM_LIFECYCLE_PROBABILITY_STATUS_POLICY,
+                ),
                 "p_exit_columns": hsmm.get("p_exit_columns", []),
+                "lifecycle_probability_status_columns_diagnostic_only": hsmm.get(
+                    "lifecycle_probability_status_columns_diagnostic_only",
+                    [],
+                ),
                 "profile_policy_counts": hsmm.get("profile_policy_counts", []),
             },
             ensure_ascii=False,
