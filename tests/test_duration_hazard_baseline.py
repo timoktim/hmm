@@ -19,6 +19,7 @@ from src.models.duration_hazard import (
     REQUIRED_PREDICTION_COLUMNS,
     fit_duration_hazard_baseline,
     run_cli,
+    write_hazard_outputs,
 )
 
 
@@ -84,6 +85,24 @@ def _two_class_dataset(row_count: int = 24) -> pd.DataFrame:
                 exit_value=1 if is_positive else 0,
             )
         )
+    return pd.DataFrame(rows)
+
+
+def _multi_horizon_dataset(rows_per_horizon: int = 36) -> pd.DataFrame:
+    rows = []
+    for horizon in [1, 3, 5, 10, 20]:
+        for idx in range(rows_per_horizon):
+            is_positive = idx % 5 in {1, 2}
+            rows.append(
+                _row(
+                    idx,
+                    trade_date=str((pd.Timestamp("2024-01-02") + pd.Timedelta(days=idx)).date()),
+                    horizon_days=horizon,
+                    label="B" if is_positive else "A",
+                    status=OBSERVED_POSITIVE if is_positive else OBSERVED_NEGATIVE,
+                    exit_value=1 if is_positive else 0,
+                )
+            )
     return pd.DataFrame(rows)
 
 
@@ -216,6 +235,38 @@ def test_cli_writes_markdown_json_and_predictions_without_external_fetch(tmp_pat
     assert summary["external_data_fetch"] == "no"
     assert summary["usable_probability_count"] == 0
     assert not prediction_rows.empty
+
+
+def test_multi_horizon_prediction_outputs_and_sample_preserve_all_horizons(tmp_path: Path) -> None:
+    expected_horizons = {1, 3, 5, 10, 20}
+    result = fit_duration_hazard_baseline(_multi_horizon_dataset(), min_train_samples=4)
+
+    assert set(result.horizons) == expected_horizons
+    assert set(result.predictions["horizon_days"].astype(int).unique()) == expected_horizons
+
+    full_predictions = tmp_path / "predictions_full.csv"
+    sampled_predictions = tmp_path / "predictions_sample.csv"
+    write_hazard_outputs(
+        result,
+        output=tmp_path / "full.md",
+        summary_json=tmp_path / "full.json",
+        predictions_csv=full_predictions,
+        max_predictions=0,
+    )
+    write_hazard_outputs(
+        result,
+        output=tmp_path / "sample.md",
+        summary_json=tmp_path / "sample.json",
+        predictions_csv=sampled_predictions,
+        max_predictions=10,
+    )
+
+    full = pd.read_csv(full_predictions)
+    sample = pd.read_csv(sampled_predictions)
+    assert len(full) == len(result.predictions)
+    assert set(full["horizon_days"].astype(int).unique()) == expected_horizons
+    assert len(sample) <= 10
+    assert set(sample["horizon_days"].astype(int).unique()) == expected_horizons
 
 
 def test_no_external_fetch_argument_is_accepted(tmp_path: Path) -> None:

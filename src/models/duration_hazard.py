@@ -746,7 +746,51 @@ def write_hazard_outputs(
     predictions_csv.parent.mkdir(parents=True, exist_ok=True)
     output.write_text(build_report_markdown(summary), encoding="utf-8")
     summary_json.write_text(json.dumps(summary, ensure_ascii=False, indent=2, default=_json_default) + "\n", encoding="utf-8")
-    result.predictions.head(max_predictions).to_csv(predictions_csv, index=False)
+    sample_hazard_predictions(result.predictions, max_predictions=max_predictions).to_csv(predictions_csv, index=False)
+
+
+def sample_hazard_predictions(predictions: pd.DataFrame, *, max_predictions: int = 5000) -> pd.DataFrame:
+    if max_predictions <= 0 or len(predictions) <= max_predictions:
+        return predictions.copy()
+    if "horizon_days" not in predictions.columns or predictions.empty:
+        return predictions.head(max_predictions).copy()
+
+    work = predictions.copy()
+    horizon_values = pd.to_numeric(work["horizon_days"], errors="coerce")
+    horizons = sorted(int(value) for value in horizon_values.dropna().unique())
+    if not horizons:
+        return work.head(max_predictions).copy()
+
+    group_count = len(horizons)
+    base_take = max_predictions // group_count
+    remainder = max_predictions % group_count
+    selected_indices: list[Any] = []
+    grouped_indices: dict[int, list[Any]] = {}
+    for horizon in horizons:
+        group_index = work.index[horizon_values.eq(horizon)].tolist()
+        grouped_indices[horizon] = group_index
+        initial_take = base_take + (1 if remainder > 0 else 0)
+        remainder = max(0, remainder - 1)
+        selected_indices.extend(group_index[:initial_take])
+
+    cursor_by_horizon = {
+        horizon: base_take + (1 if pos < max_predictions % group_count else 0)
+        for pos, horizon in enumerate(horizons)
+    }
+    while len(selected_indices) < max_predictions:
+        added = False
+        for horizon in horizons:
+            cursor = cursor_by_horizon[horizon]
+            group_index = grouped_indices[horizon]
+            if cursor < len(group_index):
+                selected_indices.append(group_index[cursor])
+                cursor_by_horizon[horizon] = cursor + 1
+                added = True
+                if len(selected_indices) >= max_predictions:
+                    break
+        if not added:
+            break
+    return work.loc[selected_indices].copy()
 
 
 def _load_dataset_csv(path: Path) -> pd.DataFrame:

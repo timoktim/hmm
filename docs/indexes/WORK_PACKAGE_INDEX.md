@@ -49,8 +49,9 @@ Logical root: docs/
 | STAGE03R-WP2 | 03R | WP2 | archived | v1 | docs/work_packages/stage03r/STAGE03R_EXECUTION_INDEX.md | Codex Stage03R-WP2 | accepted |
 | STAGE03R-WP3 | 03R | WP3 | archived | v1 | docs/work_packages/stage03r/STAGE03R_EXECUTION_INDEX.md | Codex Stage03R-WP3 | accepted |
 | STAGE03R-WP4 | 03R | WP4 | archived | v1 | docs/work_packages/stage03r/STAGE03R_EXECUTION_INDEX.md | Codex Stage03R-WP4 | accepted |
-| STAGE03R-WP5 | 03R | WP5 | active | v1 | docs/work_packages/stage03r/STAGE03R_EXECUTION_INDEX.md | Codex Stage03R-WP5 | pending |
-| STAGE03R-WP6 | 03R | WP6 | blocked_until_wp5 | v1 | docs/work_packages/stage03r/STAGE03R_EXECUTION_INDEX.md | Codex Stage03R-WP6 | pending |
+| STAGE03R-WP5 | 03R | WP5 | archived | v1 | docs/work_packages/stage03r/STAGE03R_EXECUTION_INDEX.md | Codex Stage03R-WP5 | accepted |
+| STAGE03R-WP6 | 03R | WP6 | active | v1 | docs/work_packages/stage03r/STAGE03R_EXECUTION_INDEX.md | Codex Stage03R-WP6 | pending |
+| STAGE03R-WP6.1 | 03R | WP6.1 | active | v1 | docs/work_packages/stage03r/STAGE03R_EXECUTION_INDEX.md | Codex Stage03R-WP6.1 | pending |
 | STAGE03R-WP7 | 03R | WP7 | blocked_until_wp6 | v1 | docs/work_packages/stage03r/STAGE03R_EXECUTION_INDEX.md | Codex Stage03R-WP7 | pending |
 | STAGE03R-WP8 | 03R | WP8 | blocked_until_wp6 | v1 | docs/work_packages/stage03r/STAGE03R_EXECUTION_INDEX.md | Codex Stage03R-WP8 | pending |
 
@@ -66,11 +67,12 @@ BlockingPackages: none
 
 Active:
 
-- STAGE03R-WP5: Isotonic Calibration.
+- STAGE03R-WP6: Hazard Readiness Matrix.
+- STAGE03R-WP6.1: Multi-horizon hazard regeneration and truncation hardening.
 
-Blocked until WP5:
+Blocked until WP6:
 
-- STAGE03R-WP6 hazard readiness matrix and later Duration Hazard packages.
+- STAGE03R-WP7 hazard-vs-HSMM report and WP8 risk validation protocol.
 
 ## Future Stage03R Route
 
@@ -125,3 +127,5 @@ Each Codex thread must report:
 | 2026-06-04 | PR #41 merged WP2 target leakage/purge tests; activated Stage03R WP3 logistic hazard baseline. | ChatGPT |
 | 2026-06-04 | PR #42 merged WP3 logistic hazard baseline; activated Stage03R WP4 age-bucket baseline. | ChatGPT |
 | 2026-06-04 | PR #43 merged WP4 age-bucket baseline; activated Stage03R WP5 isotonic calibration. | ChatGPT |
+| 2026-06-04 | PR #44 merged WP5 isotonic calibration; activated Stage03R WP6 hazard readiness matrix. | ChatGPT |
+| 2026-06-04 | Activated STAGE03R-WP6.1 supplement for multi-horizon hazard regeneration while WP7/WP8 remain blocked. | ChatGPT |
