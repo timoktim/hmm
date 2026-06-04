@@ -54,8 +54,8 @@ Logical root: docs/
 | STAGE03R-WP6.1 | 03R | WP6.1 | archived | v1 | docs/work_packages/stage03r/STAGE03R_EXECUTION_INDEX.md | Codex Stage03R-WP6.1 | accepted |
 | STAGE03R-WP7 | 03R | WP7 | archived | v1 | docs/work_packages/stage03r/STAGE03R_EXECUTION_INDEX.md | Codex Stage03R-WP7 | accepted |
 | STAGE03R-WP8 | 03R | WP8 | archived | v1 | docs/work_packages/stage03r/STAGE03R_EXECUTION_INDEX.md | Codex Stage03R-WP8 | accepted |
-| STAGE03R-WP9 | 03R | WP9 | active | v1 | docs/work_packages/stage03r/STAGE03R_EXECUTION_INDEX.md | Codex Stage03R-WP9 | pending |
-| STAGE03R-WP10 | 03R | WP10 | blocked_until_wp9 | v1 | docs/work_packages/stage03r/STAGE03R_EXECUTION_INDEX.md | Codex Stage03R-WP10 | pending |
+| STAGE03R-WP9 | 03R | WP9 | archived | v1 | docs/work_packages/stage03r/STAGE03R_EXECUTION_INDEX.md | Codex Stage03R-WP9 | accepted |
+| STAGE03R-WP10 | 03R | WP10 | active | v1 | docs/work_packages/stage03r/STAGE03R_EXECUTION_INDEX.md | Codex Stage03R-WP10 | pending |
 
 ## Current Stage 03R Focus
 
@@ -69,11 +69,11 @@ BlockingPackages: none
 
 Active:
 
-- STAGE03R-WP9: Data Quality CI Invariants.
+- STAGE03R-WP10: Stage03R Final Gate.
 
-Blocked until WP9 acceptance:
+Accepted:
 
-- STAGE03R-WP10 final gate remains blocked.
+- STAGE03R-WP9: PR #49, data_quality_ci_invariants_v1 accepted.
 
 ## Future Stage03R Route
 
@@ -133,3 +133,4 @@ Each Codex thread must report:
 | 2026-06-04 | PR #45 accepted WP6 and PR #46 accepted WP6.1; activated STAGE03R-WP7 while WP8 remains blocked. | ChatGPT |
 | 2026-06-04 | PR #47 accepted hazard_vs_hsmm_report_v1; archived STAGE03R-WP7 and activated STAGE03R-WP8 while WP9/WP10 remain blocked. | ChatGPT |
 | 2026-06-04 | PR #48 accepted risk_validation_protocol_v1; archived STAGE03R-WP8 and activated STAGE03R-WP9 while WP10 remains blocked. | ChatGPT |
+| 2026-06-04 | PR #49 accepted data_quality_ci_invariants_v1; archived STAGE03R-WP9 and activated STAGE03R-WP10 final gate. | ChatGPT |
