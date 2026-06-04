@@ -219,7 +219,7 @@ Stage03R data-quality CI status: pass.
 
 ```json
 {
-  "scanned_file_count": 318,
+  "scanned_file_count": 323,
   "duckdb_or_wal_files_committed": [],
   "cache_files_committed": [],
   "full_prediction_csv_committed": [],
