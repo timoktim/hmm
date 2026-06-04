@@ -46,8 +46,8 @@ Logical root: docs/
 | STAGE03PF-WP13 | 03PF | WP13 | archived | v1 | docs/work_packages/stage03_preflight/STAGE03PF_BATCH_99_FINAL_GATE.md | Codex Gate | accepted_by_pr38_gate |
 | STAGE03R-WP0 | 03R | WP0 | archived | v1 | docs/work_packages/stage03r/STAGE03R_WP0_scope_freeze_signal_contract.md | Codex Stage03R-WP0 | accepted |
 | STAGE03R-WP1 | 03R | WP1 | archived | v1 | docs/work_packages/stage03r/STAGE03R_WP1_exit_target_dataset_v1.md | Codex Stage03R-WP1 | accepted |
-| STAGE03R-WP2 | 03R | WP2 | active | v1 | docs/work_packages/stage03r/STAGE03R_EXECUTION_INDEX.md | Codex Stage03R-WP2 | pending |
-| STAGE03R-WP3 | 03R | WP3 | blocked_until_stage03r_wp2 | v1 | docs/work_packages/stage03r/STAGE03R_EXECUTION_INDEX.md | Codex Stage03R | planned |
+| STAGE03R-WP2 | 03R | WP2 | archived | v1 | docs/work_packages/stage03r/STAGE03R_EXECUTION_INDEX.md | Codex Stage03R-WP2 | accepted |
+| STAGE03R-WP3 | 03R | WP3 | active | v1 | docs/work_packages/stage03r/STAGE03R_EXECUTION_INDEX.md | Codex Stage03R-WP3 | pending |
 
 ## Current Stage 03R Focus
 
@@ -61,11 +61,11 @@ BlockingPackages: none
 
 Active:
 
-- STAGE03R-WP2: Target Leakage and Purge Tests.
+- STAGE03R-WP3: Logistic Hazard Baseline.
 
-Blocked until WP2:
+Blocked until WP3:
 
-- STAGE03R-WP3 and later Duration Hazard packages.
+- STAGE03R-WP4 and later Duration Hazard packages.
 
 ## Future Stage03R Route
 
@@ -87,6 +87,7 @@ docs/work_packages/stage03r/STAGE03R_EXECUTION_INDEX.md
 docs/work_packages/stage03r/STAGE03R_WP0_scope_freeze_signal_contract.md
 docs/work_packages/stage03r/STAGE03R_WP1_exit_target_dataset_v1.md
 docs/work_packages/stage03r/STAGE03R_WP2_target_leakage_purge_tests.md
+docs/work_packages/stage03r/STAGE03R_WP3_logistic_hazard_baseline.md
 ```
 
 ## Return Contract
@@ -115,3 +116,5 @@ Each Codex thread must report:
 | 2026-06-03 | Recorded Stage03R hazard-first route as future direction, blocked until Stage03 preflight pass. | ChatGPT |
 | 2026-06-03 | PR #38 passed Stage03 preflight gate; activated Stage03R WP0. | ChatGPT |
 | 2026-06-04 | PR #39 merged WP0 scope freeze; activated Stage03R WP1 exit target dataset. | ChatGPT |
+| 2026-06-04 | PR #40 merged WP1 exit target dataset; activated Stage03R WP2 target leakage/purge tests. | ChatGPT |
+| 2026-06-04 | PR #41 merged WP2 target leakage/purge tests; activated Stage03R WP3 logistic hazard baseline. | ChatGPT |
