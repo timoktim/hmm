@@ -127,7 +127,7 @@ Hazard probability remains readiness-approved local-slice evidence only. Age-buc
   "private_data_hygiene": {
     "status": "pass",
     "returncode": 0,
-    "stable_line": "PRIVATE_PATH_HYGIENE=pass scanned_files=101",
+    "stable_line": "PRIVATE_PATH_HYGIENE=pass scanned_files=105",
     "command": "bash scripts/check_no_private_paths.sh"
   },
   "stage01_no_private_db": {

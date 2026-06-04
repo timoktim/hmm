@@ -19,14 +19,13 @@ choose_python() {
 }
 
 PYTHON_CMD="$(choose_python)"
-DB_ARGS=()
+CMD=("$PYTHON_CMD" -m src.evaluation.stage03r_data_quality_ci)
 if [[ -f data/db/a_share_hmm.duckdb ]]; then
-  DB_ARGS=(--db data/db/a_share_hmm.duckdb)
+  CMD+=(--db data/db/a_share_hmm.duckdb)
 fi
 
 set +e
-"$PYTHON_CMD" -m src.evaluation.stage03r_data_quality_ci \
-  "${DB_ARGS[@]}" \
+"${CMD[@]}" \
   --hazard-readiness reports/stage03r/hazard_readiness_matrix_report.json \
   --hazard-vs-hsmm reports/stage03r/hazard_vs_hsmm_report.json \
   --risk-protocol reports/stage03r/risk_validation_protocol.json \
