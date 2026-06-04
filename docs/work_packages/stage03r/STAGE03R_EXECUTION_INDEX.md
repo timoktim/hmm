@@ -8,6 +8,7 @@ WP1 evidence: PR #40, exit target dataset accepted
 WP2 evidence: PR #41, target leakage/purge tests accepted
 WP3 evidence: PR #42, logistic hazard baseline accepted
 WP4 evidence: PR #43, age-bucket empirical baseline accepted
+WP5 evidence: PR #44, hazard_isotonic_calibration_v1 accepted
 
 ## Purpose
 
@@ -34,8 +35,8 @@ HMM causal regime context
 | STAGE03R-WP2 | Target Leakage and Purge Tests | archived | stage03r/wp2-target-leakage-purge-tests | synthetic leakage/censoring/purge/embargo tests |
 | STAGE03R-WP3 | Logistic Hazard Baseline | archived | stage03r/wp3-logistic-hazard-baseline | lightweight per-horizon logistic hazard |
 | STAGE03R-WP4 | Age-Bucket Baseline | archived | stage03r/wp4-age-bucket-baseline | empirical baseline for hazard promotion comparison |
-| STAGE03R-WP5 | Isotonic Calibration | active | stage03r/wp5-isotonic-calibration | calibration on validation folds only |
-| STAGE03R-WP6 | Hazard Readiness Matrix | blocked_until_wp5 | stage03r/wp6-hazard-readiness-matrix | state × horizon × age_bucket readiness status |
+| STAGE03R-WP5 | Isotonic Calibration | archived | stage03r/wp5-isotonic-calibration | calibration on validation folds only |
+| STAGE03R-WP6 | Hazard Readiness Matrix | active | stage03r/wp6-hazard-readiness-matrix | state × horizon × age_bucket readiness status |
 | STAGE03R-WP7 | Hazard vs HSMM Report | blocked_until_wp6 | stage03r/wp7-hazard-vs-hsmm-report | compare hazard to HSMM raw p_exit and age-bucket baseline |
 | STAGE03R-WP8 | Risk Validation Protocol | blocked_until_wp6 | stage03r/wp8-risk-validation-protocol | pre-register risk metrics and held-out final split discipline |
 | STAGE03R-WP9 | Data Quality CI Invariants | blocked_until_wp3 | stage03r/wp9-data-quality-ci-invariants | persistent CI checks for ingestion and target leakage invariants |
@@ -55,6 +56,7 @@ HMM causal regime context
 10. WP3 must emit raw logistic hazard baseline only. `usable_probability` is forbidden before calibration/readiness packages.
 11. WP4 must emit empirical age-bucket baseline only. Sparse slices must stay ordinal-only or abstain; WP5 calibration remains blocked until WP4 is merged.
 12. WP5 may emit `calibration_candidate` diagnostics from validation folds only. It must not promote any slice to `usable_probability`; WP6 remains blocked until WP5 is accepted.
+13. WP6 may assign `usable_probability` only as a readiness matrix status. It must not create decision-ready, risk, trading, or hazard-vs-HSMM comparison outputs; WP7 and WP8 remain blocked.
 
 ## Pass criteria for Stage03R
 
@@ -82,3 +84,4 @@ If hazard does not stand up, do not return to expanding HSMM numerical probabili
 | 2026-06-04 | Archived WP2 and activated WP3 logistic hazard baseline after PR #41 merge. | ChatGPT |
 | 2026-06-04 | Archived WP3 and activated WP4 age-bucket baseline after PR #42 merge. | ChatGPT |
 | 2026-06-04 | Archived WP4 and activated WP5 isotonic calibration after PR #43 merge. | ChatGPT |
+| 2026-06-04 | Archived WP5 and activated WP6 hazard readiness matrix after PR #44 merge. | ChatGPT |
