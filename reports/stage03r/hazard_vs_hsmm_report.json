@@ -1,0 +1,474 @@
+{
+  "status": "pass",
+  "report_version": "hazard_vs_hsmm_report_v1",
+  "hazard_readiness_counts": {
+    "usable_probability": 21,
+    "ordinal_only": 0,
+    "baseline_only": 93,
+    "insufficient_sample": 1,
+    "invalid": 0
+  },
+  "hazard_by_horizon": [
+    {
+      "horizon_days": 1,
+      "readiness_status_counts": {
+        "usable_probability": 7,
+        "ordinal_only": 0,
+        "baseline_only": 16,
+        "insufficient_sample": 0,
+        "invalid": 0
+      },
+      "usable_probability_count": 7,
+      "baseline_only_count": 16,
+      "insufficient_sample_count": 0,
+      "calibrated_vs_raw_mean": -0.010582652009213822,
+      "calibrated_vs_raw_non_worse_count": 16,
+      "calibrated_vs_raw_row_count": 16,
+      "calibrated_vs_baseline_mean": 0.0006108475960420068,
+      "calibrated_vs_baseline_non_worse_count": 7,
+      "calibrated_vs_baseline_row_count": 16
+    },
+    {
+      "horizon_days": 3,
+      "readiness_status_counts": {
+        "usable_probability": 6,
+        "ordinal_only": 0,
+        "baseline_only": 17,
+        "insufficient_sample": 0,
+        "invalid": 0
+      },
+      "usable_probability_count": 6,
+      "baseline_only_count": 17,
+      "insufficient_sample_count": 0,
+      "calibrated_vs_raw_mean": -0.025633319929387357,
+      "calibrated_vs_raw_non_worse_count": 15,
+      "calibrated_vs_raw_row_count": 15,
+      "calibrated_vs_baseline_mean": 0.0032476375010215036,
+      "calibrated_vs_baseline_non_worse_count": 6,
+      "calibrated_vs_baseline_row_count": 15
+    },
+    {
+      "horizon_days": 5,
+      "readiness_status_counts": {
+        "usable_probability": 3,
+        "ordinal_only": 0,
+        "baseline_only": 20,
+        "insufficient_sample": 0,
+        "invalid": 0
+      },
+      "usable_probability_count": 3,
+      "baseline_only_count": 20,
+      "insufficient_sample_count": 0,
+      "calibrated_vs_raw_mean": -0.022129540917533892,
+      "calibrated_vs_raw_non_worse_count": 17,
+      "calibrated_vs_raw_row_count": 17,
+      "calibrated_vs_baseline_mean": 0.004940607501158463,
+      "calibrated_vs_baseline_non_worse_count": 3,
+      "calibrated_vs_baseline_row_count": 17
+    },
+    {
+      "horizon_days": 10,
+      "readiness_status_counts": {
+        "usable_probability": 2,
+        "ordinal_only": 0,
+        "baseline_only": 21,
+        "insufficient_sample": 0,
+        "invalid": 0
+      },
+      "usable_probability_count": 2,
+      "baseline_only_count": 21,
+      "insufficient_sample_count": 0,
+      "calibrated_vs_raw_mean": -0.019077558197801506,
+      "calibrated_vs_raw_non_worse_count": 12,
+      "calibrated_vs_raw_row_count": 12,
+      "calibrated_vs_baseline_mean": 0.005324603995378065,
+      "calibrated_vs_baseline_non_worse_count": 2,
+      "calibrated_vs_baseline_row_count": 12
+    },
+    {
+      "horizon_days": 20,
+      "readiness_status_counts": {
+        "usable_probability": 3,
+        "ordinal_only": 0,
+        "baseline_only": 19,
+        "insufficient_sample": 1,
+        "invalid": 0
+      },
+      "usable_probability_count": 3,
+      "baseline_only_count": 19,
+      "insufficient_sample_count": 1,
+      "calibrated_vs_raw_mean": -0.007275596493816415,
+      "calibrated_vs_raw_non_worse_count": 9,
+      "calibrated_vs_raw_row_count": 9,
+      "calibrated_vs_baseline_mean": 0.0005676103710746949,
+      "calibrated_vs_baseline_non_worse_count": 3,
+      "calibrated_vs_baseline_row_count": 9
+    }
+  ],
+  "hsmm_lifecycle_availability": {
+    "available": "yes",
+    "db_path_used": "data/db/a_share_hmm.duckdb",
+    "db_found": "yes",
+    "opened_read_only": "yes",
+    "row_count": 557104,
+    "run_ids": [
+      {
+        "run_id": "hsmm_lifecycle_primary_v1",
+        "row_count": 557104,
+        "min_trade_date": "2025-01-02",
+        "max_trade_date": "2026-05-28"
+      }
+    ],
+    "profile_policy_counts": [
+      {
+        "profile_mode": "latest_asof",
+        "state_date_policy": "full_run",
+        "row_count": 310236,
+        "min_trade_date": "2025-01-02",
+        "max_trade_date": "2026-05-28"
+      },
+      {
+        "profile_mode": "retrospective",
+        "state_date_policy": "full_run",
+        "row_count": 155118,
+        "min_trade_date": "2025-01-02",
+        "max_trade_date": "2026-05-28"
+      },
+      {
+        "profile_mode": "latest_asof",
+        "state_date_policy": "cutoff_only",
+        "row_count": 91750,
+        "min_trade_date": "2025-01-02",
+        "max_trade_date": "2025-10-31"
+      }
+    ],
+    "p_exit_columns": [],
+    "exit_tendency_columns": [
+      "exit_tendency_1d",
+      "exit_tendency_3d",
+      "exit_tendency_5d",
+      "exit_tendency_10d",
+      "exit_tendency_20d",
+      "exit_tendency_score_1d",
+      "exit_tendency_score_3d",
+      "exit_tendency_score_5d",
+      "exit_tendency_score_10d",
+      "exit_tendency_score_20d",
+      "exit_tendency_basis_1d",
+      "exit_tendency_basis_3d",
+      "exit_tendency_basis_5d",
+      "exit_tendency_basis_10d",
+      "exit_tendency_basis_20d"
+    ],
+    "probability_status_columns": [
+      "probability_status_1d",
+      "probability_status_3d",
+      "probability_status_5d",
+      "probability_status_10d",
+      "probability_status_20d",
+      "raw_score_used_1d",
+      "raw_score_used_3d",
+      "raw_score_used_5d",
+      "raw_score_used_10d",
+      "raw_score_used_20d"
+    ],
+    "matched_numeric_artifact": "missing",
+    "hsmm_numeric_p_exit_policy": "not_available",
+    "ordinal_tendency_available": "yes",
+    "per_horizon": {
+      "1": {
+        "available": "yes",
+        "ordinal_tendency_counts": {
+          "high": 168599,
+          "low": 169159,
+          "medium": 219346
+        },
+        "probability_status_counts": {
+          "ordinal_only": 311526,
+          "raw_only": 169987,
+          "usable_probability": 75591
+        },
+        "raw_score_used_counts": {
+          "False": 465354,
+          "True": 91750
+        },
+        "matched_hazard_slice_count": 23,
+        "hazard_slice_count": 23
+      },
+      "3": {
+        "available": "yes",
+        "ordinal_tendency_counts": {
+          "high": 170676,
+          "low": 172730,
+          "medium": 213698
+        },
+        "probability_status_counts": {
+          "invalid": 58338,
+          "ordinal_only": 498766
+        },
+        "raw_score_used_counts": {
+          "False": 474231,
+          "True": 82873
+        },
+        "matched_hazard_slice_count": 23,
+        "hazard_slice_count": 23
+      },
+      "5": {
+        "available": "yes",
+        "ordinal_tendency_counts": {
+          "high": 169223,
+          "low": 169429,
+          "medium": 218452
+        },
+        "probability_status_counts": {
+          "ordinal_only": 557104
+        },
+        "raw_score_used_counts": {
+          "False": 465354,
+          "True": 91750
+        },
+        "matched_hazard_slice_count": 23,
+        "hazard_slice_count": 23
+      },
+      "10": {
+        "available": "yes",
+        "ordinal_tendency_counts": {
+          "high": 172945,
+          "low": 183077,
+          "medium": 201082
+        },
+        "probability_status_counts": {
+          "invalid": 253188,
+          "ordinal_only": 75591,
+          "raw_only": 169987,
+          "usable_probability": 58338
+        },
+        "raw_score_used_counts": {
+          "False": 510774,
+          "True": 46330
+        },
+        "matched_hazard_slice_count": 23,
+        "hazard_slice_count": 23
+      },
+      "20": {
+        "available": "yes",
+        "ordinal_tendency_counts": {
+          "high": 173862,
+          "low": 185341,
+          "medium": 197901
+        },
+        "probability_status_counts": {
+          "invalid": 253188,
+          "raw_only": 303916
+        },
+        "raw_score_used_counts": {
+          "False": 510774,
+          "True": 46330
+        },
+        "matched_hazard_slice_count": 23,
+        "hazard_slice_count": 23
+      }
+    },
+    "matched_slice_count_by_horizon": {
+      "1": 23,
+      "3": 23,
+      "5": 23,
+      "10": 23,
+      "20": 23
+    }
+  },
+  "hazard_vs_hsmm_by_horizon": [
+    {
+      "horizon_days": 1,
+      "hazard_readiness_counts": {
+        "usable_probability": 7,
+        "ordinal_only": 0,
+        "baseline_only": 16,
+        "insufficient_sample": 0,
+        "invalid": 0
+      },
+      "usable_probability_count": 7,
+      "baseline_only_count": 16,
+      "hsmm_lifecycle_available": "yes",
+      "hsmm_matched_hazard_slice_count": 23,
+      "hsmm_ordinal_tendency_counts": {
+        "high": 168599,
+        "low": 169159,
+        "medium": 219346
+      },
+      "hsmm_probability_status_counts": {
+        "ordinal_only": 311526,
+        "raw_only": 169987,
+        "usable_probability": 75591
+      },
+      "verdict": "hazard locally usable; HSMM ordinal context available; age-bucket baseline still checked; baseline_only majority preserved"
+    },
+    {
+      "horizon_days": 3,
+      "hazard_readiness_counts": {
+        "usable_probability": 6,
+        "ordinal_only": 0,
+        "baseline_only": 17,
+        "insufficient_sample": 0,
+        "invalid": 0
+      },
+      "usable_probability_count": 6,
+      "baseline_only_count": 17,
+      "hsmm_lifecycle_available": "yes",
+      "hsmm_matched_hazard_slice_count": 23,
+      "hsmm_ordinal_tendency_counts": {
+        "high": 170676,
+        "low": 172730,
+        "medium": 213698
+      },
+      "hsmm_probability_status_counts": {
+        "invalid": 58338,
+        "ordinal_only": 498766
+      },
+      "verdict": "hazard locally usable; HSMM ordinal context available; age-bucket baseline still checked; baseline_only majority preserved"
+    },
+    {
+      "horizon_days": 5,
+      "hazard_readiness_counts": {
+        "usable_probability": 3,
+        "ordinal_only": 0,
+        "baseline_only": 20,
+        "insufficient_sample": 0,
+        "invalid": 0
+      },
+      "usable_probability_count": 3,
+      "baseline_only_count": 20,
+      "hsmm_lifecycle_available": "yes",
+      "hsmm_matched_hazard_slice_count": 23,
+      "hsmm_ordinal_tendency_counts": {
+        "high": 169223,
+        "low": 169429,
+        "medium": 218452
+      },
+      "hsmm_probability_status_counts": {
+        "ordinal_only": 557104
+      },
+      "verdict": "hazard locally usable; HSMM ordinal context available; age-bucket baseline still checked; baseline_only majority preserved"
+    },
+    {
+      "horizon_days": 10,
+      "hazard_readiness_counts": {
+        "usable_probability": 2,
+        "ordinal_only": 0,
+        "baseline_only": 21,
+        "insufficient_sample": 0,
+        "invalid": 0
+      },
+      "usable_probability_count": 2,
+      "baseline_only_count": 21,
+      "hsmm_lifecycle_available": "yes",
+      "hsmm_matched_hazard_slice_count": 23,
+      "hsmm_ordinal_tendency_counts": {
+        "high": 172945,
+        "low": 183077,
+        "medium": 201082
+      },
+      "hsmm_probability_status_counts": {
+        "invalid": 253188,
+        "ordinal_only": 75591,
+        "raw_only": 169987,
+        "usable_probability": 58338
+      },
+      "verdict": "hazard locally usable; HSMM ordinal context available; age-bucket baseline still checked; baseline_only majority preserved"
+    },
+    {
+      "horizon_days": 20,
+      "hazard_readiness_counts": {
+        "usable_probability": 3,
+        "ordinal_only": 0,
+        "baseline_only": 19,
+        "insufficient_sample": 1,
+        "invalid": 0
+      },
+      "usable_probability_count": 3,
+      "baseline_only_count": 19,
+      "hsmm_lifecycle_available": "yes",
+      "hsmm_matched_hazard_slice_count": 23,
+      "hsmm_ordinal_tendency_counts": {
+        "high": 173862,
+        "low": 185341,
+        "medium": 197901
+      },
+      "hsmm_probability_status_counts": {
+        "invalid": 253188,
+        "raw_only": 303916
+      },
+      "verdict": "hazard locally usable; HSMM ordinal context available; age-bucket baseline still checked; baseline_only majority preserved"
+    }
+  ],
+  "hazard_vs_hsmm_verdict": "Duration Hazard is locally usable but not broadly promoted. HSMM lifecycle fields remain interpretation-only context, and HSMM numeric p_exit is not used as a decision input.",
+  "hazard_vs_age_bucket_baseline_verdict": "Age-bucket baseline remains stronger for the majority of slices; usable hazard probability is limited to readiness-approved local slices.",
+  "usable_probability_scope": {
+    "count": 21,
+    "source": "hazard_readiness_matrix_only",
+    "broadly_promoted": "no",
+    "by_horizon": {
+      "1": 7,
+      "3": 6,
+      "5": 3,
+      "10": 2,
+      "20": 3
+    }
+  },
+  "baseline_only_scope": {
+    "count": 93,
+    "majority": "yes",
+    "by_horizon": {
+      "1": 16,
+      "3": 17,
+      "5": 20,
+      "10": 21,
+      "20": 19
+    }
+  },
+  "failure_abstain_cases": {
+    "insufficient_sample_count": 1,
+    "invalid_count": 0,
+    "insufficient_sample_by_horizon": {
+      "1": 0,
+      "3": 0,
+      "5": 0,
+      "10": 0,
+      "20": 1
+    }
+  },
+  "input_artifacts": {
+    "hazard_readiness": "reports/stage03r/hazard_readiness_matrix_report.json",
+    "hazard_verdict": "reports/stage03r/multi_horizon_hazard_verdict.md",
+    "age_bucket_baseline": "reports/stage03r/age_bucket_baseline_report.json",
+    "hazard_readiness_version": "hazard_readiness_matrix_v1",
+    "age_bucket_baseline_version": "age_bucket_baseline_v1",
+    "wp6_1_verdict_present": "yes"
+  },
+  "local_db_validation": {
+    "db_path_used": "data/db/a_share_hmm.duckdb",
+    "db_found": "yes",
+    "opened_read_only": "yes",
+    "key_tables_checked": [
+      "hsmm_lifecycle_ui_daily"
+    ],
+    "row_counts": {
+      "hsmm_lifecycle_ui_daily": 557104
+    },
+    "external_data_fetch": "no",
+    "DuckDB_committed": "no"
+  },
+  "boundary_flags": {
+    "external_data_fetch": "no",
+    "training_algorithm_modified": "no",
+    "HMM_HSMM_retrained": "no",
+    "HSMM_p_exit_used_for_decision": "no",
+    "decision_ready_output": "no",
+    "DuckDB_committed": "no"
+  },
+  "warnings": [
+    "matched HSMM numeric p_exit artifact missing; no numeric probability comparison fabricated",
+    "baseline_only is the majority readiness status"
+  ],
+  "index_id": "STAGE03R-WP7"
+}
