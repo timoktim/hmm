@@ -11,6 +11,7 @@ __pycache__/
 venv/
 
 data/cache/
+data/local_annotations/
 data/db/*.duckdb
 data/db/*.wal
 data/logs/
