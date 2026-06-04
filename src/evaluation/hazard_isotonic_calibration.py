@@ -649,7 +649,7 @@ def _load_or_rebuild_hazard_predictions(args: argparse.Namespace) -> tuple[pd.Da
     warnings: list[str] = []
     prediction_path = Path(args.hazard_predictions)
     if prediction_path.exists():
-        return pd.read_csv(prediction_path, keep_default_na=True), f"hazard_predictions:{_safe_source_path(prediction_path)}", warnings
+        return pd.read_csv(prediction_path, keep_default_na=True, low_memory=False), f"hazard_predictions:{_safe_source_path(prediction_path)}", warnings
     if not args.db:
         raise FileNotFoundError(f"hazard predictions not found: {prediction_path}")
     db_args = argparse.Namespace(db=args.db, run_id=args.run_id, horizons=args.horizons)

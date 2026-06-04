@@ -7,6 +7,7 @@ __pycache__/
 .mypy_cache/
 .venv
 .venv/
+.venv*/
 venv/
 
 data/cache/
@@ -48,5 +49,6 @@ reports/**
 !reports/stage03r/*.md
 !reports/stage03r/*.json
 !reports/stage03r/*.csv
+reports/stage03r/*_full.csv
 
 *.zip
