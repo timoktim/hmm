@@ -47,7 +47,8 @@ Logical root: docs/
 | STAGE03R-WP0 | 03R | WP0 | archived | v1 | docs/work_packages/stage03r/STAGE03R_WP0_scope_freeze_signal_contract.md | Codex Stage03R-WP0 | accepted |
 | STAGE03R-WP1 | 03R | WP1 | archived | v1 | docs/work_packages/stage03r/STAGE03R_WP1_exit_target_dataset_v1.md | Codex Stage03R-WP1 | accepted |
 | STAGE03R-WP2 | 03R | WP2 | archived | v1 | docs/work_packages/stage03r/STAGE03R_EXECUTION_INDEX.md | Codex Stage03R-WP2 | accepted |
-| STAGE03R-WP3 | 03R | WP3 | active | v1 | docs/work_packages/stage03r/STAGE03R_EXECUTION_INDEX.md | Codex Stage03R-WP3 | pending |
+| STAGE03R-WP3 | 03R | WP3 | archived | v1 | docs/work_packages/stage03r/STAGE03R_EXECUTION_INDEX.md | Codex Stage03R-WP3 | accepted |
+| STAGE03R-WP4 | 03R | WP4 | active | v1 | docs/work_packages/stage03r/STAGE03R_EXECUTION_INDEX.md | Codex Stage03R-WP4 | pending |
 
 ## Current Stage 03R Focus
 
@@ -61,11 +62,11 @@ BlockingPackages: none
 
 Active:
 
-- STAGE03R-WP3: Logistic Hazard Baseline.
+- STAGE03R-WP4: Age-Bucket Baseline.
 
-Blocked until WP3:
+Blocked until WP4:
 
-- STAGE03R-WP4 and later Duration Hazard packages.
+- STAGE03R-WP5 isotonic calibration and later Duration Hazard packages.
 
 ## Future Stage03R Route
 
@@ -118,3 +119,4 @@ Each Codex thread must report:
 | 2026-06-04 | PR #39 merged WP0 scope freeze; activated Stage03R WP1 exit target dataset. | ChatGPT |
 | 2026-06-04 | PR #40 merged WP1 exit target dataset; activated Stage03R WP2 target leakage/purge tests. | ChatGPT |
 | 2026-06-04 | PR #41 merged WP2 target leakage/purge tests; activated Stage03R WP3 logistic hazard baseline. | ChatGPT |
+| 2026-06-04 | PR #42 merged WP3 logistic hazard baseline; activated Stage03R WP4 age-bucket baseline. | ChatGPT |
