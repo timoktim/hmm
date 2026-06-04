@@ -70,8 +70,13 @@ Hazard probability remains readiness-approved local-slice evidence only. Age-buc
     "evidence": "data_quality_ci_invariants_v1"
   },
   "STAGE03R-WP10": {
-    "status": "active",
+    "pr": "#50",
+    "status": "accepted",
     "evidence": "stage03r_final_gate_v1"
+  },
+  "STAGE03R-WP10.1": {
+    "status": "active",
+    "evidence": "final_holdout_artifact_v1"
   },
   "artifact_schema_summary": {
     "hazard_readiness_matrix": {
@@ -122,7 +127,7 @@ Hazard probability remains readiness-approved local-slice evidence only. Age-buc
   "private_data_hygiene": {
     "status": "pass",
     "returncode": 0,
-    "stable_line": "PRIVATE_PATH_HYGIENE=pass scanned_files=99",
+    "stable_line": "PRIVATE_PATH_HYGIENE=pass scanned_files=101",
     "command": "bash scripts/check_no_private_paths.sh"
   },
   "stage01_no_private_db": {
@@ -319,11 +324,20 @@ Hazard probability remains readiness-approved local-slice evidence only. Age-buc
 {
   "protocol_rule": "final holdout can be consumed only by an explicit WP10 final-gate run.",
   "repeated_final_tuning_forbidden": "yes",
-  "artifact_path": null,
-  "artifact_present": "no",
-  "consumed_in_wp10": "no",
-  "consumption_count": 0,
-  "empirical_broad_promotion_allowed": "no"
+  "artifact_path": "reports/stage03r/final_holdout_artifact.json",
+  "artifact_present": "yes",
+  "consumed_in_wp10": "yes",
+  "consumption_count": 1,
+  "empirical_broad_promotion_allowed": "no",
+  "wp10_only": "yes",
+  "tuned_on_holdout": "no",
+  "external_data_fetch": "no",
+  "artifact_empirical_promotion_verdict": "DEFER",
+  "non_overlap_status": "not_proven",
+  "artifact_defer_reasons": [
+    "non-overlap with WP3-WP6.1 calibration/readiness evidence is not proven."
+  ],
+  "artifact_blocking_issue_count": 0
 }
 ```
 
@@ -376,14 +390,12 @@ Hazard probability remains readiness-approved local-slice evidence only. Age-buc
 
 ```json
 [
-  "No explicit final holdout artifact was provided; broad empirical promotion remains deferred."
+  "non-overlap with WP3-WP6.1 calibration/readiness evidence is not proven."
 ]
 ```
 
 ## Remediation items
 
 ```json
-[
-  "Provide a WP8-compliant final holdout artifact and consume it once in WP10 before broad empirical promotion."
-]
+[]
 ```

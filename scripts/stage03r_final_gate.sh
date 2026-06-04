@@ -32,10 +32,15 @@ DB_ARGS=()
 if [[ -f data/db/a_share_hmm.duckdb ]]; then
   DB_ARGS=(--db data/db/a_share_hmm.duckdb)
 fi
+FINAL_HOLDOUT_ARGS=()
+if [[ -f reports/stage03r/final_holdout_artifact.json ]]; then
+  FINAL_HOLDOUT_ARGS=(--final-holdout-artifact reports/stage03r/final_holdout_artifact.json)
+fi
 
 set +e
 "$PYTHON_CMD" -m src.evaluation.stage03r_final_gate \
   "${DB_ARGS[@]}" \
+  "${FINAL_HOLDOUT_ARGS[@]}" \
   --hazard-readiness reports/stage03r/hazard_readiness_matrix_report.json \
   --hazard-vs-hsmm reports/stage03r/hazard_vs_hsmm_report.json \
   --risk-protocol reports/stage03r/risk_validation_protocol.json \

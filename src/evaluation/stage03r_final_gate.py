@@ -364,7 +364,8 @@ def _package_evidence() -> dict[str, Any]:
         "STAGE03R-WP7": {"pr": "#47", "status": "accepted", "evidence": "hazard_vs_hsmm_report_v1"},
         "STAGE03R-WP8": {"pr": "#48", "status": "accepted", "evidence": "risk_validation_protocol_v1"},
         "STAGE03R-WP9": {"pr": "#49", "status": "accepted", "evidence": "data_quality_ci_invariants_v1"},
-        "STAGE03R-WP10": {"status": "active", "evidence": FINAL_GATE_VERSION},
+        "STAGE03R-WP10": {"pr": "#50", "status": "accepted", "evidence": FINAL_GATE_VERSION},
+        "STAGE03R-WP10.1": {"status": "active", "evidence": "final_holdout_artifact_v1"},
     }
 
 
@@ -800,18 +801,35 @@ def _final_holdout_discipline(
         )
     )
     tuned = holdout.get("tuned_on_holdout", holdout.get("threshold_tuning_on_holdout", "no"))
+    threshold_tuned = holdout.get("threshold_tuning_on_holdout", tuned)
+    model_retrained = holdout.get("model_retrained", "no")
+    hmm_hsmm_retrained = holdout.get("HMM_HSMM_retrained", "no")
+    hsmm_decision = holdout.get("HSMM_p_exit_used_for_decision", "no")
+    surface_output = holdout.get("decision_surface_output", "no")
     wp10_only = holdout.get("wp10_only", holdout.get("consumed_for_wp10_only", "yes"))
     consumed = holdout.get("consumed_in_wp10", "yes" if count == 1 else "no")
     external_fetch = holdout.get("external_data_fetch", "no")
+    artifact_empirical = str(holdout.get("empirical_promotion_verdict", "")).upper() or None
+    non_overlap_status = holdout.get("non_overlap_status")
+    artifact_defer_reasons = holdout.get("defer_reasons", [])
+    artifact_blocking_issues = holdout.get("blocking_issues", [])
 
     if count > 1:
         blocking_issues.append("final_holdout_discipline: final holdout consumption count exceeds one")
-    if _is_yes(tuned):
+    if _is_yes(tuned) or _is_yes(threshold_tuned):
         blocking_issues.append("final_holdout_discipline: tuning on final holdout detected")
+    if _is_yes(model_retrained) or _is_yes(hmm_hsmm_retrained):
+        blocking_issues.append("final_holdout_discipline: model retraining detected")
+    if _is_yes(hsmm_decision):
+        blocking_issues.append("final_holdout_discipline: HSMM p_exit decision input detected")
+    if surface_output not in {None, "no"}:
+        blocking_issues.append("final_holdout_discipline: surface/action output detected")
     if wp10_only in {"no", False}:
         blocking_issues.append("final_holdout_discipline: final holdout was not WP10-only")
     if external_fetch != "no":
         blocking_issues.append("final_holdout_discipline: external fetch detected in holdout artifact")
+    if artifact_empirical == "BLOCKED" or artifact_blocking_issues:
+        blocking_issues.append("final_holdout_discipline: artifact reported blocking issues")
 
     return base | {
         "artifact_present": "yes",
@@ -820,6 +838,10 @@ def _final_holdout_discipline(
         "wp10_only": "yes" if wp10_only in {"yes", True} else "no",
         "tuned_on_holdout": "yes" if _is_yes(tuned) else "no",
         "external_data_fetch": external_fetch,
+        "artifact_empirical_promotion_verdict": artifact_empirical,
+        "non_overlap_status": non_overlap_status,
+        "artifact_defer_reasons": artifact_defer_reasons if isinstance(artifact_defer_reasons, list) else [],
+        "artifact_blocking_issue_count": len(artifact_blocking_issues) if isinstance(artifact_blocking_issues, list) else 0,
         "empirical_broad_promotion_allowed": "no",
     }
 
@@ -961,6 +983,13 @@ def evaluate_final_gate(
     elif final_holdout.get("artifact_present") == "no":
         empirical_promotion_verdict = "DEFER"
         final_verdict = "DEFER"
+    elif final_holdout.get("artifact_empirical_promotion_verdict") == "DEFER" or final_holdout.get(
+        "non_overlap_status"
+    ) not in {None, "proven_non_overlap"}:
+        empirical_promotion_verdict = "DEFER"
+        final_verdict = "DEFER"
+        for reason in final_holdout.get("artifact_defer_reasons", []):
+            defer_reasons.append(str(reason))
     elif readiness_summary.get("baseline_only_majority") == "yes" or hazard_summary["usable_probability_scope"].get(
         "broadly_promoted"
     ) == "no":
