@@ -56,9 +56,10 @@ Logical root: docs/
 | STAGE03R-WP8 | 03R | WP8 | archived | v1 | docs/work_packages/stage03r/STAGE03R_EXECUTION_INDEX.md | Codex Stage03R-WP8 | accepted |
 | STAGE03R-WP9 | 03R | WP9 | archived | v1 | docs/work_packages/stage03r/STAGE03R_EXECUTION_INDEX.md | Codex Stage03R-WP9 | accepted |
 | STAGE03R-WP10 | 03R | WP10 | archived | v1 | docs/work_packages/stage03r/STAGE03R_EXECUTION_INDEX.md | Codex Stage03R-WP10 | accepted |
-| STAGE03R-WP10.1 | 03R | WP10.1 | active | v1 | docs/work_packages/stage03r/STAGE03R_EXECUTION_INDEX.md | Codex Stage03R-WP10.1 | pending |
+| STAGE03R-WP10.1 | 03R | WP10.1 | archived | v1 | docs/work_packages/stage03r/STAGE03R_EXECUTION_INDEX.md | Codex Stage03R-WP10.1 | accepted |
+| STAGE04-WP0 | 04 | WP0 | active | v1 | docs/work_packages/stage04/STAGE04_EXECUTION_INDEX.md | Codex Stage04-WP0 | pending |
 
-## Current Stage 03R Focus
+## Current Stage 04 Focus
 
 Stage03 preflight passed via PR #38:
 
@@ -70,12 +71,13 @@ BlockingPackages: none
 
 Active:
 
-- STAGE03R-WP10.1: Final Holdout Artifact supplement.
+- STAGE04-WP0: Split Registry and Prospective Validation Lock.
 
 Accepted:
 
 - STAGE03R-WP9: PR #49, data_quality_ci_invariants_v1 accepted.
 - STAGE03R-WP10: PR #50, engineering_gate_verdict PASS, empirical_promotion_verdict DEFER, final_verdict DEFER.
+- STAGE03R-WP10.1: PR #51, final_holdout_artifact_v1 accepted as holdout_candidate with non_overlap_status not_proven.
 
 ## Future Stage03R Route
 
@@ -137,3 +139,4 @@ Each Codex thread must report:
 | 2026-06-04 | PR #48 accepted risk_validation_protocol_v1; archived STAGE03R-WP8 and activated STAGE03R-WP9 while WP10 remains blocked. | ChatGPT |
 | 2026-06-04 | PR #49 accepted data_quality_ci_invariants_v1; archived STAGE03R-WP9 and activated STAGE03R-WP10 final gate. | ChatGPT |
 | 2026-06-04 | PR #50 accepted Stage03R WP10 final gate with engineering PASS and empirical DEFER; activated STAGE03R-WP10.1 final holdout artifact supplement. | ChatGPT |
+| 2026-06-04 | PR #51 accepted Stage03R WP10.1 final holdout candidate with non-overlap not proven; archived STAGE03R-WP10.1 and activated STAGE04-WP0 split registry lock. | ChatGPT |
