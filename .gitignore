@@ -51,5 +51,12 @@ reports/**
 !reports/stage03r/*.json
 !reports/stage03r/*.csv
 reports/stage03r/*_full.csv
+!reports/stage04/
+!reports/stage04/*.md
+!reports/stage04/*.json
+!reports/stage04/prospective_validation_ledger.template.jsonl
+reports/stage04/prospective_validation_ledger.jsonl
+reports/stage04/*.local.jsonl
+reports/stage04/daily_*.jsonl
 
 *.zip

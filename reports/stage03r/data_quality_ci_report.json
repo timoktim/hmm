@@ -435,7 +435,7 @@
     }
   },
   "private_data_hygiene_summary": {
-    "scanned_file_count": 333,
+    "scanned_file_count": 339,
     "duckdb_or_wal_files_committed": [],
     "cache_files_committed": [],
     "full_prediction_csv_committed": [],

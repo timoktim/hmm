@@ -15,6 +15,7 @@ WP7 evidence: PR #47, hazard_vs_hsmm_report_v1 accepted
 WP8 evidence: PR #48, risk_validation_protocol_v1 accepted
 WP9 evidence: PR #49, data_quality_ci_invariants_v1 accepted
 WP10 evidence: PR #50, engineering_gate_verdict PASS, empirical_promotion_verdict DEFER, final_verdict DEFER
+WP10.1 evidence: PR #51, final_holdout_artifact_v1 accepted as holdout_candidate with non_overlap_status not_proven
 
 ## Purpose
 
@@ -48,7 +49,7 @@ HMM causal regime context
 | STAGE03R-WP8 | Risk Validation Protocol | archived | stage03r/wp8-risk-validation-protocol | pre-register risk metrics and held-out final split discipline |
 | STAGE03R-WP9 | Data Quality CI Invariants | archived | stage03r/wp9-data-quality-ci-invariants | persistent CI checks for ingestion and target leakage invariants |
 | STAGE03R-WP10 | Stage03R Final Gate | archived | stage03r/wp10-final-gate | final PASS/BLOCKED/DEFER verdict |
-| STAGE03R-WP10.1 | Final Holdout Artifact | active | stage03r/wp10.1-final-holdout-artifact | explicit one-time final holdout artifact supplement |
+| STAGE03R-WP10.1 | Final Holdout Artifact | archived | stage03r/wp10.1-final-holdout-artifact | explicit one-time final holdout artifact supplement |
 
 ## Execution rules
 
@@ -105,3 +106,4 @@ If hazard does not stand up, do not return to expanding HSMM numerical probabili
 | 2026-06-04 | Archived WP8 after PR #48 merge and activated WP9 data-quality CI invariants; WP10 remains blocked. | ChatGPT |
 | 2026-06-04 | Archived WP9 after PR #49 accepted data_quality_ci_invariants_v1 and activated WP10 final gate. | ChatGPT |
 | 2026-06-04 | Archived WP10 after PR #50 final gate engineering PASS / empirical DEFER and activated WP10.1 final holdout artifact supplement. | ChatGPT |
+| 2026-06-04 | Archived WP10.1 after PR #51 accepted final_holdout_artifact_v1 as a holdout candidate with non-overlap not proven; Stage04 owns prospective split locking. | ChatGPT |
