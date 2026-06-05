@@ -57,7 +57,9 @@ Logical root: docs/
 | STAGE03R-WP9 | 03R | WP9 | archived | v1 | docs/work_packages/stage03r/STAGE03R_EXECUTION_INDEX.md | Codex Stage03R-WP9 | accepted |
 | STAGE03R-WP10 | 03R | WP10 | archived | v1 | docs/work_packages/stage03r/STAGE03R_EXECUTION_INDEX.md | Codex Stage03R-WP10 | accepted |
 | STAGE03R-WP10.1 | 03R | WP10.1 | archived | v1 | docs/work_packages/stage03r/STAGE03R_EXECUTION_INDEX.md | Codex Stage03R-WP10.1 | accepted |
-| STAGE04-WP0 | 04 | WP0 | active | v1 | docs/work_packages/stage04/STAGE04_EXECUTION_INDEX.md | Codex Stage04-WP0 | pending |
+| STAGE04-WP0 | 04 | WP0 | archived | v1 | docs/work_packages/stage04/STAGE04_EXECUTION_INDEX.md | Codex Stage04-WP0 | accepted |
+| STAGE04-WP1 | 04 | WP1 | archived | v1 | docs/work_packages/stage04/STAGE04_EXECUTION_INDEX.md | Codex Stage04-WP1 | accepted |
+| STAGE04-WP2 | 04 | WP2 | active | v1 | docs/work_packages/stage04/STAGE04_EXECUTION_INDEX.md | Codex Stage04-WP2 | pending |
 
 ## Current Stage 04 Focus
 
@@ -71,10 +73,12 @@ BlockingPackages: none
 
 Active:
 
-- STAGE04-WP0: Split Registry and Prospective Validation Lock.
+- STAGE04-WP2: Break Diagnostic Casebook and Prospective Annotation Protocol.
 
 Accepted:
 
+- STAGE04-WP0: PR #52, split_registry_v1 and prospective validation ledger template accepted.
+- STAGE04-WP1: PR #55, structural break diagnostic accepted.
 - STAGE03R-WP9: PR #49, data_quality_ci_invariants_v1 accepted.
 - STAGE03R-WP10: PR #50, engineering_gate_verdict PASS, empirical_promotion_verdict DEFER, final_verdict DEFER.
 - STAGE03R-WP10.1: PR #51, final_holdout_artifact_v1 accepted as holdout_candidate with non_overlap_status not_proven.
@@ -140,3 +144,5 @@ Each Codex thread must report:
 | 2026-06-04 | PR #49 accepted data_quality_ci_invariants_v1; archived STAGE03R-WP9 and activated STAGE03R-WP10 final gate. | ChatGPT |
 | 2026-06-04 | PR #50 accepted Stage03R WP10 final gate with engineering PASS and empirical DEFER; activated STAGE03R-WP10.1 final holdout artifact supplement. | ChatGPT |
 | 2026-06-04 | PR #51 accepted Stage03R WP10.1 final holdout candidate with non-overlap not proven; archived STAGE03R-WP10.1 and activated STAGE04-WP0 split registry lock. | ChatGPT |
+| 2026-06-04 | PR #52 accepted Stage04 WP0 split registry lock; activated Stage04 WP1 structural break diagnostic. | ChatGPT |
+| 2026-06-05 | PR #55 accepted Stage04 WP1 structural break diagnostic; activated Stage04 WP2 break diagnostic casebook annotation protocol. | ChatGPT |
