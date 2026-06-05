@@ -4,15 +4,17 @@ import argparse
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
+import time
 
 import pandas as pd
 from loguru import logger
 
-from src.config import BoardType
+from src.config import BoardType, settings
 from src.data_pipeline.storage import DuckDBStorage
 from src.data_pipeline.universe import universe_items_for_update
 from src.data_pipeline.validators import validate_board_type, validate_ohlcv
-from src.data_sources.akshare_client import AKShareClient
+from src.data_sources.base import DataResult, MarketDataClient
+from src.data_sources.factory import create_data_client
 from src.features.custom_basket_features import build_custom_basket_ohlcv
 from src.utils.dates import normalize_yyyymmdd
 from src.utils.logging import setup_logging
@@ -113,7 +115,7 @@ def _select_board_meta(
     board_type: BoardType,
     limit: int | None,
     sector_names: list[str] | None,
-    client: AKShareClient,
+    client: MarketDataClient,
     storage: DuckDBStorage,
 ) -> tuple[pd.DataFrame, int, int]:
     meta_res = client.board_names(board_type)  # type: ignore[arg-type]
@@ -144,7 +146,7 @@ def _select_board_meta(
 def _update_constituents(
     board_type: BoardType,
     sector_name: str,
-    client: AKShareClient,
+    client: MarketDataClient,
     storage: DuckDBStorage,
 ) -> tuple[int, int, str | None]:
     try:
@@ -169,7 +171,7 @@ def _update_boards_impl(
     lookback_days: int,
     workers: int,
     progress_callback: ProgressCallback | None,
-    client: AKShareClient | None,
+    client: MarketDataClient | None,
     storage: DuckDBStorage | None,
 ) -> UpdateSummary:
     setup_logging()
@@ -178,7 +180,7 @@ def _update_boards_impl(
     end_date = normalize_yyyymmdd(end)
     storage = storage or DuckDBStorage()
     storage.init_schema()
-    client = client or AKShareClient(storage=storage)
+    client = client or create_data_client(storage=storage)
 
     meta, stale_reads, cache_hits = _select_board_meta(board_type, limit, sector_names, client, storage)
     failures: list[str] = []
@@ -293,7 +295,7 @@ def update_boards(
     sector_names: list[str] | None = None,
     workers: int = 1,
     progress_callback: ProgressCallback | None = None,
-    client: AKShareClient | None = None,
+    client: MarketDataClient | None = None,
     storage: DuckDBStorage | None = None,
 ) -> UpdateSummary:
     return _update_boards_impl(
@@ -322,7 +324,7 @@ def incremental_update_boards(
     lookback_days: int = 10,
     workers: int = 1,
     progress_callback: ProgressCallback | None = None,
-    client: AKShareClient | None = None,
+    client: MarketDataClient | None = None,
     storage: DuckDBStorage | None = None,
 ) -> UpdateSummary:
     return _update_boards_impl(
@@ -349,13 +351,16 @@ def update_stock_histories(
     lookback_days: int = 10,
     missing_only: bool = False,
     limit: int | None = None,
+    workers: int = 1,
+    batch_size: int | None = None,
+    batch_sleep_seconds: float | None = None,
     progress_callback: ProgressCallback | None = None,
-    client: AKShareClient | None = None,
+    client: MarketDataClient | None = None,
     storage: DuckDBStorage | None = None,
 ) -> UpdateSummary:
     storage = storage or DuckDBStorage()
     storage.init_schema()
-    client = client or AKShareClient(storage=storage)
+    client = client or create_data_client(storage=storage)
     start_date = normalize_yyyymmdd(start)
     end_date = normalize_yyyymmdd(end)
     seen_codes = list(dict.fromkeys(str(code).zfill(6) for code in stock_codes))
@@ -371,44 +376,70 @@ def update_stock_histories(
     cache_hits = 0
     updated = 0
     total = len(selected_codes)
-    for idx, code in enumerate(selected_codes, start=1):
+    completed = 0
+    worker_count = max(1, min(int(workers or 1), max(1, int(settings.tdx_max_workers or 1))))
+    effective_batch_size = max(1, int(batch_size or settings.tdx_batch_size or total or 1))
+    effective_batch_sleep = max(0.0, float(settings.tdx_batch_sleep_seconds if batch_sleep_seconds is None else batch_sleep_seconds))
+
+    def fetch(code: str) -> tuple[str, DataResult]:
         actual_start = _lookback_start(max_dates.get(code), start_date, end_date, lookback_days) if incremental else start_date
-        if progress_callback is not None:
-            progress_callback(
-                UpdateProgress(
-                    current=idx - 1,
-                    total=total,
-                    name=code,
-                    stage="stock_hist",
-                    successes=updated,
-                    failures=len(failures),
-                    cache_hits=cache_hits,
-                    stale_reads=stale_reads,
-                )
-            )
+        return code, client.stock_hist(code, actual_start, end_date)
+
+    batches = [selected_codes[i : i + effective_batch_size] for i in range(0, len(selected_codes), effective_batch_size)]
+    for batch_number, batch in enumerate(batches, start=1):
+        if worker_count == 1:
+            iterator = [(code, None) for code in batch]
+        else:
+            executor = ThreadPoolExecutor(max_workers=worker_count)
+            future_map = {executor.submit(fetch, code): code for code in batch}
+            iterator = [(future_map[future], future) for future in as_completed(future_map)]
         try:
-            res = client.stock_hist(code, actual_start, end_date)
-            validate_ohlcv(res.data, code, entity_key="stock_code")
-            storage.upsert_df("stock_ohlcv", res.data, ["stock_code", "trade_date"])
-            stale_reads += int(res.stale)
-            cache_hits += int(res.from_cache)
-            updated += 1
-        except Exception as exc:
-            failures.append(f"{code}: {exc}")
-            logger.exception("更新个股失败: {}", code)
-        if progress_callback is not None:
-            progress_callback(
-                UpdateProgress(
-                    current=idx,
-                    total=total,
-                    name=code,
-                    stage="stock_hist_done",
-                    successes=updated,
-                    failures=len(failures),
-                    cache_hits=cache_hits,
-                    stale_reads=stale_reads,
-                )
-            )
+            for code, future in iterator:
+                if progress_callback is not None:
+                    progress_callback(
+                        UpdateProgress(
+                            current=completed,
+                            total=total,
+                            name=code,
+                            stage=f"stock_hist batch {batch_number}/{len(batches)}",
+                            successes=updated,
+                            failures=len(failures),
+                            cache_hits=cache_hits,
+                            stale_reads=stale_reads,
+                        )
+                    )
+                try:
+                    if future is None:
+                        _, res = fetch(code)
+                    else:
+                        _, res = future.result()
+                    validate_ohlcv(res.data, code, entity_key="stock_code")
+                    storage.upsert_df("stock_ohlcv", res.data, ["stock_code", "trade_date"])
+                    stale_reads += int(res.stale)
+                    cache_hits += int(res.from_cache)
+                    updated += 1
+                except Exception as exc:
+                    failures.append(f"{code}: {exc}")
+                    logger.exception("更新个股失败: {}", code)
+                completed += 1
+                if progress_callback is not None:
+                    progress_callback(
+                        UpdateProgress(
+                            current=completed,
+                            total=total,
+                            name=code,
+                            stage="stock_hist_done",
+                            successes=updated,
+                            failures=len(failures),
+                            cache_hits=cache_hits,
+                            stale_reads=stale_reads,
+                        )
+                    )
+        finally:
+            if worker_count > 1:
+                executor.shutdown(wait=True)
+        if batch_number < len(batches) and effective_batch_sleep > 0:
+            time.sleep(effective_batch_sleep)
     return UpdateSummary(
         board_type="industry",
         sectors_seen=total,
@@ -426,12 +457,12 @@ def update_market_benchmark(
     end: str,
     incremental: bool = True,
     lookback_days: int = 10,
-    client: AKShareClient | None = None,
+    client: MarketDataClient | None = None,
     storage: DuckDBStorage | None = None,
 ) -> BenchmarkUpdateSummary:
     storage = storage or DuckDBStorage()
     storage.init_schema()
-    client = client or AKShareClient(storage=storage)
+    client = client or create_data_client(storage=storage)
     try:
         start_date = normalize_yyyymmdd(start)
         end_date = normalize_yyyymmdd(end)
@@ -462,12 +493,12 @@ def update_universe_data(
     lookback_days: int = 10,
     workers: int = 1,
     progress_callback: ProgressCallback | None = None,
-    client: AKShareClient | None = None,
+    client: MarketDataClient | None = None,
     storage: DuckDBStorage | None = None,
 ) -> UpdateSummary:
     storage = storage or DuckDBStorage()
     storage.init_schema()
-    client = client or AKShareClient(storage=storage)
+    client = client or create_data_client(storage=storage)
     items = universe_items_for_update(storage, universe_id)
     if items.empty:
         return UpdateSummary(

@@ -18,6 +18,8 @@ Core numerical, data, HMM, database, UI, and external-data dependencies use comp
 
 `src.utils.dependency_guard.check_dependency_versions` verifies these ranges and raises `DependencyGuardError` when a dependency is missing or outside the supported range. CI can call `python -m src.utils.dependency_guard` as a startup diagnostic.
 
+`mootdx>=0.11.7,<0.12` is a runtime market-data-source dependency. It is lazily imported by the TDX provider and can fall back to AKShare, so it is intentionally not part of the core numerical dependency guard.
+
 ## hmmlearn Private API Guard
 
 Filtered HMM probabilities rely on hmmlearn's private `_compute_log_likelihood` method. Access is centralized in `require_hmmlearn_log_likelihood`; if the method is missing, not callable with the expected observation matrix, or returns an invalid shape, the code raises `HMMPrivateAPIError` instead of returning synthetic or fallback probabilities.

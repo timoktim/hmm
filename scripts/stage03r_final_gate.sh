@@ -28,33 +28,39 @@ if [[ -x .venv/bin/pytest ]]; then
   export PYTEST=".venv/bin/pytest"
 fi
 
-DB_ARGS=()
+CMD=("$PYTHON_CMD" -m src.evaluation.stage03r_final_gate)
 if [[ -f data/db/a_share_hmm.duckdb ]]; then
-  DB_ARGS=(--db data/db/a_share_hmm.duckdb)
+  CMD+=(--db data/db/a_share_hmm.duckdb)
 fi
-FINAL_HOLDOUT_ARGS=()
 if [[ -f reports/stage03r/final_holdout_artifact.json ]]; then
-  FINAL_HOLDOUT_ARGS=(--final-holdout-artifact reports/stage03r/final_holdout_artifact.json)
+  CMD+=(--final-holdout-artifact reports/stage03r/final_holdout_artifact.json)
+fi
+OUTPUT_MD="reports/stage03r/stage03r_final_gate_report.md"
+SUMMARY_JSON="reports/stage03r/stage03r_final_gate_report.json"
+TMP_OUTPUT_DIR=""
+if [[ ! -f data/db/a_share_hmm.duckdb ]]; then
+  TMP_OUTPUT_DIR="$(mktemp -d "${TMPDIR:-/tmp}/stage03r_final_gate.XXXXXX")"
+  OUTPUT_MD="$TMP_OUTPUT_DIR/stage03r_final_gate_report.md"
+  SUMMARY_JSON="$TMP_OUTPUT_DIR/stage03r_final_gate_report.json"
+  trap '[[ -z "$TMP_OUTPUT_DIR" ]] || rm -rf "$TMP_OUTPUT_DIR"' EXIT
 fi
 
 set +e
-"$PYTHON_CMD" -m src.evaluation.stage03r_final_gate \
-  "${DB_ARGS[@]}" \
-  "${FINAL_HOLDOUT_ARGS[@]}" \
+"${CMD[@]}" \
   --hazard-readiness reports/stage03r/hazard_readiness_matrix_report.json \
   --hazard-vs-hsmm reports/stage03r/hazard_vs_hsmm_report.json \
   --risk-protocol reports/stage03r/risk_validation_protocol.json \
   --data-quality reports/stage03r/data_quality_ci_report.json \
   --hazard-verdict reports/stage03r/multi_horizon_hazard_verdict.md \
-  --output reports/stage03r/stage03r_final_gate_report.md \
-  --summary-json reports/stage03r/stage03r_final_gate_report.json \
+  --output "$OUTPUT_MD" \
+  --summary-json "$SUMMARY_JSON" \
   --no-fetch
 status=$?
 set -e
 
 gate_value="blocked"
-if [[ -f reports/stage03r/stage03r_final_gate_report.json ]]; then
-  gate_value="$("$PYTHON_CMD" -c "import json; print(json.load(open('reports/stage03r/stage03r_final_gate_report.json')).get('status', 'blocked'))")"
+if [[ -f "$SUMMARY_JSON" ]]; then
+  gate_value="$("$PYTHON_CMD" -c "import json, sys; print(json.load(open(sys.argv[1])).get('status', 'blocked'))" "$SUMMARY_JSON")"
 fi
 
 echo "STAGE03R_FINAL_GATE=${gate_value} python=${PYTHON_CMD}"

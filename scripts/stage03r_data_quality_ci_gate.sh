@@ -23,6 +23,15 @@ CMD=("$PYTHON_CMD" -m src.evaluation.stage03r_data_quality_ci)
 if [[ -f data/db/a_share_hmm.duckdb ]]; then
   CMD+=(--db data/db/a_share_hmm.duckdb)
 fi
+OUTPUT_MD="reports/stage03r/data_quality_ci_report.md"
+SUMMARY_JSON="reports/stage03r/data_quality_ci_report.json"
+TMP_OUTPUT_DIR=""
+if [[ ! -f data/db/a_share_hmm.duckdb ]]; then
+  TMP_OUTPUT_DIR="$(mktemp -d "${TMPDIR:-/tmp}/stage03r_data_quality_ci.XXXXXX")"
+  OUTPUT_MD="$TMP_OUTPUT_DIR/data_quality_ci_report.md"
+  SUMMARY_JSON="$TMP_OUTPUT_DIR/data_quality_ci_report.json"
+  trap '[[ -z "$TMP_OUTPUT_DIR" ]] || rm -rf "$TMP_OUTPUT_DIR"' EXIT
+fi
 
 set +e
 "${CMD[@]}" \
@@ -31,8 +40,8 @@ set +e
   --risk-protocol reports/stage03r/risk_validation_protocol.json \
   --hazard-verdict reports/stage03r/multi_horizon_hazard_verdict.md \
   --hazard-prediction-sample reports/stage03r/duration_hazard_logistic_predictions_sample.csv \
-  --output reports/stage03r/data_quality_ci_report.md \
-  --summary-json reports/stage03r/data_quality_ci_report.json \
+  --output "$OUTPUT_MD" \
+  --summary-json "$SUMMARY_JSON" \
   --no-fetch
 status=$?
 set -e

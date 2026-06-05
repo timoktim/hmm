@@ -8,6 +8,7 @@ from typing import Any
 import pandas as pd
 import streamlit as st
 
+from src.config import settings
 from src.data_pipeline.market_updater import (
     DEFAULT_MARKET_INDEX_CODES,
     update_all_a_stock_ohlcv,
@@ -260,6 +261,8 @@ def run_all_a_width_pipeline(
     workers: int,
     force_refresh: bool,
     storage: DuckDBStorage,
+    batch_size: int | None = None,
+    batch_sleep_seconds: float | None = None,
     progress_callback: ProgressDictCallback | None = None,
 ) -> CombinedUpdateResult:
     summaries: list[Any] = []
@@ -309,6 +312,8 @@ def run_all_a_width_pipeline(
         lookback_days=int(all_a_lookback_days),
         max_stocks=max_stocks,
         workers=int(workers),
+        batch_size=batch_size,
+        batch_sleep_seconds=batch_sleep_seconds,
         skip_completed=skip_completed,
         progress_callback=on_stock_progress,
         storage=storage,
@@ -450,12 +455,15 @@ def render_data_update_tasks(storage: DuckDBStorage, universe_id: str | None = N
     with st.expander("高级参数", expanded=False):
         a1, a2, a3 = st.columns(3)
         board_workers = a1.number_input("板块并发数", min_value=1, max_value=3, value=1, help="只用于板块行情抓取。并发过高可能导致接口失败。")
-        stock_workers = a2.number_input("个股并发数", min_value=1, max_value=3, value=3, help="只用于全 A 个股行情。建议不超过 3。")
+        stock_workers = a2.number_input("个股并发数", min_value=1, max_value=int(settings.tdx_max_workers), value=int(settings.tdx_global_workers), help="只用于全 A 个股行情。TDX 连接池会按服务器上限分摊请求。")
         include_constituents = a3.checkbox("同时更新成分股", value=False, help="成分股接口较慢，开启后总耗时会明显增加。")
         b1, b2, b3 = st.columns(3)
         test_limit_enabled = b1.checkbox("启用测试数量限制", value=False, help="仅用于小范围试跑。关闭后更新全部目标。")
         test_limit = b2.number_input("测试限制数量", min_value=1, max_value=6000, value=30, disabled=not test_limit_enabled)
         force_refresh = b3.checkbox("强制刷新", value=False, help="尽量绕过缓存重新请求。日常增量更新通常不需要开启。")
+        d1, d2 = st.columns(2)
+        tdx_batch_size = d1.number_input("TDX 批大小", min_value=10, max_value=300, value=int(settings.tdx_batch_size), step=10, help="全 A 个股行情按批切片，避免瞬时请求过密。")
+        tdx_batch_sleep = d2.number_input("批次休眠秒数", min_value=0.0, max_value=30.0, value=float(settings.tdx_batch_sleep_seconds), step=0.5, help="每批之间暂停，降低被临时限流的概率。")
 
     task = st.radio("选择更新任务", TASK_OPTIONS, horizontal=False)
     board_types: list[str] = ["industry", "concept"]
@@ -549,6 +557,9 @@ def render_data_update_tasks(storage: DuckDBStorage, universe_id: str | None = N
                             lookback_days=int(lookback_days),
                             missing_only=False,
                             limit=limit,
+                            workers=int(stock_workers),
+                            batch_size=int(tdx_batch_size),
+                            batch_sleep_seconds=float(tdx_batch_sleep),
                             progress_callback=on_progress,
                             storage=storage,
                         )
@@ -562,6 +573,8 @@ def render_data_update_tasks(storage: DuckDBStorage, universe_id: str | None = N
                         all_a_lookback_days=int(all_a_lookback),
                         max_stocks=limit,
                         workers=int(stock_workers),
+                        batch_size=int(tdx_batch_size),
+                        batch_sleep_seconds=float(tdx_batch_sleep),
                         force_refresh=force_refresh,
                         progress_callback=_all_a_progress_widgets(),
                         storage=storage,

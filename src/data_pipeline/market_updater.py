@@ -3,12 +3,16 @@ from __future__ import annotations
 from collections.abc import Callable
 from concurrent.futures import ThreadPoolExecutor, as_completed
 from dataclasses import dataclass
+import time
 
 import pandas as pd
 
+from src.config import settings
 from src.data_pipeline.storage import DuckDBStorage
 from src.data_pipeline.updater import _lookback_start
 from src.data_sources.akshare_client import AKShareClient, MARKET_INDEXES
+from src.data_sources.base import MarketDataClient
+from src.data_sources.factory import create_data_client
 from src.utils.dates import normalize_yyyymmdd
 
 
@@ -74,7 +78,7 @@ def _stock_max_dates(storage: DuckDBStorage, stock_codes: list[str]) -> dict[str
 
 
 def _infer_latest_source_trade_date(
-    client: AKShareClient,
+    client: MarketDataClient,
     stock_codes: list[str],
     max_dates: dict[str, object],
     fallback_start: str,
@@ -139,13 +143,13 @@ def _ensure_market_breadth_coverage_columns(storage: DuckDBStorage) -> None:
 
 
 def update_all_a_stock_universe(
-    client: AKShareClient | None = None,
+    client: MarketDataClient | None = None,
     storage: DuckDBStorage | None = None,
     force_refresh: bool = False,
 ) -> MarketUpdateSummary:
     storage = storage or DuckDBStorage()
     storage.init_schema()
-    client = client or AKShareClient(storage=storage)
+    client = client or create_data_client(storage=storage)
     try:
         res = client.all_a_stock_universe(force_refresh=force_refresh)
         data = AKShareClient._normalize_all_a_stock_universe(res.data)
@@ -168,16 +172,18 @@ def update_all_a_stock_ohlcv(
     incremental: bool = True,
     lookback_days: int = 60,
     max_stocks: int | None = None,
-    workers: int = 3,
+    workers: int | None = None,
+    batch_size: int | None = None,
+    batch_sleep_seconds: float | None = None,
     skip_completed: bool = False,
     probe_latest: bool = True,
-    client: AKShareClient | None = None,
+    client: MarketDataClient | None = None,
     storage: DuckDBStorage | None = None,
     progress_callback: ProgressCallback | None = None,
 ) -> MarketUpdateSummary:
     storage = storage or DuckDBStorage()
     storage.init_schema()
-    client = client or AKShareClient(storage=storage)
+    client = client or create_data_client(storage=storage)
     universe = _active_all_a_universe(storage)
     if universe.empty:
         return MarketUpdateSummary(seen=0, updated=0, rows=0, failures=["缺少全 A 股票池，请先更新全 A 股票池列表。"])
@@ -209,7 +215,10 @@ def update_all_a_stock_ohlcv(
         )
     if max_stocks:
         jobs = jobs[: int(max_stocks)]
-    worker_count = max(1, min(int(workers or 1), 3))
+    configured_workers = settings.tdx_global_workers if workers is None else workers
+    worker_count = max(1, min(int(configured_workers or 1), max(1, int(settings.tdx_max_workers or 1))))
+    effective_batch_size = max(1, int(batch_size or settings.tdx_batch_size or len(jobs) or 1))
+    effective_batch_sleep = max(0.0, float(settings.tdx_batch_sleep_seconds if batch_sleep_seconds is None else batch_sleep_seconds))
     failures: list[str] = []
     rows = 0
     updated = 0
@@ -217,13 +226,17 @@ def update_all_a_stock_ohlcv(
     cache_hits = 0
     completed = 0
 
-    def emit(code: str) -> None:
+    def emit(code: str, batch_index: int = 0, batch_count: int = 1) -> None:
         if progress_callback is not None:
             progress_callback(
                 {
                     "current": completed,
                     "total": len(jobs),
                     "name": code,
+                    "batch_index": batch_index,
+                    "batch_count": batch_count,
+                    "batch_size": effective_batch_size,
+                    "worker_count": worker_count,
                     "successes": updated,
                     "failures": len(failures),
                     "cache_hits": cache_hits,
@@ -237,29 +250,23 @@ def update_all_a_stock_ohlcv(
         code = job["stock_code"]
         return code, client.stock_hist(code, job["start_date"], end)
 
-    if worker_count == 1:
-        for job in jobs:
-            code = str(job["stock_code"])
-            emit(code)
-            try:
-                _, res = fetch(job)
-                storage.upsert_df("stock_ohlcv", res.data, ["stock_code", "trade_date"])
-                updated += 1
-                rows += len(res.data)
-                stale_reads += int(res.stale)
-                cache_hits += int(res.from_cache)
-            except Exception as exc:
-                failures.append(f"{code}: {exc}")
-            completed += 1
-            emit(code)
-    else:
-        with ThreadPoolExecutor(max_workers=worker_count) as executor:
-            future_map = {executor.submit(fetch, job): job for job in jobs}
-            for future in as_completed(future_map):
-                job = future_map[future]
+    batches = [jobs[i : i + effective_batch_size] for i in range(0, len(jobs), effective_batch_size)]
+    for batch_number, batch in enumerate(batches, start=1):
+        if worker_count == 1:
+            iterator = [(job, None) for job in batch]
+        else:
+            executor = ThreadPoolExecutor(max_workers=worker_count)
+            future_map = {executor.submit(fetch, job): job for job in batch}
+            iterator = [(job, future) for future, job in ((future, future_map[future]) for future in as_completed(future_map))]
+        try:
+            for job, future in iterator:
                 code = str(job["stock_code"])
+                emit(code, batch_number, len(batches))
                 try:
-                    _, res = future.result()
+                    if future is None:
+                        _, res = fetch(job)
+                    else:
+                        _, res = future.result()
                     storage.upsert_df("stock_ohlcv", res.data, ["stock_code", "trade_date"])
                     updated += 1
                     rows += len(res.data)
@@ -268,7 +275,12 @@ def update_all_a_stock_ohlcv(
                 except Exception as exc:
                     failures.append(f"{code}: {exc}")
                 completed += 1
-                emit(code)
+                emit(code, batch_number, len(batches))
+        finally:
+            if worker_count > 1:
+                executor.shutdown(wait=True)
+        if batch_number < len(batches) and effective_batch_sleep > 0:
+            time.sleep(effective_batch_sleep)
 
     return MarketUpdateSummary(
         seen=len(jobs),
@@ -288,12 +300,12 @@ def update_market_indices(
     index_codes: list[str] | None = None,
     incremental: bool = True,
     lookback_days: int = 10,
-    client: AKShareClient | None = None,
+    client: MarketDataClient | None = None,
     storage: DuckDBStorage | None = None,
 ) -> MarketUpdateSummary:
     storage = storage or DuckDBStorage()
     storage.init_schema()
-    client = client or AKShareClient(storage=storage)
+    client = client or create_data_client(storage=storage)
     start = normalize_yyyymmdd(start_date)
     end = normalize_yyyymmdd(end_date)
     codes = [str(code).zfill(6) for code in (index_codes or DEFAULT_MARKET_INDEX_CODES)]

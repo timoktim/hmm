@@ -10,7 +10,6 @@ import tempfile
 import threading
 import time
 from contextlib import contextmanager
-from dataclasses import dataclass
 from pathlib import Path
 from collections.abc import Iterator
 from typing import Callable
@@ -21,19 +20,12 @@ from tenacity import retry, stop_after_attempt, wait_exponential
 
 from src.config import BoardType, settings
 from src.data_pipeline.storage import DuckDBStorage
+from src.data_sources.base import DataResult
 from src.data_sources.ths_helpers import em_board_constituents, ths_board_constituents, ths_board_hist, ths_board_names
 from src.utils.dates import normalize_yyyymmdd, to_trade_date, today_yyyymmdd
 
 
 _HEALTH_LOCK = threading.RLock()
-
-
-@dataclass
-class DataResult:
-    data: pd.DataFrame
-    stale: bool = False
-    from_cache: bool = False
-    error: str | None = None
 
 
 BOARD_META_COLUMNS = {
@@ -47,6 +39,8 @@ BOARD_META_COLUMNS = {
 OHLCV_COLUMNS = {
     "date": "trade_date",
     "日期": "trade_date",
+    "datetime": "trade_date",
+    "time": "trade_date",
     "open": "open",
     "开盘": "open",
     "开盘价": "open",
@@ -60,6 +54,7 @@ OHLCV_COLUMNS = {
     "收盘": "close",
     "收盘价": "close",
     "volume": "volume",
+    "vol": "volume",
     "成交量": "volume",
     "amount": "amount",
     "成交额": "amount",
