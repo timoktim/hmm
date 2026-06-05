@@ -1,0 +1,115 @@
+{
+  "blocking_issues": [],
+  "boundary_flags": {
+    "decision_engine_output": "no",
+    "duckdb_committed": "no",
+    "duckdb_schema_changed": "no",
+    "external_data_fetch": "no",
+    "final_holdout_consumed": "no",
+    "hazard_model_changed": "no",
+    "hmm_hsmm_training_changed": "no",
+    "model_retrained": "no"
+  },
+  "causal_sanity_summary": {
+    "future_rows_used": "no",
+    "hmm_future_rows_excluded": 0,
+    "min_periods": 20,
+    "rolling_baseline_excludes_current_row": "yes",
+    "rolling_window": 60
+  },
+  "component_availability_summary": {
+    "breadth": {
+      "available": true,
+      "available_rows": 1522,
+      "component": "breadth",
+      "latest_status": "normal",
+      "rows": 1547
+    },
+    "hmm_confidence": {
+      "available": true,
+      "available_rows": 933,
+      "component": "hmm_confidence",
+      "latest_status": "normal",
+      "rows": 953
+    },
+    "market_volatility": {
+      "available": true,
+      "available_rows": 1519,
+      "component": "market_volatility",
+      "latest_status": "normal",
+      "rows": 1549
+    },
+    "sector_dispersion": {
+      "available": true,
+      "available_rows": 1528,
+      "component": "sector_dispersion",
+      "latest_status": "watch",
+      "rows": 1550
+    }
+  },
+  "data_quality_summary": {
+    "db_available": "yes",
+    "db_path": "data/db/a_share_hmm.duckdb",
+    "diagnostic_rows": 1550,
+    "latest_trade_date": "2026-05-28",
+    "missing_tables": [],
+    "unavailable_components": []
+  },
+  "defer_reasons": [],
+  "index_id": "STAGE04-WP1",
+  "input_table_summary": {
+    "market_breadth_daily": {
+      "exists": true,
+      "max_trade_date": "2026-05-26",
+      "min_trade_date": "2020-01-02",
+      "row_count": 3092
+    },
+    "market_index_ohlcv": {
+      "exists": true,
+      "max_trade_date": "2026-05-28",
+      "min_trade_date": "2020-01-02",
+      "row_count": 10843
+    },
+    "sector_features": {
+      "exists": true,
+      "max_trade_date": "2026-05-28",
+      "min_trade_date": "2020-01-02",
+      "row_count": 632756
+    },
+    "walk_forward_state_cache": {
+      "exists": true,
+      "max_trade_date": "2026-05-27",
+      "min_trade_date": "2020-03-20",
+      "row_count": 226810
+    }
+  },
+  "latest_break_warning": {
+    "available_component_count": 2,
+    "breadth_above_ma20_z": null,
+    "breadth_amount_z": null,
+    "breadth_status": null,
+    "breadth_up_ratio_z": null,
+    "break_warning_level": "watch",
+    "component_stress_labels": "sector:medium",
+    "hmm_confidence_status": null,
+    "hmm_entropy_mean": null,
+    "hmm_margin_mean": null,
+    "hmm_max_prob_mean": null,
+    "market_return_1d": 0.0012306012220439921,
+    "market_volatility_status": "normal",
+    "market_volatility_z": -0.27585084470733945,
+    "sector_dispersion_status": "watch",
+    "sector_dispersion_z": 1.443994899120726,
+    "trade_date": "2026-05-28"
+  },
+  "recommended_next_stage": "Use Stage04-WP1 diagnostics for prospective annotation review before any higher-cost break model.",
+  "report_version": "stage04_wp1_break_detector_v1",
+  "status": "pass",
+  "warning_level_counts": {
+    "elevated": 454,
+    "high": 72,
+    "insufficient_data": 26,
+    "normal": 513,
+    "watch": 485
+  }
+}
