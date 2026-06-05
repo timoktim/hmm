@@ -16,7 +16,8 @@ non-overlap before final holdout consumption.
 | STAGE04-WP0 | Split Registry and Prospective Validation Lock | archived | stage04/wp0-split-registry-prospective-validation-lock | freeze Stage03R evidence boundary and define prospective holdout eligibility |
 | STAGE04-WP1 | Structural Break Diagnostic | archived | codex/stage04-wp1-break-detector-v1 | compute read-only, low-cost break warning diagnostics |
 | STAGE04-WP2 | Break Diagnostic Casebook and Annotation Protocol | archived | codex/stage04-wp2-break-casebook-annotation-protocol | turn WP1 diagnostics into a bounded public-safe casebook and prospective annotation schema |
-| STAGE04-WP3 | Annotation Ledger Label Completeness Gate | active | codex/stage04-wp3-annotation-ledger-label-gate | validate local annotation records and required-horizon label completeness |
+| STAGE04-WP3 | Annotation Ledger Label Completeness Gate | archived | codex/stage04-wp3-annotation-ledger-label-gate | validate local annotation records and required-horizon label completeness |
+| STAGE04-WP4 | Prospective Annotation Capture CLI | active | codex/stage04-wp4-annotation-capture-cli | preview or append local prospective annotation records to the ignored ledger |
 
 ## Execution rules
 
@@ -27,7 +28,7 @@ non-overlap before final holdout consumption.
 5. Future holdout candidates must start strictly after the frozen Stage03R evidence cutoff date.
 6. Future holdout labels must be complete for horizons `[1, 3, 5, 10, 20]` before empirical validation.
 7. Prospective validation ledger daily records must stay local/ignored unless explicitly promoted by a later package.
-8. No decision layer, trading output, sizing, or recommendation output may be created by Stage04 WP0-WP3.
+8. No Stage04 package may create a decision layer, trading output, sizing, or recommendation output unless a later package explicitly changes this rule through a reviewed work package.
 
 ## WP0 deliverables
 
@@ -68,6 +69,16 @@ non-overlap before final holdout consumption.
 - `docs/runtime/STAGE04_ANNOTATION_LABEL_GATE.md`
 - `scripts/stage04_annotation_label_gate.sh`
 
+## WP4 deliverables
+
+- `reports/stage04/stage04_wp4_annotation_capture_report.md`
+- `reports/stage04/stage04_wp4_annotation_capture_report.json`
+- `reports/stage04/stage04_wp4_annotation_capture_sample.jsonl`
+- `src/evaluation/stage04_annotation_capture.py`
+- `tests/test_stage04_annotation_capture.py`
+- `docs/runtime/STAGE04_ANNOTATION_CAPTURE.md`
+- `scripts/stage04_annotation_capture.sh`
+
 ## Revision log
 
 | date | change | by |
@@ -76,3 +87,4 @@ non-overlap before final holdout consumption.
 | 2026-06-04 | PR #52 accepted Stage04 WP0 split registry and prospective validation lock. | ChatGPT |
 | 2026-06-05 | PR #55 accepted Stage04 WP1 structural break diagnostic; activated Stage04 WP2 break casebook annotation protocol. | ChatGPT |
 | 2026-06-05 | PR #57 accepted Stage04 WP2 break casebook annotation protocol; activated Stage04 WP3 annotation label completeness gate. | ChatGPT |
+| 2026-06-05 | PR #58 accepted Stage04 WP3 annotation label completeness gate; activated Stage04 WP4 prospective annotation capture CLI. | ChatGPT |
