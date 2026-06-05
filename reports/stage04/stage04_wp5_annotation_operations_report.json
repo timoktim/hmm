@@ -1,0 +1,133 @@
+{
+  "blocking_issues": [],
+  "boundary_flags": {
+    "decision_engine_output": "no",
+    "duckdb_committed": "no",
+    "duckdb_schema_changed": "no",
+    "external_data_fetch": "no",
+    "final_holdout_consumed": "no",
+    "hazard_model_changed": "no",
+    "hmm_hsmm_training_changed": "no",
+    "model_retrained": "no",
+    "threshold_tuning": "no",
+    "trading_output": "no"
+  },
+  "causal_boundary_summary": {
+    "external_data_fetch": "no",
+    "final_holdout_consumed": "no",
+    "hazard_model_changed": "no",
+    "hmm_hsmm_training_changed": "no",
+    "label_completeness_source": "Stage04-WP3 report only",
+    "local_db_required": "no",
+    "model_retraining_after_lock": "no",
+    "performance_metrics_computed": "no",
+    "returns_or_outcomes_computed": "no",
+    "threshold_tuning_after_lock": "no"
+  },
+  "defer_reasons": [],
+  "final_holdout_consumed": "no",
+  "final_holdout_consumption_count": 0,
+  "index_id": "STAGE04-WP5",
+  "label_completeness_rollup": {
+    "invalid_date_count": 0,
+    "label_complete_count": 0,
+    "label_completeness_status_counts": {},
+    "label_pending_count": 0,
+    "label_unknown_db_missing_count": 0,
+    "pre_lock_violation_count": 0,
+    "prospective_validation_status": "not_started",
+    "required_horizons": [
+      1,
+      3,
+      5,
+      10,
+      20
+    ]
+  },
+  "local_ledger_summary": {
+    "allowed_record_types": [
+      "annotation",
+      "candidate_check",
+      "review"
+    ],
+    "annotation_ledger_path": "reports/stage04/prospective_break_annotation.local.jsonl",
+    "annotation_record_count": 0,
+    "blank_line_count": 0,
+    "invalid_line_count": 0,
+    "ledger_exists": "no",
+    "ledger_gitignored": "yes",
+    "template_record_count": 0,
+    "total_line_count": 0
+  },
+  "model_retraining_after_lock": "no",
+  "operations_rollup": {
+    "annotation_date_max": null,
+    "annotation_date_min": null,
+    "annotation_record_count": 0,
+    "boundary_blocked_record_count": 0,
+    "boundary_valid_record_count": 0,
+    "diagnostic_trade_date_max": null,
+    "diagnostic_trade_date_min": null,
+    "invalid_line_count": 0,
+    "ledger_exists": "no",
+    "ledger_gitignored": "yes",
+    "record_type_counts": {},
+    "records_after_cutoff_count": 0,
+    "records_on_or_before_cutoff_count": 0,
+    "template_record_count": 0,
+    "total_line_count": 0,
+    "warning_level_counts": {}
+  },
+  "operations_status": "no_annotations_yet",
+  "recommended_next_stage": "Continue annotation-only collection and rerun Stage04-WP3 before any later reviewed work package changes the Stage04 operating rule.",
+  "report_version": "stage04_wp5_annotation_operations_v1",
+  "review_queue_sample": [],
+  "split_registry_lock_summary": {
+    "analysis_layer_output": "no",
+    "evidence_cutoff_date": "2026-05-28",
+    "expected_horizons": [
+      1,
+      3,
+      5,
+      10,
+      20
+    ],
+    "external_data_fetch": "no",
+    "final_holdout_consumption_count": 0,
+    "future_holdout_start_rule": "strictly_after_evidence_cutoff_date",
+    "hmm_hsmm_retraining_after_lock": "no",
+    "hsmm_exit_probability_review_use": "no",
+    "model_retraining_after_lock": "no",
+    "private_db_required_in_ci": "no",
+    "status": "locked",
+    "threshold_tuning_after_lock": "no"
+  },
+  "status": "pass",
+  "threshold_tuning_after_lock": "no",
+  "wp3_source_summary": {
+    "final_holdout_consumed": "no",
+    "final_holdout_consumption_count": 0,
+    "index_id": "STAGE04-WP3",
+    "model_retraining_after_lock": "no",
+    "performance_metrics_computed": "no",
+    "prospective_validation_status": "not_started",
+    "report_version": "stage04_wp3_annotation_label_gate_v1",
+    "returns_or_outcomes_computed": "no",
+    "status": "pass",
+    "threshold_tuning_after_lock": "no"
+  },
+  "wp4_source_summary": {
+    "appended_record_count": 0,
+    "capture_status": "candidate_created",
+    "final_holdout_consumed": "no",
+    "final_holdout_consumption_count": 0,
+    "index_id": "STAGE04-WP4",
+    "mode": "dry-run",
+    "model_retraining_after_lock": "no",
+    "performance_metrics_computed": "no",
+    "report_version": "stage04_wp4_annotation_capture_v1",
+    "returns_or_outcomes_computed": "no",
+    "status": "pass",
+    "threshold_tuning_after_lock": "no"
+  }
+}
