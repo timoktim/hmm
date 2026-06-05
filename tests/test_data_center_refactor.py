@@ -251,6 +251,16 @@ def test_data_center_single_update_action():
     ]
 
 
+def test_data_center_stock_worker_defaults_are_source_aware(monkeypatch):
+    monkeypatch.setattr(data_center_page.settings, "market_data_source", "akshare")
+    monkeypatch.setattr(data_center_page.settings, "tdx_global_workers", 8)
+    monkeypatch.setattr(data_center_page.settings, "tdx_max_workers", 16)
+    assert data_center_page.stock_worker_defaults_for_source() == (3, 3)
+
+    monkeypatch.setattr(data_center_page.settings, "market_data_source", "mootdx")
+    assert data_center_page.stock_worker_defaults_for_source() == (8, 16)
+
+
 def test_retry_failures_does_not_fetch_first_10_when_no_failures(tmp_path, monkeypatch):
     storage = DuckDBStorage(tmp_path / "test.duckdb")
     storage.init_schema()
@@ -382,7 +392,12 @@ def test_all_a_stock_ohlcv_skip_completed_stocks(tmp_path):
                         {
                             "stock_code": stock_code,
                             "trade_date": pd.Timestamp("2024-01-10").date(),
+                            "open": 10.0,
+                            "high": 12.0,
+                            "low": 9.0,
                             "close": 11,
+                            "volume": 1000.0,
+                            "amount": 11000.0,
                         }
                     ]
                 )

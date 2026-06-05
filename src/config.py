@@ -26,7 +26,26 @@ class Settings(BaseSettings):
     cache_ttl_seconds: int = 24 * 60 * 60
     default_feature_version: str = "v1"
     default_source: str = "akshare"
+    market_data_source: str = "akshare"
     bypass_proxy_for_akshare: bool = True
+    tdx_servers: str = (
+        "119.147.212.81:7709,"
+        "221.194.181.176:7709,"
+        "202.108.253.130:7709,"
+        "59.173.18.69:7709,"
+        "180.153.18.170:7709,"
+        "218.75.126.9:7709"
+    )
+    tdx_per_server_workers: int = 1
+    tdx_global_workers: int = 8
+    tdx_max_workers: int = 16
+    tdx_batch_size: int = 80
+    tdx_batch_sleep_seconds: float = 3.0
+    tdx_request_timeout_seconds: float = 15.0
+    tdx_server_cooldown_seconds: float = 120.0
+    tdx_failure_threshold: int = 3
+    tdx_bar_count: int = 800
+    tdx_fallback_to_akshare: bool = True
 
     def ensure_dirs(self) -> None:
         self.db_path.parent.mkdir(parents=True, exist_ok=True)
