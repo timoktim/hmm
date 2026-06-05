@@ -60,7 +60,8 @@ Logical root: docs/
 | STAGE04-WP0 | 04 | WP0 | archived | v1 | docs/work_packages/stage04/STAGE04_EXECUTION_INDEX.md | Codex Stage04-WP0 | accepted |
 | STAGE04-WP1 | 04 | WP1 | archived | v1 | docs/work_packages/stage04/STAGE04_EXECUTION_INDEX.md | Codex Stage04-WP1 | accepted |
 | STAGE04-WP2 | 04 | WP2 | archived | v1 | docs/work_packages/stage04/STAGE04_EXECUTION_INDEX.md | Codex Stage04-WP2 | accepted |
-| STAGE04-WP3 | 04 | WP3 | active | v1 | docs/work_packages/stage04/STAGE04_EXECUTION_INDEX.md | Codex Stage04-WP3 | pending |
+| STAGE04-WP3 | 04 | WP3 | archived | v1 | docs/work_packages/stage04/STAGE04_EXECUTION_INDEX.md | Codex Stage04-WP3 | accepted |
+| STAGE04-WP4 | 04 | WP4 | active | v1 | docs/work_packages/stage04/STAGE04_EXECUTION_INDEX.md | Codex Stage04-WP4 | pending |
 
 ## Current Stage 04 Focus
 
@@ -74,10 +75,11 @@ BlockingPackages: none
 
 Active:
 
-- STAGE04-WP3: Prospective Annotation Ledger Validator and Label Completeness Gate.
+- STAGE04-WP4: Prospective Annotation Capture CLI and Local Ledger Bootstrap.
 
 Accepted:
 
+- STAGE04-WP3: PR #58, annotation ledger label completeness gate accepted.
 - STAGE04-WP2: PR #57, break diagnostic casebook and annotation protocol accepted.
 - STAGE04-WP0: PR #52, split_registry_v1 and prospective validation ledger template accepted.
 - STAGE04-WP1: PR #55, structural break diagnostic accepted.
@@ -149,3 +151,4 @@ Each Codex thread must report:
 | 2026-06-04 | PR #52 accepted Stage04 WP0 split registry lock; activated Stage04 WP1 structural break diagnostic. | ChatGPT |
 | 2026-06-05 | PR #55 accepted Stage04 WP1 structural break diagnostic; activated Stage04 WP2 break diagnostic casebook annotation protocol. | ChatGPT |
 | 2026-06-05 | PR #57 accepted Stage04 WP2 break casebook annotation protocol; activated Stage04 WP3 annotation label completeness gate. | ChatGPT |
+| 2026-06-05 | PR #58 accepted Stage04 WP3 annotation label completeness gate; activated Stage04 WP4 prospective annotation capture CLI. | ChatGPT |
