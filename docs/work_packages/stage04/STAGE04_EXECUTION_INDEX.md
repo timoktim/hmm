@@ -17,7 +17,8 @@ non-overlap before final holdout consumption.
 | STAGE04-WP1 | Structural Break Diagnostic | archived | codex/stage04-wp1-break-detector-v1 | compute read-only, low-cost break warning diagnostics |
 | STAGE04-WP2 | Break Diagnostic Casebook and Annotation Protocol | archived | codex/stage04-wp2-break-casebook-annotation-protocol | turn WP1 diagnostics into a bounded public-safe casebook and prospective annotation schema |
 | STAGE04-WP3 | Annotation Ledger Label Completeness Gate | archived | codex/stage04-wp3-annotation-ledger-label-gate | validate local annotation records and required-horizon label completeness |
-| STAGE04-WP4 | Prospective Annotation Capture CLI | active | codex/stage04-wp4-annotation-capture-cli | preview or append local prospective annotation records to the ignored ledger |
+| STAGE04-WP4 | Prospective Annotation Capture CLI | archived | codex/stage04-wp4-annotation-capture-cli | preview or append local prospective annotation records to the ignored ledger |
+| STAGE04-WP5 | Annotation Operations Rollup and Review Queue | active | codex/stage04-wp5-annotation-operations-rollup | summarize local annotation operations and bounded review queue status |
 
 ## Execution rules
 
@@ -79,6 +80,16 @@ non-overlap before final holdout consumption.
 - `docs/runtime/STAGE04_ANNOTATION_CAPTURE.md`
 - `scripts/stage04_annotation_capture.sh`
 
+## WP5 deliverables
+
+- `reports/stage04/stage04_wp5_annotation_operations_report.md`
+- `reports/stage04/stage04_wp5_annotation_operations_report.json`
+- `reports/stage04/stage04_wp5_annotation_operations_sample.csv`
+- `src/evaluation/stage04_annotation_operations.py`
+- `tests/test_stage04_annotation_operations.py`
+- `docs/runtime/STAGE04_ANNOTATION_OPERATIONS.md`
+- `scripts/stage04_annotation_operations.sh`
+
 ## Revision log
 
 | date | change | by |
@@ -88,3 +99,4 @@ non-overlap before final holdout consumption.
 | 2026-06-05 | PR #55 accepted Stage04 WP1 structural break diagnostic; activated Stage04 WP2 break casebook annotation protocol. | ChatGPT |
 | 2026-06-05 | PR #57 accepted Stage04 WP2 break casebook annotation protocol; activated Stage04 WP3 annotation label completeness gate. | ChatGPT |
 | 2026-06-05 | PR #58 accepted Stage04 WP3 annotation label completeness gate; activated Stage04 WP4 prospective annotation capture CLI. | ChatGPT |
+| 2026-06-05 | PR #59 accepted Stage04 WP4 annotation capture CLI and PR #60 refined Stage04 rule 8; activated Stage04 WP5 annotation operations rollup. | ChatGPT |
