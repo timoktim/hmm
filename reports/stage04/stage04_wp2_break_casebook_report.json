@@ -1,0 +1,705 @@
+{
+  "blocking_issues": [],
+  "boundary_flags": {
+    "decision_engine_output": "no",
+    "duckdb_committed": "no",
+    "duckdb_schema_changed": "no",
+    "external_data_fetch": "no",
+    "final_holdout_consumed": "no",
+    "hazard_model_changed": "no",
+    "hmm_hsmm_training_changed": "no",
+    "model_retrained": "no",
+    "threshold_tuning": "no",
+    "trading_output": "no"
+  },
+  "casebook_sample": [
+    {
+      "annotation_status": "unreviewed",
+      "available_component_count_max": 4,
+      "data_availability_notes": [
+        "available components remained present across episode rows"
+      ],
+      "dominant_components": [
+        "breadth",
+        "market",
+        "hmm_confidence",
+        "sector"
+      ],
+      "duration_observations": 36,
+      "end_date": "2026-04-21",
+      "episode_id": "stage04-wp2-episode-212",
+      "first_component_stress_labels": "breadth:high;sector:high",
+      "is_latest_active_episode": "no",
+      "max_breadth_stress_proxy": 3.140045107677521,
+      "max_hmm_entropy_or_stress": 3.4841430294032913,
+      "max_market_volatility_z": 3.3210836089773412,
+      "max_sector_dispersion_z": 2.917446697096479,
+      "min_market_return_1d": -0.032629592162942256,
+      "peak_component_stress_labels": "market:medium;breadth:high;hmm_confidence:high",
+      "peak_warning_level": "high",
+      "start_date": "2026-03-02",
+      "warning_level_counts": {
+        "elevated": 21,
+        "high": 7,
+        "watch": 8
+      }
+    },
+    {
+      "annotation_status": "unreviewed",
+      "available_component_count_max": 4,
+      "data_availability_notes": [
+        "available components remained present across episode rows"
+      ],
+      "dominant_components": [
+        "breadth",
+        "sector"
+      ],
+      "duration_observations": 10,
+      "end_date": "2026-01-16",
+      "episode_id": "stage04-wp2-episode-207",
+      "first_component_stress_labels": "breadth:high;sector:high",
+      "is_latest_active_episode": "no",
+      "max_breadth_stress_proxy": 2.9553739646630506,
+      "max_hmm_entropy_or_stress": 0.06643338795254458,
+      "max_market_volatility_z": -0.6594154251728239,
+      "max_sector_dispersion_z": 6.86514740326798,
+      "min_market_return_1d": -0.008168870782365167,
+      "peak_component_stress_labels": "breadth:high;sector:high",
+      "peak_warning_level": "high",
+      "start_date": "2026-01-05",
+      "warning_level_counts": {
+        "elevated": 8,
+        "high": 2
+      }
+    },
+    {
+      "annotation_status": "unreviewed",
+      "available_component_count_max": 4,
+      "data_availability_notes": [
+        "available components remained present across episode rows"
+      ],
+      "dominant_components": [
+        "breadth",
+        "hmm_confidence",
+        "sector"
+      ],
+      "duration_observations": 16,
+      "end_date": "2025-12-09",
+      "episode_id": "stage04-wp2-episode-202",
+      "first_component_stress_labels": "breadth:medium;sector:medium",
+      "is_latest_active_episode": "no",
+      "max_breadth_stress_proxy": 2.525954157383288,
+      "max_hmm_entropy_or_stress": 2.6500125248274737,
+      "max_market_volatility_z": -0.39477295473983215,
+      "max_sector_dispersion_z": 1.2471176229756014,
+      "min_market_return_1d": -0.024390190473061124,
+      "peak_component_stress_labels": "breadth:high;sector:medium;hmm_confidence:high",
+      "peak_warning_level": "high",
+      "start_date": "2025-11-18",
+      "warning_level_counts": {
+        "elevated": 10,
+        "high": 1,
+        "watch": 5
+      }
+    },
+    {
+      "annotation_status": "unreviewed",
+      "available_component_count_max": 4,
+      "data_availability_notes": [
+        "available components remained present across episode rows"
+      ],
+      "dominant_components": [
+        "market",
+        "breadth",
+        "hmm_confidence",
+        "sector"
+      ],
+      "duration_observations": 38,
+      "end_date": "2025-09-30",
+      "episode_id": "stage04-wp2-episode-196",
+      "first_component_stress_labels": "market:medium",
+      "is_latest_active_episode": "no",
+      "max_breadth_stress_proxy": 2.7907270488911573,
+      "max_hmm_entropy_or_stress": 4.1778301909310676,
+      "max_market_volatility_z": 4.298340745637919,
+      "max_sector_dispersion_z": 3.298658027365844,
+      "min_market_return_1d": -0.02121605532049431,
+      "peak_component_stress_labels": "market:high;breadth:medium;sector:high;hmm_confidence:medium",
+      "peak_warning_level": "high",
+      "start_date": "2025-08-08",
+      "warning_level_counts": {
+        "elevated": 24,
+        "high": 7,
+        "watch": 7
+      }
+    },
+    {
+      "annotation_status": "unreviewed",
+      "available_component_count_max": 4,
+      "data_availability_notes": [
+        "available components remained present across episode rows"
+      ],
+      "dominant_components": [
+        "breadth",
+        "sector",
+        "hmm_confidence"
+      ],
+      "duration_observations": 7,
+      "end_date": "2025-07-25",
+      "episode_id": "stage04-wp2-episode-193",
+      "first_component_stress_labels": "breadth:medium",
+      "is_latest_active_episode": "no",
+      "max_breadth_stress_proxy": 2.738471158727919,
+      "max_hmm_entropy_or_stress": 1.0441952442094988,
+      "max_market_volatility_z": -0.4385911521866277,
+      "max_sector_dispersion_z": 2.250472558440756,
+      "min_market_return_1d": -0.005273509052696523,
+      "peak_component_stress_labels": "breadth:high;sector:high;hmm_confidence:medium",
+      "peak_warning_level": "high",
+      "start_date": "2025-07-17",
+      "warning_level_counts": {
+        "elevated": 2,
+        "high": 1,
+        "watch": 4
+      }
+    },
+    {
+      "annotation_status": "unreviewed",
+      "available_component_count_max": 4,
+      "data_availability_notes": [
+        "available components remained present across episode rows"
+      ],
+      "dominant_components": [
+        "market",
+        "breadth",
+        "sector",
+        "hmm_confidence"
+      ],
+      "duration_observations": 21,
+      "end_date": "2025-05-07",
+      "episode_id": "stage04-wp2-episode-178",
+      "first_component_stress_labels": "sector:medium",
+      "is_latest_active_episode": "no",
+      "max_breadth_stress_proxy": 2.3903428355369694,
+      "max_hmm_entropy_or_stress": 5.360607128707677,
+      "max_market_volatility_z": 6.15718817298965,
+      "max_sector_dispersion_z": 7.280750868483587,
+      "min_market_return_1d": -0.07045448659847209,
+      "peak_component_stress_labels": "market:high;breadth:medium;sector:high",
+      "peak_warning_level": "high",
+      "start_date": "2025-04-03",
+      "warning_level_counts": {
+        "elevated": 11,
+        "high": 2,
+        "watch": 8
+      }
+    },
+    {
+      "annotation_status": "unreviewed",
+      "available_component_count_max": 4,
+      "data_availability_notes": [
+        "available components remained present across episode rows"
+      ],
+      "dominant_components": [
+        "breadth",
+        "sector",
+        "hmm_confidence"
+      ],
+      "duration_observations": 11,
+      "end_date": "2025-02-19",
+      "episode_id": "stage04-wp2-episode-172",
+      "first_component_stress_labels": "breadth:high;sector:high",
+      "is_latest_active_episode": "no",
+      "max_breadth_stress_proxy": 3.286810933741177,
+      "max_hmm_entropy_or_stress": 1.4397813419337595,
+      "max_market_volatility_z": -0.4071320665589476,
+      "max_sector_dispersion_z": 2.770513049139949,
+      "min_market_return_1d": -0.008770329837361257,
+      "peak_component_stress_labels": "breadth:high;sector:high",
+      "peak_warning_level": "high",
+      "start_date": "2025-02-05",
+      "warning_level_counts": {
+        "elevated": 4,
+        "high": 1,
+        "watch": 6
+      }
+    },
+    {
+      "annotation_status": "unreviewed",
+      "available_component_count_max": 4,
+      "data_availability_notes": [
+        "available components remained present across episode rows"
+      ],
+      "dominant_components": [
+        "market",
+        "sector",
+        "breadth"
+      ],
+      "duration_observations": 19,
+      "end_date": "2024-11-01",
+      "episode_id": "stage04-wp2-episode-162",
+      "first_component_stress_labels": "market:high;breadth:high;sector:high",
+      "is_latest_active_episode": "no",
+      "max_breadth_stress_proxy": 2.7491931588806393,
+      "max_hmm_entropy_or_stress": 0.15800571820929885,
+      "max_market_volatility_z": 6.040722308995871,
+      "max_sector_dispersion_z": 11.463500333245365,
+      "min_market_return_1d": -0.07051526044970757,
+      "peak_component_stress_labels": "market:high;breadth:high;sector:high",
+      "peak_warning_level": "high",
+      "start_date": "2024-10-08",
+      "warning_level_counts": {
+        "elevated": 14,
+        "high": 1,
+        "watch": 4
+      }
+    },
+    {
+      "annotation_status": "unreviewed",
+      "available_component_count_max": 4,
+      "data_availability_notes": [
+        "available components remained present across episode rows"
+      ],
+      "dominant_components": [
+        "breadth",
+        "market",
+        "sector",
+        "hmm_confidence"
+      ],
+      "duration_observations": 5,
+      "end_date": "2024-09-30",
+      "episode_id": "stage04-wp2-episode-161",
+      "first_component_stress_labels": "market:high;breadth:high;hmm_confidence:medium",
+      "is_latest_active_episode": "no",
+      "max_breadth_stress_proxy": 3.5538073371265795,
+      "max_hmm_entropy_or_stress": 1.756771702157163,
+      "max_market_volatility_z": 7.399542912599149,
+      "max_sector_dispersion_z": 6.679209955308065,
+      "min_market_return_1d": 0.014803500093976352,
+      "peak_component_stress_labels": "market:high;breadth:high;sector:high",
+      "peak_warning_level": "high",
+      "start_date": "2024-09-24",
+      "warning_level_counts": {
+        "elevated": 1,
+        "high": 4
+      }
+    },
+    {
+      "annotation_status": "unreviewed",
+      "available_component_count_max": 4,
+      "data_availability_notes": [
+        "available components remained present across episode rows"
+      ],
+      "dominant_components": [
+        "market",
+        "breadth",
+        "sector",
+        "hmm_confidence"
+      ],
+      "duration_observations": 15,
+      "end_date": "2024-08-20",
+      "episode_id": "stage04-wp2-episode-155",
+      "first_component_stress_labels": "market:medium;breadth:high;hmm_confidence:high",
+      "is_latest_active_episode": "no",
+      "max_breadth_stress_proxy": 3.041961607680367,
+      "max_hmm_entropy_or_stress": 3.9201201618641455,
+      "max_market_volatility_z": 1.9826952177725834,
+      "max_sector_dispersion_z": 2.415304525520077,
+      "min_market_return_1d": -0.012135126270908403,
+      "peak_component_stress_labels": "market:medium;breadth:high;hmm_confidence:high",
+      "peak_warning_level": "high",
+      "start_date": "2024-07-31",
+      "warning_level_counts": {
+        "elevated": 4,
+        "high": 1,
+        "watch": 10
+      }
+    },
+    {
+      "annotation_status": "unreviewed",
+      "available_component_count_max": 4,
+      "data_availability_notes": [
+        "available components remained present across episode rows"
+      ],
+      "dominant_components": [
+        "market",
+        "breadth",
+        "sector",
+        "hmm_confidence"
+      ],
+      "duration_observations": 12,
+      "end_date": "2024-03-05",
+      "episode_id": "stage04-wp2-episode-137",
+      "first_component_stress_labels": "market:high;breadth:medium;sector:high",
+      "is_latest_active_episode": "no",
+      "max_breadth_stress_proxy": 1.9113642041900862,
+      "max_hmm_entropy_or_stress": 1.3899563350602424,
+      "max_market_volatility_z": 2.5610833865783427,
+      "max_sector_dispersion_z": 2.9064791555226104,
+      "min_market_return_1d": -0.012741824258395984,
+      "peak_component_stress_labels": "market:high;breadth:medium;sector:high",
+      "peak_warning_level": "high",
+      "start_date": "2024-02-19",
+      "warning_level_counts": {
+        "elevated": 4,
+        "high": 1,
+        "watch": 7
+      }
+    },
+    {
+      "annotation_status": "unreviewed",
+      "available_component_count_max": 4,
+      "data_availability_notes": [
+        "available components remained present across episode rows"
+      ],
+      "dominant_components": [
+        "market",
+        "breadth",
+        "sector"
+      ],
+      "duration_observations": 17,
+      "end_date": "2024-02-08",
+      "episode_id": "stage04-wp2-episode-136",
+      "first_component_stress_labels": "market:medium;breadth:medium",
+      "is_latest_active_episode": "no",
+      "max_breadth_stress_proxy": 2.9105416270579716,
+      "max_hmm_entropy_or_stress": 0.08572157130354473,
+      "max_market_volatility_z": 3.1190226825326577,
+      "max_sector_dispersion_z": 5.35122695105049,
+      "min_market_return_1d": -0.02175177528416672,
+      "peak_component_stress_labels": "market:high;breadth:medium;sector:high",
+      "peak_warning_level": "high",
+      "start_date": "2024-01-17",
+      "warning_level_counts": {
+        "elevated": 12,
+        "high": 5
+      }
+    },
+    {
+      "annotation_status": "unreviewed",
+      "available_component_count_max": 4,
+      "data_availability_notes": [
+        "available components remained present across episode rows"
+      ],
+      "dominant_components": [
+        "breadth",
+        "hmm_confidence",
+        "sector"
+      ],
+      "duration_observations": 10,
+      "end_date": "2023-10-31",
+      "episode_id": "stage04-wp2-episode-126",
+      "first_component_stress_labels": "breadth:medium",
+      "is_latest_active_episode": "no",
+      "max_breadth_stress_proxy": 2.9071114026105787,
+      "max_hmm_entropy_or_stress": 4.45548684144375,
+      "max_market_volatility_z": 0.09168385408242027,
+      "max_sector_dispersion_z": 2.081587355122494,
+      "min_market_return_1d": -0.021337292069418146,
+      "peak_component_stress_labels": "breadth:high;sector:high;hmm_confidence:medium",
+      "peak_warning_level": "high",
+      "start_date": "2023-10-18",
+      "warning_level_counts": {
+        "elevated": 4,
+        "high": 1,
+        "watch": 5
+      }
+    },
+    {
+      "annotation_status": "unreviewed",
+      "available_component_count_max": 4,
+      "data_availability_notes": [
+        "available components remained present across episode rows"
+      ],
+      "dominant_components": [
+        "breadth",
+        "market",
+        "hmm_confidence",
+        "sector"
+      ],
+      "duration_observations": 33,
+      "end_date": "2023-09-07",
+      "episode_id": "stage04-wp2-episode-121",
+      "first_component_stress_labels": "market:medium",
+      "is_latest_active_episode": "no",
+      "max_breadth_stress_proxy": 3.241731994773151,
+      "max_hmm_entropy_or_stress": 5.590134013599535,
+      "max_market_volatility_z": 3.422941578989042,
+      "max_sector_dispersion_z": 3.0772645488874946,
+      "min_market_return_1d": -0.023007153421267024,
+      "peak_component_stress_labels": "breadth:high;sector:high;hmm_confidence:high",
+      "peak_warning_level": "high",
+      "start_date": "2023-07-25",
+      "warning_level_counts": {
+        "elevated": 18,
+        "high": 12,
+        "watch": 3
+      }
+    },
+    {
+      "annotation_status": "unreviewed",
+      "available_component_count_max": 4,
+      "data_availability_notes": [
+        "available components remained present across episode rows"
+      ],
+      "dominant_components": [
+        "breadth",
+        "market",
+        "hmm_confidence",
+        "sector"
+      ],
+      "duration_observations": 7,
+      "end_date": "2023-06-29",
+      "episode_id": "stage04-wp2-episode-116",
+      "first_component_stress_labels": "breadth:medium",
+      "is_latest_active_episode": "no",
+      "max_breadth_stress_proxy": 2.3404330254006402,
+      "max_hmm_entropy_or_stress": 2.719310509174775,
+      "max_market_volatility_z": 1.190097983070275,
+      "max_sector_dispersion_z": 2.2153185150039105,
+      "min_market_return_1d": -0.015343098281450529,
+      "peak_component_stress_labels": "breadth:medium;sector:high;hmm_confidence:high",
+      "peak_warning_level": "high",
+      "start_date": "2023-06-19",
+      "warning_level_counts": {
+        "elevated": 1,
+        "high": 1,
+        "watch": 5
+      }
+    },
+    {
+      "annotation_status": "unreviewed",
+      "available_component_count_max": 4,
+      "data_availability_notes": [
+        "hmm_confidence missing on at least one episode row"
+      ],
+      "dominant_components": [
+        "market",
+        "breadth",
+        "sector",
+        "hmm_confidence"
+      ],
+      "duration_observations": 34,
+      "end_date": "2022-11-24",
+      "episode_id": "stage04-wp2-episode-090",
+      "first_component_stress_labels": "breadth:medium;sector:medium",
+      "is_latest_active_episode": "no",
+      "max_breadth_stress_proxy": 2.488328802513278,
+      "max_hmm_entropy_or_stress": 2.079705074345529,
+      "max_market_volatility_z": 3.929141305652037,
+      "max_sector_dispersion_z": 3.18224897758711,
+      "min_market_return_1d": -0.0292608118325679,
+      "peak_component_stress_labels": "market:high;breadth:high",
+      "peak_warning_level": "high",
+      "start_date": "2022-10-10",
+      "warning_level_counts": {
+        "elevated": 22,
+        "high": 5,
+        "watch": 7
+      }
+    },
+    {
+      "annotation_status": "unreviewed",
+      "available_component_count_max": 4,
+      "data_availability_notes": [
+        "hmm_confidence missing on at least one episode row"
+      ],
+      "dominant_components": [
+        "breadth",
+        "sector"
+      ],
+      "duration_observations": 27,
+      "end_date": "2022-09-30",
+      "episode_id": "stage04-wp2-episode-089",
+      "first_component_stress_labels": "breadth:high;sector:medium",
+      "is_latest_active_episode": "no",
+      "max_breadth_stress_proxy": 2.382029372820791,
+      "max_hmm_entropy_or_stress": 0.38452216325167216,
+      "max_market_volatility_z": 0.5804330592605513,
+      "max_sector_dispersion_z": 2.3226920776786093,
+      "min_market_return_1d": -0.02345100220504981,
+      "peak_component_stress_labels": "breadth:high;sector:high",
+      "peak_warning_level": "high",
+      "start_date": "2022-08-24",
+      "warning_level_counts": {
+        "elevated": 8,
+        "high": 1,
+        "watch": 18
+      }
+    },
+    {
+      "annotation_status": "unreviewed",
+      "available_component_count_max": 4,
+      "data_availability_notes": [
+        "hmm_confidence missing on at least one episode row"
+      ],
+      "dominant_components": [
+        "breadth",
+        "sector",
+        "hmm_confidence"
+      ],
+      "duration_observations": 4,
+      "end_date": "2022-08-05",
+      "episode_id": "stage04-wp2-episode-087",
+      "first_component_stress_labels": "breadth:high;sector:medium;hmm_confidence:high",
+      "is_latest_active_episode": "no",
+      "max_breadth_stress_proxy": 3.0815618597126373,
+      "max_hmm_entropy_or_stress": 3.398704338177583,
+      "max_market_volatility_z": -0.694229247959271,
+      "max_sector_dispersion_z": 2.3262169856462815,
+      "min_market_return_1d": -0.019495401892720365,
+      "peak_component_stress_labels": "breadth:high;sector:high",
+      "peak_warning_level": "high",
+      "start_date": "2022-08-02",
+      "warning_level_counts": {
+        "elevated": 1,
+        "high": 2,
+        "watch": 1
+      }
+    },
+    {
+      "annotation_status": "unreviewed",
+      "available_component_count_max": 4,
+      "data_availability_notes": [
+        "hmm_confidence missing on at least one episode row"
+      ],
+      "dominant_components": [
+        "breadth",
+        "sector",
+        "market"
+      ],
+      "duration_observations": 7,
+      "end_date": "2022-04-29",
+      "episode_id": "stage04-wp2-episode-073",
+      "first_component_stress_labels": "breadth:medium",
+      "is_latest_active_episode": "no",
+      "max_breadth_stress_proxy": 3.031157294366263,
+      "max_hmm_entropy_or_stress": 0.0020423798935855523,
+      "max_market_volatility_z": 1.017638291790214,
+      "max_sector_dispersion_z": 2.8904435357208724,
+      "min_market_return_1d": -0.04942129197034828,
+      "peak_component_stress_labels": "market:medium;breadth:high;sector:high",
+      "peak_warning_level": "high",
+      "start_date": "2022-04-21",
+      "warning_level_counts": {
+        "elevated": 4,
+        "high": 1,
+        "watch": 2
+      }
+    },
+    {
+      "annotation_status": "unreviewed",
+      "available_component_count_max": 4,
+      "data_availability_notes": [
+        "hmm_confidence missing on at least one episode row"
+      ],
+      "dominant_components": [
+        "market",
+        "breadth",
+        "sector",
+        "hmm_confidence"
+      ],
+      "duration_observations": 17,
+      "end_date": "2022-03-01",
+      "episode_id": "stage04-wp2-episode-071",
+      "first_component_stress_labels": "market:high;breadth:high;sector:medium",
+      "is_latest_active_episode": "no",
+      "max_breadth_stress_proxy": 2.5891656069173186,
+      "max_hmm_entropy_or_stress": 1.025135117607962,
+      "max_market_volatility_z": 2.6056258835023947,
+      "max_sector_dispersion_z": 3.5745719215301333,
+      "min_market_return_1d": -0.02027449411103066,
+      "peak_component_stress_labels": "market:medium;breadth:high;sector:high",
+      "peak_warning_level": "high",
+      "start_date": "2022-02-07",
+      "warning_level_counts": {
+        "elevated": 10,
+        "high": 2,
+        "watch": 5
+      }
+    }
+  ],
+  "causal_boundary_summary": {
+    "casebook_capped_to_committed_wp1_range": "yes",
+    "casebook_source": "full_in_memory_wp1_diagnostic",
+    "full_diagnostic_csv_written": "no",
+    "future_rows_used": "no",
+    "source_wp1_index_id": "STAGE04-WP1",
+    "source_wp1_rolling_baseline_excludes_current_row": "yes"
+  },
+  "defer_reasons": [],
+  "episode_summary": {
+    "earliest_episode_start": "2020-02-24",
+    "episode_count": 216,
+    "latest_episode_end": "2026-05-27",
+    "peak_warning_level_counts": {
+      "elevated": 85,
+      "high": 28,
+      "watch": 103
+    }
+  },
+  "final_holdout_consumed": "no",
+  "final_holdout_consumption_count": 0,
+  "index_id": "STAGE04-WP2",
+  "input_summary": {
+    "db_available": "yes",
+    "db_path": "<local:a_share_hmm.duckdb>",
+    "diagnostic_rows": 1550,
+    "latest_break_warning_level": "normal",
+    "latest_diagnostic_trade_date": "2026-05-28",
+    "split_registry_path": "reports/stage04/split_registry.json",
+    "wp1_committed_latest_trade_date": "2026-05-28",
+    "wp1_committed_status": "pass",
+    "wp1_regenerated_latest_trade_date": "2026-06-04",
+    "wp1_regenerated_status": "pass",
+    "wp1_summary_path": "reports/stage04/stage04_wp1_break_detector_report.json"
+  },
+  "model_retraining_after_lock": "no",
+  "prospective_annotation_protocol": {
+    "forbidden_use_notice": "Research annotation only; not a trading signal, not a decision layer, and not empirical promotion evidence.",
+    "local_annotation_path": "reports/stage04/prospective_break_annotation.local.jsonl",
+    "local_annotations_gitignored": "yes",
+    "record_type": "template",
+    "required_fields": [
+      "schema_version",
+      "record_type",
+      "annotation_date",
+      "diagnostic_trade_date",
+      "break_warning_level",
+      "component_stress_labels",
+      "available_component_count",
+      "analyst_annotation",
+      "observed_market_context",
+      "followup_required",
+      "forbidden_use_notice",
+      "boundary_flags"
+    ],
+    "schema_version": "stage04_break_annotation_v1",
+    "template_path": "reports/stage04/prospective_break_annotation.template.jsonl"
+  },
+  "prospective_validation_status": "annotation_only",
+  "recommended_next_stage": "Collect local prospective annotations before any later package considers promotion criteria.",
+  "report_version": "stage04_wp2_break_casebook_v1",
+  "source_wp1_report_version": "stage04_wp1_break_detector_v1",
+  "split_registry_lock_summary": {
+    "decision_layer_output": "no",
+    "evidence_cutoff_date": "2026-05-28",
+    "expected_horizons": [
+      1,
+      3,
+      5,
+      10,
+      20
+    ],
+    "external_data_fetch": "no",
+    "final_holdout_consumed": "no",
+    "final_holdout_consumption_count": 0,
+    "future_holdout_start_rule": "strictly_after_evidence_cutoff_date",
+    "minimum_candidate_holdout_start_date": "2026-05-29",
+    "model_retraining_after_lock": "no",
+    "status": "locked",
+    "threshold_tuning_after_lock": "no"
+  },
+  "status": "pass",
+  "threshold_tuning_after_lock": "no"
+}

@@ -13,18 +13,20 @@ non-overlap before final holdout consumption.
 
 | index_id | package | status | branch | purpose |
 |---|---|---|---|---|
-| STAGE04-WP0 | Split Registry and Prospective Validation Lock | active | stage04/wp0-split-registry-prospective-validation-lock | freeze Stage03R evidence boundary and define prospective holdout eligibility |
+| STAGE04-WP0 | Split Registry and Prospective Validation Lock | archived | stage04/wp0-split-registry-prospective-validation-lock | freeze Stage03R evidence boundary and define prospective holdout eligibility |
+| STAGE04-WP1 | Structural Break Diagnostic | archived | codex/stage04-wp1-break-detector-v1 | compute read-only, low-cost break warning diagnostics |
+| STAGE04-WP2 | Break Diagnostic Casebook and Annotation Protocol | active | codex/stage04-wp2-break-casebook-annotation-protocol | turn WP1 diagnostics into a bounded public-safe casebook and prospective annotation schema |
 
 ## Execution rules
 
-1. WP0 must not fetch external data.
-2. WP0 must not retrain HMM, HSMM, or hazard models.
-3. WP0 must not tune thresholds.
-4. WP0 must not consume final holdout.
+1. Stage04 packages must not fetch external data unless a later package explicitly allows it.
+2. Stage04 packages must not retrain HMM, HSMM, or hazard models unless a later package explicitly allows it.
+3. Stage04 packages must not tune thresholds.
+4. Stage04 packages must not consume final holdout.
 5. Future holdout candidates must start strictly after the frozen Stage03R evidence cutoff date.
 6. Future holdout labels must be complete for horizons `[1, 3, 5, 10, 20]` before empirical validation.
 7. Prospective validation ledger daily records must stay local/ignored unless explicitly promoted by a later package.
-8. No decision surface, trading output, sizing, or recommendation output may be created by WP0.
+8. No decision layer, trading output, sizing, or recommendation output may be created by Stage04 WP0-WP2.
 
 ## WP0 deliverables
 
@@ -34,8 +36,31 @@ non-overlap before final holdout consumption.
 - `src/evaluation/stage04_split_registry.py`
 - `tests/test_stage04_split_registry.py`
 
+## WP1 deliverables
+
+- `reports/stage04/stage04_wp1_break_detector_report.md`
+- `reports/stage04/stage04_wp1_break_detector_report.json`
+- `reports/stage04/stage04_wp1_break_detector_sample.csv`
+- `src/evaluation/stage04_break_detector.py`
+- `tests/test_stage04_break_detector.py`
+- `docs/runtime/STAGE04_BREAK_DETECTOR.md`
+- `scripts/stage04_break_detector.sh`
+
+## WP2 deliverables
+
+- `reports/stage04/stage04_wp2_break_casebook_report.md`
+- `reports/stage04/stage04_wp2_break_casebook_report.json`
+- `reports/stage04/stage04_wp2_break_casebook_sample.csv`
+- `reports/stage04/prospective_break_annotation.template.jsonl`
+- `src/evaluation/stage04_break_casebook.py`
+- `tests/test_stage04_break_casebook.py`
+- `docs/runtime/STAGE04_BREAK_CASEBOOK.md`
+- `scripts/stage04_break_casebook.sh`
+
 ## Revision log
 
 | date | change | by |
 |---|---|---|
 | 2026-06-04 | Activated Stage04 WP0 after PR #51 merged the Stage03R WP10.1 final holdout candidate and preserved empirical DEFER. | ChatGPT |
+| 2026-06-04 | PR #52 accepted Stage04 WP0 split registry and prospective validation lock. | ChatGPT |
+| 2026-06-05 | PR #55 accepted Stage04 WP1 structural break diagnostic; activated Stage04 WP2 break casebook annotation protocol. | ChatGPT |
