@@ -1,10 +1,14 @@
 from __future__ import annotations
 
 import pandas as pd
+import pytest
 
 from src.data_pipeline.market_updater import update_all_a_stock_ohlcv
 from src.data_pipeline.storage import DuckDBStorage
+from src.data_sources import factory as factory_module
+from src.data_sources.akshare_client import AKShareClient
 from src.data_sources.base import DataResult
+from src.data_sources.factory import create_data_client
 from src.data_sources.mootdx_client import MootdxClient
 from src.data_sources.tdx_pool import TdxServerPool, parse_tdx_servers
 
@@ -131,6 +135,94 @@ def test_mootdx_stock_hist_falls_back_to_akshare(tmp_path, monkeypatch) -> None:
     assert "tdx down" in str(result.error)
 
 
+def test_mootdx_market_benchmark_prefers_index_method(tmp_path, monkeypatch) -> None:
+    from src.data_sources import mootdx_client as mootdx_module
+
+    monkeypatch.setattr(mootdx_module.time, "sleep", lambda _: None)
+    calls: list[str] = []
+
+    class FakeQuotes:
+        def index(self, **kwargs):
+            calls.append(f"index:{kwargs['symbol']}")
+            return _raw_ohlcv()
+
+        def k(self, **kwargs):
+            calls.append(f"k:{kwargs['symbol']}")
+            return _raw_ohlcv()
+
+    storage = DuckDBStorage(tmp_path / "benchmark_index.duckdb")
+    storage.init_schema()
+    client = MootdxClient(
+        cache_dir=tmp_path / "cache",
+        storage=storage,
+        server_pool=TdxServerPool([("s1", 7709)], per_server_workers=1),
+        quotes_factory=lambda server: FakeQuotes(),
+        fallback_to_akshare=False,
+    )
+
+    result = client.market_benchmark_hist("hs300", "20240101", "20240103")
+
+    assert calls == ["index:000300"]
+    assert result.data.loc[0, "benchmark_id"] == "hs300"
+    assert result.data.loc[0, "source"] == "mootdx"
+
+
+def test_mootdx_market_index_prefers_index_method(tmp_path, monkeypatch) -> None:
+    from src.data_sources import mootdx_client as mootdx_module
+
+    monkeypatch.setattr(mootdx_module.time, "sleep", lambda _: None)
+    calls: list[str] = []
+
+    class FakeQuotes:
+        def index(self, **kwargs):
+            calls.append(f"index:{kwargs['symbol']}")
+            return _raw_ohlcv()
+
+        def k(self, **kwargs):
+            calls.append(f"k:{kwargs['symbol']}")
+            return _raw_ohlcv()
+
+    storage = DuckDBStorage(tmp_path / "market_index.duckdb")
+    storage.init_schema()
+    client = MootdxClient(
+        cache_dir=tmp_path / "cache",
+        storage=storage,
+        server_pool=TdxServerPool([("s1", 7709)], per_server_workers=1),
+        quotes_factory=lambda server: FakeQuotes(),
+        fallback_to_akshare=False,
+    )
+
+    result = client.market_index_hist("000001", "上证指数", "20240101", "20240103")
+
+    assert calls == ["index:000001"]
+    assert result.data.loc[0, "index_code"] == "000001"
+    assert result.data.loc[0, "source"] == "mootdx"
+
+
+def test_create_data_client_defaults_to_akshare(tmp_path, monkeypatch) -> None:
+    monkeypatch.setattr(factory_module.settings, "market_data_source", "akshare")
+    storage = DuckDBStorage(tmp_path / "default_akshare.duckdb")
+
+    client = create_data_client(storage=storage, cache_dir=tmp_path / "cache")
+
+    assert isinstance(client, AKShareClient)
+
+
+def test_create_data_client_explicit_mootdx(tmp_path) -> None:
+    storage = DuckDBStorage(tmp_path / "explicit_mootdx.duckdb")
+
+    client = create_data_client(source="mootdx", storage=storage, cache_dir=tmp_path / "cache")
+
+    assert isinstance(client, MootdxClient)
+
+
+def test_create_data_client_invalid_source_raises(tmp_path) -> None:
+    storage = DuckDBStorage(tmp_path / "invalid_source.duckdb")
+
+    with pytest.raises(ValueError, match="未知数据源"):
+        create_data_client(source="bogus", storage=storage, cache_dir=tmp_path / "cache")
+
+
 def test_all_a_stock_ohlcv_batches_and_sleeps(tmp_path, monkeypatch) -> None:
     from src.data_pipeline import market_updater
 
@@ -159,13 +251,18 @@ def test_all_a_stock_ohlcv_batches_and_sleeps(tmp_path, monkeypatch) -> None:
         def stock_hist(self, stock_code: str, start_date: str, end_date: str) -> DataResult:
             data = pd.DataFrame(
                 [
-                    {
-                        "stock_code": stock_code,
-                        "trade_date": pd.Timestamp("2024-01-10").date(),
-                        "close": 11.0,
-                    }
-                ]
-            )
+                        {
+                            "stock_code": stock_code,
+                            "trade_date": pd.Timestamp("2024-01-10").date(),
+                            "open": 10.0,
+                            "high": 12.0,
+                            "low": 9.0,
+                            "close": 11.0,
+                            "volume": 1000.0,
+                            "amount": 11000.0,
+                        }
+                    ]
+                )
             return DataResult(data)
 
     progress: list[dict[str, object]] = []

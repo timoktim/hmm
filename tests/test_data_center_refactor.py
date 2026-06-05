@@ -382,7 +382,12 @@ def test_all_a_stock_ohlcv_skip_completed_stocks(tmp_path):
                         {
                             "stock_code": stock_code,
                             "trade_date": pd.Timestamp("2024-01-10").date(),
+                            "open": 10.0,
+                            "high": 12.0,
+                            "low": 9.0,
                             "close": 11,
+                            "volume": 1000.0,
+                            "amount": 11000.0,
                         }
                     ]
                 )

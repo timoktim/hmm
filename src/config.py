@@ -26,7 +26,7 @@ class Settings(BaseSettings):
     cache_ttl_seconds: int = 24 * 60 * 60
     default_feature_version: str = "v1"
     default_source: str = "akshare"
-    market_data_source: str = "mootdx"
+    market_data_source: str = "akshare"
     bypass_proxy_for_akshare: bool = True
     tdx_servers: str = (
         "119.147.212.81:7709,"

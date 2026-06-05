@@ -137,13 +137,13 @@ class MootdxClient:
         end_text = _date_text(end_date)
 
         def call(client: object) -> pd.DataFrame:
+            if index and hasattr(client, "index"):
+                return client.index(symbol=symbol, frequency=9)
             if hasattr(client, "k"):
                 try:
                     return client.k(symbol=symbol, begin=start_text, end=end_text, adjust="qfq")
                 except TypeError:
                     return client.k(symbol=symbol, begin=start_text, end=end_text)
-            if index and hasattr(client, "index"):
-                return client.index(symbol=symbol, frequency=9)
             if hasattr(client, "bars"):
                 try:
                     return client.bars(symbol=symbol, frequency=9, offset=self.bar_count, adjust="qfq")

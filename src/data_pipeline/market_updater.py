@@ -10,6 +10,7 @@ import pandas as pd
 from src.config import settings
 from src.data_pipeline.storage import DuckDBStorage
 from src.data_pipeline.updater import _lookback_start
+from src.data_pipeline.validators import validate_ohlcv
 from src.data_sources.akshare_client import AKShareClient, MARKET_INDEXES
 from src.data_sources.base import MarketDataClient
 from src.data_sources.factory import create_data_client
@@ -267,9 +268,13 @@ def update_all_a_stock_ohlcv(
                         _, res = fetch(job)
                     else:
                         _, res = future.result()
-                    storage.upsert_df("stock_ohlcv", res.data, ["stock_code", "trade_date"])
+                    data = res.data.copy()
+                    if "stock_code" not in data.columns:
+                        data["stock_code"] = code
+                    validate_ohlcv(data, code, entity_key="stock_code")
+                    storage.upsert_df("stock_ohlcv", data, ["stock_code", "trade_date"])
                     updated += 1
-                    rows += len(res.data)
+                    rows += len(data)
                     stale_reads += int(res.stale)
                     cache_hits += int(res.from_cache)
                 except Exception as exc:
