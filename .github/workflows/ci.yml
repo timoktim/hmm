@@ -41,6 +41,9 @@ jobs:
       - name: TDX provider pool tests
         run: pytest -q tests/test_tdx_provider_pool.py
 
+      - name: Stage04 WP1 break detector tests
+        run: pytest -q tests/test_stage04_break_detector.py
+
       - name: Stage 01 diagnostic tests without private DB
         run: pytest -q tests/test_hmm_confidence.py tests/test_hmm_label_alignment.py tests/test_hmm_churn_dwell.py
 
