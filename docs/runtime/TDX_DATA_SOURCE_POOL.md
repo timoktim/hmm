@@ -22,6 +22,8 @@ Environment variables use the `ASHARE_HMM_` prefix:
 - `ASHARE_HMM_TDX_FAILURE_THRESHOLD=3`
 - `ASHARE_HMM_TDX_FALLBACK_TO_AKSHARE=true`
 
+When the selected source is AKShare, all-A stock OHLCV defaults to 3 stock workers with a UI cap of 3. When the selected source is `mootdx`, `tdx`, or `pytdx`, the all-A stock worker default comes from `ASHARE_HMM_TDX_GLOBAL_WORKERS` and the UI cap comes from `ASHARE_HMM_TDX_MAX_WORKERS`.
+
 ## Runtime Shape
 
 ```text

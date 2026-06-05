@@ -11,6 +11,7 @@ import streamlit as st
 from src.config import settings
 from src.data_pipeline.market_updater import (
     DEFAULT_MARKET_INDEX_CODES,
+    stock_worker_defaults_for_source,
     update_all_a_stock_ohlcv,
     update_all_a_stock_universe,
     update_market_breadth,
@@ -455,7 +456,14 @@ def render_data_update_tasks(storage: DuckDBStorage, universe_id: str | None = N
     with st.expander("高级参数", expanded=False):
         a1, a2, a3 = st.columns(3)
         board_workers = a1.number_input("板块并发数", min_value=1, max_value=3, value=1, help="只用于板块行情抓取。并发过高可能导致接口失败。")
-        stock_workers = a2.number_input("个股并发数", min_value=1, max_value=int(settings.tdx_max_workers), value=int(settings.tdx_global_workers), help="只用于全 A 个股行情。TDX 连接池会按服务器上限分摊请求。")
+        stock_worker_default, stock_worker_max = stock_worker_defaults_for_source()
+        stock_workers = a2.number_input(
+            "个股并发数",
+            min_value=1,
+            max_value=int(stock_worker_max),
+            value=int(stock_worker_default),
+            help="只用于个股行情。AKShare 默认限制为低并发；启用 mootdx/TDX 后使用 TDX 连接池并发设置。",
+        )
         include_constituents = a3.checkbox("同时更新成分股", value=False, help="成分股接口较慢，开启后总耗时会明显增加。")
         b1, b2, b3 = st.columns(3)
         test_limit_enabled = b1.checkbox("启用测试数量限制", value=False, help="仅用于小范围试跑。关闭后更新全部目标。")

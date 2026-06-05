@@ -3,6 +3,7 @@ from __future__ import annotations
 import pandas as pd
 import pytest
 
+from src.data_pipeline import market_updater
 from src.data_pipeline.market_updater import update_all_a_stock_ohlcv
 from src.data_pipeline.storage import DuckDBStorage
 from src.data_sources import factory as factory_module
@@ -224,8 +225,6 @@ def test_create_data_client_invalid_source_raises(tmp_path) -> None:
 
 
 def test_all_a_stock_ohlcv_batches_and_sleeps(tmp_path, monkeypatch) -> None:
-    from src.data_pipeline import market_updater
-
     sleeps: list[float] = []
     monkeypatch.setattr(market_updater.time, "sleep", sleeps.append)
     storage = DuckDBStorage(tmp_path / "batch.duckdb")
@@ -251,18 +250,18 @@ def test_all_a_stock_ohlcv_batches_and_sleeps(tmp_path, monkeypatch) -> None:
         def stock_hist(self, stock_code: str, start_date: str, end_date: str) -> DataResult:
             data = pd.DataFrame(
                 [
-                        {
-                            "stock_code": stock_code,
-                            "trade_date": pd.Timestamp("2024-01-10").date(),
-                            "open": 10.0,
-                            "high": 12.0,
-                            "low": 9.0,
-                            "close": 11.0,
-                            "volume": 1000.0,
-                            "amount": 11000.0,
-                        }
-                    ]
-                )
+                    {
+                        "stock_code": stock_code,
+                        "trade_date": pd.Timestamp("2024-01-10").date(),
+                        "open": 10.0,
+                        "high": 12.0,
+                        "low": 9.0,
+                        "close": 11.0,
+                        "volume": 1000.0,
+                        "amount": 11000.0,
+                    }
+                ]
+            )
             return DataResult(data)
 
     progress: list[dict[str, object]] = []
@@ -282,3 +281,118 @@ def test_all_a_stock_ohlcv_batches_and_sleeps(tmp_path, monkeypatch) -> None:
     assert summary.updated == 5
     assert sleeps == [0.25, 0.25]
     assert {event["batch_count"] for event in progress} == {3}
+
+
+def _seed_all_a_universe(storage: DuckDBStorage, codes: list[str]) -> None:
+    storage.upsert_df(
+        "all_a_stock_universe",
+        pd.DataFrame(
+            {
+                "stock_code": codes,
+                "stock_name": codes,
+                "exchange": "SZ",
+                "list_status": "active",
+                "is_st": False,
+                "source": "test",
+                "fetched_at": pd.Timestamp("2024-01-10"),
+            }
+        ),
+        ["stock_code"],
+    )
+
+
+class FakeAllAStockClient:
+    def stock_hist(self, stock_code: str, start_date: str, end_date: str) -> DataResult:
+        return DataResult(
+            pd.DataFrame(
+                [
+                    {
+                        "stock_code": stock_code,
+                        "trade_date": pd.Timestamp("2024-01-10").date(),
+                        "open": 10.0,
+                        "high": 12.0,
+                        "low": 9.0,
+                        "close": 11.0,
+                        "volume": 1000.0,
+                        "amount": 11000.0,
+                    }
+                ]
+            )
+        )
+
+
+def test_all_a_stock_ohlcv_akshare_default_workers_do_not_use_tdx_global(tmp_path, monkeypatch) -> None:
+    monkeypatch.setattr(market_updater.settings, "market_data_source", "akshare")
+    monkeypatch.setattr(market_updater.settings, "tdx_global_workers", 8)
+    monkeypatch.setattr(market_updater.settings, "tdx_max_workers", 16)
+    storage = DuckDBStorage(tmp_path / "akshare_default_workers.duckdb")
+    storage.init_schema()
+    _seed_all_a_universe(storage, ["000001", "000002", "000003", "000004"])
+    progress: list[dict[str, object]] = []
+
+    summary = update_all_a_stock_ohlcv(
+        "20240101",
+        "20240110",
+        incremental=False,
+        workers=None,
+        batch_size=10,
+        batch_sleep_seconds=0,
+        probe_latest=False,
+        client=FakeAllAStockClient(),  # type: ignore[arg-type]
+        storage=storage,
+        progress_callback=progress.append,
+    )
+
+    assert summary.updated == 4
+    assert {event["worker_count"] for event in progress} == {3}
+
+
+def test_all_a_stock_ohlcv_tdx_default_workers_keep_tdx_global(tmp_path, monkeypatch) -> None:
+    monkeypatch.setattr(market_updater.settings, "market_data_source", "mootdx")
+    monkeypatch.setattr(market_updater.settings, "tdx_global_workers", 8)
+    monkeypatch.setattr(market_updater.settings, "tdx_max_workers", 16)
+    storage = DuckDBStorage(tmp_path / "tdx_default_workers.duckdb")
+    storage.init_schema()
+    _seed_all_a_universe(storage, ["000001", "000002", "000003", "000004"])
+    progress: list[dict[str, object]] = []
+
+    summary = update_all_a_stock_ohlcv(
+        "20240101",
+        "20240110",
+        incremental=False,
+        workers=None,
+        batch_size=10,
+        batch_sleep_seconds=0,
+        probe_latest=False,
+        client=FakeAllAStockClient(),  # type: ignore[arg-type]
+        storage=storage,
+        progress_callback=progress.append,
+    )
+
+    assert summary.updated == 4
+    assert {event["worker_count"] for event in progress} == {8}
+
+
+def test_all_a_stock_ohlcv_explicit_workers_are_not_replaced_by_source_default(tmp_path, monkeypatch) -> None:
+    monkeypatch.setattr(market_updater.settings, "market_data_source", "akshare")
+    monkeypatch.setattr(market_updater.settings, "tdx_global_workers", 8)
+    storage = DuckDBStorage(tmp_path / "explicit_workers.duckdb")
+    storage.init_schema()
+    _seed_all_a_universe(storage, ["000001", "000002", "000003", "000004"])
+    progress: list[dict[str, object]] = []
+
+    summary = update_all_a_stock_ohlcv(
+        "20240101",
+        "20240110",
+        incremental=False,
+        workers=4,
+        batch_size=10,
+        batch_sleep_seconds=0,
+        probe_latest=False,
+        client=FakeAllAStockClient(),  # type: ignore[arg-type]
+        storage=storage,
+        progress_callback=progress.append,
+    )
+
+    assert summary.updated == 4
+    assert {event["worker_count"] for event in progress} == {4}

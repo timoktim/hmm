@@ -18,6 +18,10 @@ from src.utils.dates import normalize_yyyymmdd
 
 
 DEFAULT_MARKET_INDEX_CODES = ["000001", "399001", "399006", "000300", "000905", "000852", "000985"]
+AKSHARE_STOCK_WORKER_DEFAULT = 3
+AKSHARE_STOCK_WORKER_MAX = 3
+TDX_MARKET_DATA_SOURCES = {"mootdx", "tdx", "pytdx"}
+AKSHARE_MARKET_DATA_SOURCES = {"akshare", "ak"}
 
 
 @dataclass
@@ -33,6 +37,28 @@ class MarketUpdateSummary:
 
 
 ProgressCallback = Callable[[dict[str, object]], None]
+
+
+def _selected_market_data_source() -> str:
+    return str(settings.market_data_source or settings.default_source or "akshare").strip().lower()
+
+
+def stock_worker_defaults_for_source(source: str | None = None) -> tuple[int, int]:
+    selected = str(source or _selected_market_data_source()).strip().lower()
+    if selected in TDX_MARKET_DATA_SOURCES:
+        default_workers = max(1, int(settings.tdx_global_workers or 1))
+        max_workers = max(1, int(settings.tdx_max_workers or 1))
+        return min(default_workers, max_workers), max_workers
+    if selected in AKSHARE_MARKET_DATA_SOURCES:
+        return AKSHARE_STOCK_WORKER_DEFAULT, AKSHARE_STOCK_WORKER_MAX
+    return AKSHARE_STOCK_WORKER_DEFAULT, AKSHARE_STOCK_WORKER_MAX
+
+
+def _resolve_stock_worker_count(workers: int | None) -> int:
+    if workers is not None:
+        return max(1, int(workers or 1))
+    default_workers, _ = stock_worker_defaults_for_source()
+    return default_workers
 
 
 def _index_max_dates(storage: DuckDBStorage, codes: list[str]) -> dict[str, object]:
@@ -216,8 +242,7 @@ def update_all_a_stock_ohlcv(
         )
     if max_stocks:
         jobs = jobs[: int(max_stocks)]
-    configured_workers = settings.tdx_global_workers if workers is None else workers
-    worker_count = max(1, min(int(configured_workers or 1), max(1, int(settings.tdx_max_workers or 1))))
+    worker_count = _resolve_stock_worker_count(workers)
     effective_batch_size = max(1, int(batch_size or settings.tdx_batch_size or len(jobs) or 1))
     effective_batch_sleep = max(0.0, float(settings.tdx_batch_sleep_seconds if batch_sleep_seconds is None else batch_sleep_seconds))
     failures: list[str] = []
