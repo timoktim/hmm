@@ -331,12 +331,17 @@ with open(out_path, "wb") as f:
         return out[cols].drop_duplicates(["index_code", "trade_date"]).sort_values("trade_date")
 
     @staticmethod
+    def _is_beijing_stock_code(stock_code: str) -> bool:
+        code = str(stock_code).strip().zfill(6)
+        return code.startswith(("4", "8", "920"))
+
+    @staticmethod
     def _exchange_for_stock_code(stock_code: str) -> str:
         code = str(stock_code).zfill(6)
+        if AKShareClient._is_beijing_stock_code(code):
+            return "BJ"
         if code.startswith(("5", "6", "9")):
             return "SH"
-        if code.startswith(("4", "8")):
-            return "BJ"
         return "SZ"
 
     @classmethod
@@ -387,10 +392,10 @@ with open(out_path, "wb") as f:
     @staticmethod
     def _tx_symbol(stock_code: str) -> str:
         code = str(stock_code).strip().zfill(6)
+        if AKShareClient._is_beijing_stock_code(code):
+            return f"bj{code}"
         if code.startswith(("5", "6", "9")):
             return f"sh{code}"
-        if code.startswith(("4", "8")):
-            return f"bj{code}"
         return f"sz{code}"
 
     def board_names(self, board_type: BoardType, force_refresh: bool = False, ttl_seconds: int | float | None = None) -> DataResult:
@@ -442,11 +447,20 @@ with open(out_path, "wb") as f:
 
     def stock_hist(self, stock_code: str, start_date: str, end_date: str, force_refresh: bool = False, ttl_seconds: int | float | None = None) -> DataResult:
         ak = _import_akshare()
+        code = str(stock_code).strip().zfill(6)
+        if self._is_beijing_stock_code(code):
+            interface = "stock_zh_a_daily_bj"
+            symbol = f"bj{code}"
+            func = lambda: ak.stock_zh_a_daily(symbol=symbol, start_date=start_date, end_date=end_date, adjust="qfq")
+            res = self._fetch(interface, func, symbol=code, start_date=start_date, end_date=end_date, force_refresh=force_refresh, ttl_seconds=self._history_ttl(end_date, ttl_seconds))
+            res.data = self._normalize_ohlcv(res.data, stock_code=code)
+            return res
+
         interface = "stock_zh_a_hist_tx"
-        symbol = self._tx_symbol(stock_code)
+        symbol = self._tx_symbol(code)
         func = lambda: ak.stock_zh_a_hist_tx(symbol=symbol, start_date=start_date, end_date=end_date, adjust="qfq")
-        res = self._fetch(interface, func, symbol=stock_code, start_date=start_date, end_date=end_date, force_refresh=force_refresh, ttl_seconds=self._history_ttl(end_date, ttl_seconds))
-        res.data = self._normalize_ohlcv(res.data, stock_code=stock_code)
+        res = self._fetch(interface, func, symbol=code, start_date=start_date, end_date=end_date, force_refresh=force_refresh, ttl_seconds=self._history_ttl(end_date, ttl_seconds))
+        res.data = self._normalize_ohlcv(res.data, stock_code=code)
         return res
 
     def market_benchmark_hist(
