@@ -54,7 +54,7 @@ jobs:
             tests/test_walk_forward_cache_contract.py \
             tests/test_hmm_walk_forward_cache_contract.py \
             tests/test_hmm_cached_state_feature_guard.py \
-            tests/test_hmm_lifecycle_asof.py \
+            tests/test_hsmm_lifecycle_asof.py \
             tests/test_hsmm_run_atomicity.py \
             tests/test_hsmm_cascade_cleanup.py \
             tests/test_hsmm_duration_tail_semantics.py \
