@@ -90,7 +90,7 @@
     "breadth_status": null,
     "breadth_up_ratio_z": null,
     "break_warning_level": "watch",
-    "component_stress_labels": "breadth:insufficient_history;sector:medium;hmm_confidence:insufficient_history",
+    "component_stress_labels": "sector:medium",
     "hmm_confidence_status": null,
     "hmm_entropy_mean": null,
     "hmm_margin_mean": null,

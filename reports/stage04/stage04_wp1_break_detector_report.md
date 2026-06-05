@@ -46,7 +46,7 @@
 - hmm_max_prob_mean: None
 - hmm_margin_mean: None
 - hmm_entropy_mean: None
-- component_stress_labels: breadth:insufficient_history;sector:medium;hmm_confidence:insufficient_history
+- component_stress_labels: sector:medium
 
 ## Causal Sanity
 - rolling_window: 60

@@ -395,7 +395,20 @@ def build_hmm_confidence_component(
 
 
 def aggregate_break_warnings(components: list[pd.DataFrame]) -> pd.DataFrame:
-    non_empty = [frame for frame in components if not frame.empty and "trade_date" in frame.columns]
+    component_specs = [
+        ("market", "market_stress_score"),
+        ("breadth", "breadth_stress_score"),
+        ("sector", "sector_stress_score"),
+        ("hmm_confidence", "hmm_stress_score"),
+    ]
+    prepared_frames: list[pd.DataFrame] = []
+    for (name, _), frame in zip(component_specs, components, strict=False):
+        if frame.empty or "trade_date" not in frame.columns:
+            continue
+        prepared = frame.copy()
+        prepared[f"{name}_component_present"] = True
+        prepared_frames.append(prepared)
+    non_empty = prepared_frames
     if not non_empty:
         return pd.DataFrame()
     result = non_empty[0].copy()
@@ -406,13 +419,19 @@ def aggregate_break_warnings(components: list[pd.DataFrame]) -> pd.DataFrame:
     for column in stress_columns:
         if column not in result.columns:
             result[column] = np.nan
+    for name, _ in component_specs:
+        presence_column = f"{name}_component_present"
+        if presence_column not in result.columns:
+            result[presence_column] = False
+        else:
+            result[presence_column] = result[presence_column].fillna(False).astype(bool)
     levels: list[str] = []
     available_counts: list[int] = []
     high_counts: list[int] = []
     medium_counts: list[int] = []
     component_labels: list[str] = []
-    for row in result[stress_columns].itertuples(index=False):
-        values = [float(value) for value in row if pd.notna(value)]
+    for _, result_row in result.iterrows():
+        values = [float(result_row[column]) for column in stress_columns if pd.notna(result_row[column])]
         available = len(values)
         high = sum(value >= 2.0 for value in values)
         medium = sum(1.0 <= value < 2.0 for value in values)
@@ -431,7 +450,10 @@ def aggregate_break_warnings(components: list[pd.DataFrame]) -> pd.DataFrame:
         high_counts.append(high)
         medium_counts.append(medium)
         labels = []
-        for name, value in zip(["market", "breadth", "sector", "hmm_confidence"], row, strict=False):
+        for name, score_column in component_specs:
+            if not bool(result_row.get(f"{name}_component_present", False)):
+                continue
+            value = result_row.get(score_column)
             label = _stress_label(None if pd.isna(value) else float(value))
             if label != "normal":
                 labels.append(f"{name}:{label}")

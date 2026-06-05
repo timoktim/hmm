@@ -171,6 +171,52 @@ def test_hmm_confidence_component_respects_causality() -> None:
     assert component.loc[0, "hmm_max_prob_mean"] == 0.40
 
 
+def test_missing_latest_component_rows_are_not_labeled_insufficient_history() -> None:
+    previous = pd.Timestamp("2024-01-09").date()
+    latest = pd.Timestamp("2024-01-10").date()
+    market = pd.DataFrame(
+        {
+            "trade_date": [previous, latest],
+            "market_stress_score": [0.0, 1.2],
+            "market_volatility_z": [0.0, 1.2],
+            "market_volatility_status": ["normal", "watch"],
+        }
+    )
+    sector = pd.DataFrame(
+        {
+            "trade_date": [previous, latest],
+            "sector_stress_score": [0.0, 0.2],
+            "sector_dispersion_z": [0.0, 0.2],
+            "sector_dispersion_status": ["normal", "normal"],
+        }
+    )
+    breadth = pd.DataFrame(
+        {
+            "trade_date": [previous],
+            "breadth_stress_score": [np.nan],
+            "breadth_status": ["insufficient_history"],
+        }
+    )
+    hmm = pd.DataFrame(
+        {
+            "trade_date": [previous],
+            "hmm_stress_score": [np.nan],
+            "hmm_confidence_status": ["insufficient_history"],
+        }
+    )
+
+    result = detector.aggregate_break_warnings([market, breadth, sector, hmm])
+    latest_row = result[result["trade_date"] == latest].iloc[0]
+
+    assert latest_row["available_component_count"] == 2
+    assert latest_row["break_warning_level"] == "watch"
+    assert latest_row["component_stress_labels"] == "market:medium"
+    assert "breadth:insufficient_history" not in latest_row["component_stress_labels"]
+    assert "hmm_confidence:insufficient_history" not in latest_row["component_stress_labels"]
+    assert bool(latest_row["breadth_component_present"]) is False
+    assert bool(latest_row["hmm_confidence_component_present"]) is False
+
+
 def test_no_decision_or_trade_terms_in_report(tmp_path: Path) -> None:
     db = tmp_path / "report.duckdb"
     _write_table(db, "market_index_ohlcv", _market_rows(shock=True))
