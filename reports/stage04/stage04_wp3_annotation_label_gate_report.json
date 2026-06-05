@@ -1,0 +1,124 @@
+{
+  "annotation_ledger_summary": {
+    "allowed_record_types": [
+      "annotation",
+      "candidate_check",
+      "review"
+    ],
+    "annotation_ledger_exists": "no",
+    "annotation_ledger_path": "reports/stage04/prospective_break_annotation.local.jsonl",
+    "annotation_record_count": 0,
+    "blank_line_count": 0,
+    "boundary_violation_count": 0,
+    "invalid_line_count": 0,
+    "line_count": 0,
+    "local_annotations_gitignored": "yes",
+    "required_fields": [
+      "schema_version",
+      "record_type",
+      "annotation_date",
+      "diagnostic_trade_date",
+      "break_warning_level",
+      "component_stress_labels",
+      "available_component_count",
+      "analyst_annotation",
+      "observed_market_context",
+      "followup_required",
+      "forbidden_use_notice",
+      "boundary_flags"
+    ],
+    "template_record_count": 0
+  },
+  "annotation_record_sample": [],
+  "blocking_issues": [],
+  "boundary_flags": {
+    "decision_engine_output": "no",
+    "duckdb_committed": "no",
+    "duckdb_schema_changed": "no",
+    "external_data_fetch": "no",
+    "final_holdout_consumed": "no",
+    "hazard_model_changed": "no",
+    "hmm_hsmm_training_changed": "no",
+    "model_retrained": "no",
+    "threshold_tuning": "no",
+    "trading_output": "no"
+  },
+  "causal_boundary_summary": {
+    "external_data_fetch": "no",
+    "final_holdout_consumed": "no",
+    "hazard_model_changed": "no",
+    "hmm_hsmm_training_changed": "no",
+    "label_check_scope": "future trading day availability only",
+    "local_db_calendar_only": "yes",
+    "model_retraining_after_lock": "no",
+    "performance_metrics_computed": "no",
+    "returns_or_outcomes_computed": "no",
+    "threshold_tuning_after_lock": "no"
+  },
+  "defer_reasons": [],
+  "final_holdout_consumed": "no",
+  "final_holdout_consumption_count": 0,
+  "index_id": "STAGE04-WP3",
+  "label_completeness_summary": {
+    "annotation_record_count": 0,
+    "calendar": {
+      "calendar_max_trade_date": null,
+      "calendar_min_trade_date": null,
+      "calendar_status": "db_missing",
+      "calendar_trade_date_count": 0,
+      "db_available": "no",
+      "db_path": "data/db/a_share_hmm.duckdb",
+      "selected_market_index_code": null
+    },
+    "complete_record_count": 0,
+    "invalid_date_record_count": 0,
+    "label_completeness_status_counts": {},
+    "pending_record_count": 0,
+    "pre_lock_violation_record_count": 0,
+    "required_horizons": [
+      1,
+      3,
+      5,
+      10,
+      20
+    ],
+    "unknown_db_missing_record_count": 0
+  },
+  "model_retraining_after_lock": "no",
+  "prospective_validation_status": "not_started",
+  "recommended_next_stage": "Continue local annotation collection and rerun this annotation gate when required future horizons are available.",
+  "report_version": "stage04_wp3_annotation_label_gate_v1",
+  "source_wp2_report_version": "stage04_wp2_break_casebook_v1",
+  "split_registry_lock_summary": {
+    "analysis_layer_output": "no",
+    "evidence_cutoff_date": "2026-05-28",
+    "expected_horizons": [
+      1,
+      3,
+      5,
+      10,
+      20
+    ],
+    "external_data_fetch": "no",
+    "final_holdout_consumption_count": 0,
+    "future_holdout_start_rule": "strictly_after_evidence_cutoff_date",
+    "hmm_hsmm_retraining_after_lock": "no",
+    "hsmm_exit_probability_review_use": "no",
+    "model_retraining_after_lock": "no",
+    "private_db_required_in_ci": "no",
+    "status": "locked",
+    "threshold_tuning_after_lock": "no"
+  },
+  "status": "pass",
+  "threshold_tuning_after_lock": "no",
+  "wp2_source_summary": {
+    "final_holdout_consumed": "no",
+    "final_holdout_consumption_count": 0,
+    "index_id": "STAGE04-WP2",
+    "model_retraining_after_lock": "no",
+    "prospective_validation_status": "annotation_only",
+    "report_version": "stage04_wp2_break_casebook_v1",
+    "status": "pass",
+    "threshold_tuning_after_lock": "no"
+  }
+}
