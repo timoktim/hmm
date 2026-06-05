@@ -47,6 +47,9 @@ jobs:
       - name: Stage04 WP2 break casebook tests
         run: pytest -q tests/test_stage04_break_casebook.py
 
+      - name: Stage04 WP3 annotation label gate tests
+        run: pytest -q tests/test_stage04_annotation_label_gate.py
+
       - name: Stage 01 diagnostic tests without private DB
         run: pytest -q tests/test_hmm_confidence.py tests/test_hmm_label_alignment.py tests/test_hmm_churn_dwell.py
 

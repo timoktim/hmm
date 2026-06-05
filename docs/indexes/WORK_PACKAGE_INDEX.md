@@ -59,7 +59,8 @@ Logical root: docs/
 | STAGE03R-WP10.1 | 03R | WP10.1 | archived | v1 | docs/work_packages/stage03r/STAGE03R_EXECUTION_INDEX.md | Codex Stage03R-WP10.1 | accepted |
 | STAGE04-WP0 | 04 | WP0 | archived | v1 | docs/work_packages/stage04/STAGE04_EXECUTION_INDEX.md | Codex Stage04-WP0 | accepted |
 | STAGE04-WP1 | 04 | WP1 | archived | v1 | docs/work_packages/stage04/STAGE04_EXECUTION_INDEX.md | Codex Stage04-WP1 | accepted |
-| STAGE04-WP2 | 04 | WP2 | active | v1 | docs/work_packages/stage04/STAGE04_EXECUTION_INDEX.md | Codex Stage04-WP2 | pending |
+| STAGE04-WP2 | 04 | WP2 | archived | v1 | docs/work_packages/stage04/STAGE04_EXECUTION_INDEX.md | Codex Stage04-WP2 | accepted |
+| STAGE04-WP3 | 04 | WP3 | active | v1 | docs/work_packages/stage04/STAGE04_EXECUTION_INDEX.md | Codex Stage04-WP3 | pending |
 
 ## Current Stage 04 Focus
 
@@ -73,10 +74,11 @@ BlockingPackages: none
 
 Active:
 
-- STAGE04-WP2: Break Diagnostic Casebook and Prospective Annotation Protocol.
+- STAGE04-WP3: Prospective Annotation Ledger Validator and Label Completeness Gate.
 
 Accepted:
 
+- STAGE04-WP2: PR #57, break diagnostic casebook and annotation protocol accepted.
 - STAGE04-WP0: PR #52, split_registry_v1 and prospective validation ledger template accepted.
 - STAGE04-WP1: PR #55, structural break diagnostic accepted.
 - STAGE03R-WP9: PR #49, data_quality_ci_invariants_v1 accepted.
@@ -146,3 +148,4 @@ Each Codex thread must report:
 | 2026-06-04 | PR #51 accepted Stage03R WP10.1 final holdout candidate with non-overlap not proven; archived STAGE03R-WP10.1 and activated STAGE04-WP0 split registry lock. | ChatGPT |
 | 2026-06-04 | PR #52 accepted Stage04 WP0 split registry lock; activated Stage04 WP1 structural break diagnostic. | ChatGPT |
 | 2026-06-05 | PR #55 accepted Stage04 WP1 structural break diagnostic; activated Stage04 WP2 break diagnostic casebook annotation protocol. | ChatGPT |
+| 2026-06-05 | PR #57 accepted Stage04 WP2 break casebook annotation protocol; activated Stage04 WP3 annotation label completeness gate. | ChatGPT |

@@ -56,6 +56,7 @@ reports/stage03r/*_full.csv
 !reports/stage04/*.json
 !reports/stage04/stage04_wp1_break_detector_sample.csv
 !reports/stage04/stage04_wp2_break_casebook_sample.csv
+!reports/stage04/stage04_wp3_annotation_label_gate_sample.csv
 !reports/stage04/prospective_validation_ledger.template.jsonl
 !reports/stage04/prospective_break_annotation.template.jsonl
 reports/stage04/prospective_validation_ledger.jsonl
