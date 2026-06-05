@@ -28,7 +28,7 @@ non-overlap before final holdout consumption.
 5. Future holdout candidates must start strictly after the frozen Stage03R evidence cutoff date.
 6. Future holdout labels must be complete for horizons `[1, 3, 5, 10, 20]` before empirical validation.
 7. Prospective validation ledger daily records must stay local/ignored unless explicitly promoted by a later package.
-8. No Stage04 package may create a decision layer, trading output, sizing, or recommendation output unless a later package explicitly changes this rule through a reviewed work package.
+8. No Stage04 package may create a decision layer, trading output, sizing, or recommendation output unless a later reviewed work package explicitly changes this rule.
 
 ## WP0 deliverables
 
