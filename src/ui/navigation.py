@@ -19,6 +19,7 @@ PAGE_CONFIGS = [
     PageConfig("大盘状态", "当前状态"),
     PageConfig("状态生命周期", "当前状态", advanced=True),
     PageConfig("数据中心", "数据与质量"),
+    PageConfig("数据库工作区", "数据与质量"),
     PageConfig("数据健康", "数据与质量", advanced=True),
     PageConfig("板块池管理", "板块和个股"),
     PageConfig("板块详情", "板块和个股"),

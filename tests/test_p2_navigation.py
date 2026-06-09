@@ -29,5 +29,5 @@ def test_p2_navigation_reveals_advanced_pages_when_enabled():
 
 def test_p2_navigation_groups_are_task_oriented():
     assert NAV_GROUPS == ["当前状态", "数据与质量", "板块和个股", "模型实验"]
-    assert page_labels_for_group("数据与质量") == ["数据中心"]
-    assert page_labels_for_group("数据与质量", show_advanced=True) == ["数据中心", "数据健康"]
+    assert page_labels_for_group("数据与质量") == ["数据中心", "数据库工作区"]
+    assert page_labels_for_group("数据与质量", show_advanced=True) == ["数据中心", "数据库工作区", "数据健康"]
