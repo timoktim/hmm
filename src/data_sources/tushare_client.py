@@ -690,7 +690,7 @@ class TushareClient:
         if grouped.empty:
             raise ValueError(f"{sector_id} 在目标区间没有可构造的本地聚合行情。")
         rows = []
-        prev_close = 1000.0
+        prev_close = self._previous_sector_close(sector_id, start)
         for date, row in grouped.iterrows():
             close_ret = 0.0 if pd.isna(row.close_ret) else float(row.close_ret)
             open_ret = close_ret if pd.isna(row.open_ret) else float(row.open_ret)
@@ -714,3 +714,22 @@ class TushareClient:
             prev_close = close
         out = _audit_columns(pd.DataFrame(rows), source="tushare_local_aggregate", source_priority=SOURCE_PRIORITY_DERIVED, is_provisional=True, validation_status="local_aggregate")
         return DataResult(out)
+
+    def _previous_sector_close(self, sector_id: str, start: object) -> float:
+        previous = self.storage.read_df(
+            """
+            SELECT close
+            FROM sector_ohlcv
+            WHERE sector_id = ?
+              AND trade_date < ?
+              AND close IS NOT NULL
+            ORDER BY trade_date DESC
+            LIMIT 1
+            """,
+            [sector_id, start],
+        )
+        if not previous.empty:
+            close = pd.to_numeric(previous["close"], errors="coerce").dropna()
+            if not close.empty and float(close.iloc[0]) > 0:
+                return float(close.iloc[0])
+        return 1000.0
