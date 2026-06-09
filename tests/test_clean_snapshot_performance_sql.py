@@ -135,6 +135,52 @@ def test_staging_tables_receive_batched_daily_adj_basic(tmp_path: Path) -> None:
     assert counts.loc[0, "basic_rows"] == 2
 
 
+def test_cleanup_clean_snapshot_staging_deletes_only_requested_build_id(tmp_path: Path) -> None:
+    storage = _storage(tmp_path)
+    for build_id in ["cleanup-a", "cleanup-b"]:
+        sql.clear_clean_snapshot_staging(storage, build_id)
+        sql.stage_selected_stock_codes(storage, build_id, ["000001"])
+        sql.append_clean_snapshot_stage_batch(
+            storage,
+            build_id,
+            daily_frames=[
+                pd.DataFrame(
+                    {
+                        "ts_code": ["000001.SZ"],
+                        "trade_date": ["20240102"],
+                        "open": [10.0],
+                        "high": [11.0],
+                        "low": [9.0],
+                        "close": [10.5],
+                        "vol": [1.0],
+                        "amount": [10.0],
+                    }
+                )
+            ],
+            adj_frames=[pd.DataFrame({"ts_code": ["000001.SZ"], "trade_date": ["20240102"], "adj_factor": [1.0]})],
+            basic_frames=[],
+            selected_stock_codes=["000001"],
+        )
+
+    result = sql.cleanup_clean_snapshot_staging(storage, "cleanup-a")
+    counts = storage.read_df(
+        """
+        SELECT
+          (SELECT count(*) FROM clean_snapshot_daily_raw_stage WHERE snapshot_build_id = 'cleanup-a') AS a_daily,
+          (SELECT count(*) FROM clean_snapshot_daily_raw_stage WHERE snapshot_build_id = 'cleanup-b') AS b_daily,
+          (SELECT count(*) FROM clean_snapshot_selected_stock_stage WHERE snapshot_build_id = 'cleanup-a') AS a_selected,
+          (SELECT count(*) FROM clean_snapshot_selected_stock_stage WHERE snapshot_build_id = 'cleanup-b') AS b_selected
+        """
+    )
+
+    assert result["rows"] == 3
+    assert result["duration_seconds"] >= 0
+    assert int(counts.loc[0, "a_daily"]) == 0
+    assert int(counts.loc[0, "a_selected"]) == 0
+    assert int(counts.loc[0, "b_daily"]) == 1
+    assert int(counts.loc[0, "b_selected"]) == 1
+
+
 def test_qfq_sql_uses_reference_factor(tmp_path: Path) -> None:
     storage = _storage(tmp_path)
     build_id = "unit-qfq"

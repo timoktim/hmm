@@ -8,6 +8,7 @@ import duckdb
 import pandas as pd
 import pytest
 
+from src.data_pipeline import clean_snapshot_sql as clean_sql
 from src.data_pipeline import clean_tushare_snapshot as snap
 from src.data_pipeline.storage import DuckDBStorage
 from src.data_sources.base import DataResult
@@ -294,6 +295,14 @@ def _run_build(target: Path, source: Path, **kwargs: object) -> dict[str, object
     )
 
 
+def _staging_row_count(storage: DuckDBStorage) -> int:
+    query = " UNION ALL ".join(
+        [f"SELECT count(*) AS n FROM {table}" for table in clean_sql.STAGING_TABLES]
+    )
+    counts = storage.read_df(f"SELECT sum(n) AS n FROM ({query})")
+    return int(counts.loc[0, "n"]) if not counts.empty else 0
+
+
 def test_preflight_refuses_target_equal_source(source_db: Path) -> None:
     config = snap.CleanSnapshotConfig(
         target_db=source_db,
@@ -420,6 +429,31 @@ def test_stock_ohlcv_written_without_duplicate_stock_trade_date(workspace_paths:
     )
 
     assert duplicates.empty
+
+
+def test_successful_clean_snapshot_cleans_staging_by_default(workspace_paths: Path, source_db: Path) -> None:
+    target = _target(workspace_paths, "cleanup-default.duckdb")
+
+    summary = _run_build(target, source_db, job_id="unit-cleanup-default")
+    storage = DuckDBStorage(target)
+
+    assert summary["status"] == "PASS"
+    assert summary["staging_retention"] == "cleaned"
+    assert summary["staging_cleanup_rows"] > 0
+    assert summary["staging_cleanup_duration_seconds"] >= 0
+    assert _staging_row_count(storage) == 0
+
+
+def test_keep_staging_preserves_successful_build_staging_rows(workspace_paths: Path, source_db: Path) -> None:
+    target = _target(workspace_paths, "cleanup-kept.duckdb")
+
+    summary = _run_build(target, source_db, job_id="unit-cleanup-kept", keep_staging=True)
+    storage = DuckDBStorage(target)
+
+    assert summary["status"] == "PASS"
+    assert summary["staging_retention"] == "kept"
+    assert summary["staging_cleanup_rows"] == 0
+    assert _staging_row_count(storage) > 0
 
 
 def test_clean_snapshot_progress_callback_emits_overall_and_stock_levels(workspace_paths: Path, source_db: Path) -> None:
