@@ -382,6 +382,7 @@ def _base_summary(config: CleanSnapshotConfig) -> dict[str, object]:
         "staging_cleanup_rows": 0,
         "staging_cleanup_duration_seconds": 0.0,
         "staging_retention": "kept",
+        "ohlc_bound_repaired_rows": 0,
         "qfq_sql_transform_duration_seconds": 0.0,
         "stock_write_duration_seconds": 0.0,
         "validation_sql_duration_seconds": 0.0,
@@ -461,6 +462,7 @@ def _write_report(path: Path | str | None, summary: dict[str, object]) -> None:
             *[f"- {key}: {summary.get(key, 0)}" for key in perf_keys],
             f"- staging_cleanup_rows: {summary.get('staging_cleanup_rows', 0)}",
             f"- staging_retention: {summary.get('staging_retention', 'kept')}",
+            f"- ohlc_bound_repaired_rows: {summary.get('ohlc_bound_repaired_rows', 0)}",
             f"- rows_per_second: {json.dumps(summary.get('rows_per_second', {}), ensure_ascii=False, default=_safe_json_default)}",
             f"- memory_safety_note: {summary.get('memory_safety_note')}",
             "",
@@ -821,6 +823,7 @@ def fetch_clean_stock_ohlcv_qfq(
         "staging_rows": {key: int(value) for key, value in staging_rows.items()},
         "fetch_duration_seconds": round(max(fetch_duration, 0.0), 3),
         "staging_write_duration_seconds": round(staging_write_duration, 3),
+        "ohlc_bound_repaired_rows": int(stock_result.get("ohlc_bound_repaired_rows", 0) or 0),
         "qfq_sql_transform_duration_seconds": float(stock_result.get("qfq_sql_transform_duration_seconds", stock_result.get("duration_seconds", 0.0)) or 0.0),
         "stock_write_duration_seconds": float(stock_result.get("stock_write_duration_seconds", 0.0) or 0.0),
         "adj_snapshot_write_duration_seconds": float(snapshot_result.get("duration_seconds", 0.0) or 0.0),
@@ -1116,6 +1119,7 @@ def run_clean_tushare_snapshot(
         summary["staging_rows"] = stock_result.get("staging_rows", {})
         summary["fetch_duration_seconds"] = stock_result.get("fetch_duration_seconds", 0.0)
         summary["staging_write_duration_seconds"] = stock_result.get("staging_write_duration_seconds", 0.0)
+        summary["ohlc_bound_repaired_rows"] = stock_result.get("ohlc_bound_repaired_rows", 0)
         summary["qfq_sql_transform_duration_seconds"] = stock_result.get("qfq_sql_transform_duration_seconds", 0.0)
         summary["stock_write_duration_seconds"] = stock_result.get("stock_write_duration_seconds", 0.0)
         summary["rows_per_second"] = stock_result.get("rows_per_second", {})

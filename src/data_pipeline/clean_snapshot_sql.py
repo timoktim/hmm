@@ -376,12 +376,31 @@ def build_stock_ohlcv_from_staging_sql(
         con.execute(
             """
             CREATE TEMP TABLE clean_snapshot_stock_ohlcv_final AS
+            WITH normalized_daily AS (
+              SELECT
+                d.*,
+                CASE
+                  WHEN d.open IS NULL OR d.high IS NULL OR d.low IS NULL OR d.close IS NULL THEN NULL
+                  ELSE GREATEST(d.open, d.high, d.low, d.close)
+                END AS canonical_high,
+                CASE
+                  WHEN d.open IS NULL OR d.high IS NULL OR d.low IS NULL OR d.close IS NULL THEN NULL
+                  ELSE LEAST(d.open, d.high, d.low, d.close)
+                END AS canonical_low,
+                CASE
+                  WHEN d.open IS NULL OR d.high IS NULL OR d.low IS NULL OR d.close IS NULL THEN FALSE
+                  ELSE d.high < GREATEST(d.open, d.low, d.close)
+                    OR d.low > LEAST(d.open, d.high, d.close)
+                END AS ohlc_bound_repaired
+              FROM clean_snapshot_daily_raw_stage d
+              WHERE d.snapshot_build_id = ?
+            )
             SELECT
               d.stock_code,
               d.trade_date,
               d.open * a.adj_factor / r.reference_adj_factor AS open,
-              d.high * a.adj_factor / r.reference_adj_factor AS high,
-              d.low * a.adj_factor / r.reference_adj_factor AS low,
+              d.canonical_high * a.adj_factor / r.reference_adj_factor AS high,
+              d.canonical_low * a.adj_factor / r.reference_adj_factor AS low,
               d.close * a.adj_factor / r.reference_adj_factor AS close,
               d.volume,
               d.amount,
@@ -392,8 +411,9 @@ def build_stock_ohlcv_from_staging_sql(
               ?::INTEGER AS source_priority,
               FALSE AS is_provisional,
               'validated_rebased' AS validation_status,
-              NULL::TIMESTAMP AS vendor_update_time
-            FROM clean_snapshot_daily_raw_stage d
+              NULL::TIMESTAMP AS vendor_update_time,
+              d.ohlc_bound_repaired
+            FROM normalized_daily d
             JOIN clean_snapshot_selected_stock_stage s
               ON s.snapshot_build_id = d.snapshot_build_id
              AND s.stock_code = d.stock_code
@@ -408,11 +428,17 @@ def build_stock_ohlcv_from_staging_sql(
               ON b.snapshot_build_id = d.snapshot_build_id
              AND b.stock_code = d.stock_code
              AND b.trade_date = d.trade_date
-            WHERE d.snapshot_build_id = ?
             """,
-            [SOURCE_PRIORITY_PRIMARY, snapshot_build_id],
+            [snapshot_build_id, SOURCE_PRIORITY_PRIMARY],
         )
         final_count = con.execute("SELECT count(*) AS n FROM clean_snapshot_stock_ohlcv_final").fetchone()[0]
+        ohlc_bound_repaired_count = con.execute(
+            """
+            SELECT count(*) AS n
+            FROM clean_snapshot_stock_ohlcv_final
+            WHERE ohlc_bound_repaired
+            """
+        ).fetchone()[0]
         if int(final_count) != int(daily_count):
             raise ValueError(f"missing adj_factor/reference rows: daily_rows={int(daily_count)}, final_rows={int(final_count)}")
         invalid_count = con.execute(
@@ -462,6 +488,7 @@ def build_stock_ohlcv_from_staging_sql(
     return {
         "rows": int(final_count),
         "write_mode": write_mode,
+        "ohlc_bound_repaired_rows": int(ohlc_bound_repaired_count),
         "qfq_sql_transform_duration_seconds": round(qfq_sql_transform_duration, 3),
         "stock_write_duration_seconds": round(stock_write_duration, 3),
         "duration_seconds": _elapsed(started),

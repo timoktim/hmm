@@ -229,6 +229,45 @@ def test_qfq_sql_uses_reference_factor(tmp_path: Path) -> None:
     assert out.loc[0, "validation_status"] == "validated_rebased"
 
 
+def test_qfq_sql_repairs_vendor_ohlc_bounds_before_validation(tmp_path: Path) -> None:
+    storage = _storage(tmp_path)
+    build_id = "unit-qfq-repair"
+    sql.clear_clean_snapshot_staging(storage, build_id)
+    sql.stage_selected_stock_codes(storage, build_id, ["920489"])
+    sql.append_clean_snapshot_stage_batch(
+        storage,
+        build_id,
+        daily_frames=[
+            pd.DataFrame(
+                {
+                    "ts_code": ["920489.BJ"],
+                    "trade_date": ["20140618"],
+                    "open": [10.88],
+                    "high": [10.88],
+                    "low": [10.88],
+                    "close": [10.81],
+                    "vol": [410.0],
+                    "amount": [439.5],
+                    "pct_chg": [3.1489],
+                }
+            )
+        ],
+        adj_frames=[pd.DataFrame({"ts_code": ["920489.BJ"], "trade_date": ["20140618"], "adj_factor": [1.0]})],
+        basic_frames=[],
+        selected_stock_codes=["920489"],
+    )
+
+    sql.build_reference_factor_table(storage, build_id, "20140618", ["920489"])
+    result = sql.build_stock_ohlcv_from_staging_sql(storage, build_id)
+    out = storage.read_df("SELECT open, high, low, close FROM stock_ohlcv")
+
+    assert result["ohlc_bound_repaired_rows"] == 1
+    assert out.loc[0, "open"] == pytest.approx(10.88)
+    assert out.loc[0, "high"] == pytest.approx(10.88)
+    assert out.loc[0, "low"] == pytest.approx(10.81)
+    assert out.loc[0, "close"] == pytest.approx(10.81)
+
+
 def test_qfq_sql_rejects_missing_reference_factor(tmp_path: Path) -> None:
     storage = _storage(tmp_path)
     build_id = "unit-missing-ref"
