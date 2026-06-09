@@ -82,6 +82,9 @@ jobs:
             tests/test_ohlcv_validation.py \
             tests/test_ohlcv_update_validation_coverage.py
 
+      - name: HSMM parallel fit performance tests
+        run: pytest -q tests/test_hsmm_parallel_fit.py
+
       - name: Private path hygiene pytest
         run: pytest -q tests/test_private_path_hygiene.py
 

@@ -62,6 +62,8 @@ class HSMMWalkForwardConfig:
     hsmm_engine: str = "auto"
     n_jobs: int | str = 1
     sector_chunk_size: int = 32
+    fit_n_jobs: int | str | None = None
+    fit_sequence_chunk_size: int = 32
     log_every_n_snapshots: int = 10
     persist_incremental: bool = False
     resume: bool = False
@@ -69,9 +71,38 @@ class HSMMWalkForwardConfig:
     overwrite: bool = False
 
 
+HSMM_RUN_PERFORMANCE_STORAGE_COLUMNS = [
+    "run_id",
+    "checkpoint_id",
+    "train_date",
+    "train_start_date",
+    "train_end_date",
+    "training_sequence_count",
+    "training_row_count",
+    "fit_seconds",
+    "decode_snapshot_count",
+    "decode_sector_count",
+    "decode_rows_generated",
+    "decode_seconds",
+    "created_at",
+]
+
+
 def params_hash(payload: dict[str, object]) -> str:
     params_json = json.dumps(payload, ensure_ascii=False, sort_keys=True, default=str)
     return hashlib.sha1(params_json.encode("utf-8")).hexdigest()
+
+
+def _fit_n_jobs_for_config(config: HSMMWalkForwardConfig) -> int | str:
+    return config.n_jobs if config.fit_n_jobs is None else config.fit_n_jobs
+
+
+def _hsmm_performance_storage_frame(rows: list[dict[str, object]] | pd.DataFrame) -> pd.DataFrame:
+    df = rows if isinstance(rows, pd.DataFrame) else pd.DataFrame(rows)
+    if df.empty:
+        return df
+    cols = [column for column in HSMM_RUN_PERFORMANCE_STORAGE_COLUMNS if column in df.columns]
+    return df[cols].copy()
 
 
 def _config_hash_payload(
@@ -393,6 +424,10 @@ def build_hsmm_performance_profile(
         "snapshot_decode_mode": config.snapshot_decode_mode,
         "hsmm_engine": config.hsmm_engine,
         "n_jobs": config.n_jobs,
+        "fit_n_jobs": _fit_n_jobs_for_config(config),
+        "fit_sequence_chunk_size": config.fit_sequence_chunk_size,
+        "decode_n_jobs": config.n_jobs,
+        "sector_chunk_size": config.sector_chunk_size,
         "legacy_snapshot_decode_calls": legacy_snapshot_decode_calls,
         "legacy_prefix_day_units": legacy_prefix_day_units,
         "optimized_checkpoint_sector_decodes": optimized_checkpoint_sector_decodes,
@@ -423,6 +458,12 @@ def write_hsmm_performance_profile(profile: dict[str, object], output_dir: Path)
         f"- optimized checkpoint-sector decodes: {profile.get('optimized_checkpoint_sector_decodes')}",
         f"- optimized prefix day units: {profile.get('optimized_prefix_day_units')}",
         f"- rough complexity ratio legacy/prefix: {profile.get('rough_complexity_ratio_legacy_vs_prefix'):.2f}",
+        f"- fit n_jobs: {profile.get('fit_n_jobs')}",
+        f"- fit sequence chunk size: {profile.get('fit_sequence_chunk_size')}",
+        f"- decode n_jobs: {profile.get('decode_n_jobs')}",
+        f"- sector chunk size: {profile.get('sector_chunk_size')}",
+        f"- snapshot decode mode: {profile.get('snapshot_decode_mode')}",
+        f"- HSMM engine: {profile.get('hsmm_engine')}",
         "",
         "This is a scale estimate only. It does not train or write HSMM model rows.",
     ]
@@ -820,6 +861,7 @@ def run_hsmm_walk_forward(
     performance_rows: list[dict[str, object]] = []
     checkpoint_artifacts: dict[pd.Timestamp, dict[str, object]] = {}
     last_model: DiscreteDurationGaussianHSMM | None = None
+    fit_n_jobs = _fit_n_jobs_for_config(config)
 
     sector_count = int(features["sector_id"].astype(str).nunique()) if "sector_id" in features.columns else 0
     expected_snapshot_count = int(len(snapshot_dates))
@@ -864,6 +906,8 @@ def run_hsmm_walk_forward(
                 variance_floor=config.variance_floor,
                 random_state=config.random_state,
                 engine=config.hsmm_engine,
+                n_jobs=fit_n_jobs,
+                sequence_chunk_size=config.fit_sequence_chunk_size,
             )
             fit_started = time.perf_counter()
             if progress_callback:
@@ -915,12 +959,22 @@ def run_hsmm_walk_forward(
                     "decode_sector_count": 0,
                     "decode_rows_generated": 0,
                     "decode_seconds": 0.0,
+                    "fit_n_jobs": model.fit_n_jobs_,
+                    "fit_parallel_enabled": model.fit_parallel_enabled_,
+                    "fit_parallel_fallback": model.fit_parallel_fallback_,
+                    "fit_iteration_count": model.fit_iteration_count_,
+                    "fit_decode_seconds": model.fit_decode_seconds_,
+                    "fit_update_seconds": model.fit_update_seconds_,
+                    "decode_n_jobs": config.n_jobs,
+                    "sector_chunk_size": config.sector_chunk_size,
+                    "snapshot_decode_mode": config.snapshot_decode_mode,
+                    "hsmm_engine": config.hsmm_engine,
                     "created_at": pd.Timestamp.now(),
                 }
             )
             if config.persist_incremental or config.checkpoint_write_mode == "incremental":
                 storage.upsert_df("hsmm_model_checkpoints", pd.DataFrame([checkpoint_rows[-1]]), ["run_id", "checkpoint_id"])
-                storage.upsert_df("hsmm_run_performance", pd.DataFrame([performance_rows[-1]]), ["run_id", "checkpoint_id"])
+                storage.upsert_df("hsmm_run_performance", _hsmm_performance_storage_frame([performance_rows[-1]]), ["run_id", "checkpoint_id"])
             last_model = model
             if progress_callback:
                 progress_callback(ordinal, len(checkpoint_dates), train_date, "checkpoint_trained")
@@ -961,7 +1015,7 @@ def run_hsmm_walk_forward(
                     perf["decode_rows_generated"] += len(snapshot_rows)
                     perf["decode_seconds"] += decode_seconds
                     if config.persist_incremental or config.checkpoint_write_mode == "incremental":
-                        storage.upsert_df("hsmm_run_performance", pd.DataFrame([perf]), ["run_id", "checkpoint_id"])
+                        storage.upsert_df("hsmm_run_performance", _hsmm_performance_storage_frame([perf]), ["run_id", "checkpoint_id"])
                 if snapshot_rows and (config.persist_incremental or config.checkpoint_write_mode == "incremental"):
                     storage.upsert_df("hsmm_state_daily", pd.DataFrame(snapshot_rows), ["run_id", "trade_date", "sector_code"])
                 if progress_callback and (idx == 1 or idx == len(snapshot_dates) or idx % max(1, config.log_every_n_snapshots) == 0):
@@ -997,7 +1051,7 @@ def run_hsmm_walk_forward(
                     perf["decode_rows_generated"] += len(snapshot_rows)
                     perf["decode_seconds"] += decode_seconds
                     if config.persist_incremental or config.checkpoint_write_mode == "incremental":
-                        storage.upsert_df("hsmm_run_performance", pd.DataFrame([perf]), ["run_id", "checkpoint_id"])
+                        storage.upsert_df("hsmm_run_performance", _hsmm_performance_storage_frame([perf]), ["run_id", "checkpoint_id"])
                 if snapshot_rows and (config.persist_incremental or config.checkpoint_write_mode == "incremental"):
                     storage.upsert_df("hsmm_state_daily", pd.DataFrame(snapshot_rows), ["run_id", "trade_date", "sector_code"])
                 if progress_callback:
@@ -1010,7 +1064,7 @@ def run_hsmm_walk_forward(
             storage.upsert_df("hsmm_model_checkpoints", pd.DataFrame(checkpoint_rows), ["run_id", "checkpoint_id"])
         performance_df = pd.DataFrame(performance_rows)
         if not performance_df.empty:
-            storage.upsert_df("hsmm_run_performance", performance_df, ["run_id", "checkpoint_id"])
+            storage.upsert_df("hsmm_run_performance", _hsmm_performance_storage_frame(performance_df), ["run_id", "checkpoint_id"])
         episodes = _episodes_from_daily(states)
         _write_episodes(storage, run_id, episodes)
 
@@ -1121,6 +1175,8 @@ def main() -> None:
     parser.add_argument("--hsmm-engine", default="auto", choices=["python", "auto", "numba"])
     parser.add_argument("--n-jobs", default="1")
     parser.add_argument("--sector-chunk-size", type=int, default=32)
+    parser.add_argument("--fit-n-jobs", default=None)
+    parser.add_argument("--fit-sequence-chunk-size", type=int, default=32)
     parser.add_argument("--log-every-n-snapshots", type=int, default=10)
     parser.add_argument("--persist-incremental", action="store_true")
     parser.add_argument("--resume", action="store_true")
@@ -1158,6 +1214,8 @@ def main() -> None:
             hsmm_engine=args.hsmm_engine,
             n_jobs=args.n_jobs,
             sector_chunk_size=args.sector_chunk_size,
+            fit_n_jobs=args.fit_n_jobs,
+            fit_sequence_chunk_size=args.fit_sequence_chunk_size,
             log_every_n_snapshots=args.log_every_n_snapshots,
             persist_incremental=args.persist_incremental,
             resume=args.resume,
