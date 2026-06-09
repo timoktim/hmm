@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import os
+import time
 from dataclasses import dataclass
 from typing import Any
 
@@ -61,6 +63,25 @@ def _segments_from_path(path: np.ndarray) -> list[tuple[int, int, int]]:
     return segments
 
 
+def _resolve_n_jobs(n_jobs: int | str | None) -> int:
+    if isinstance(n_jobs, str):
+        value = n_jobs.strip().lower()
+        if value == "auto":
+            return max(1, os.cpu_count() or 1)
+        return max(1, int(value or "1"))
+    return max(1, int(n_jobs or 1))
+
+
+def _chunked_arrays(arrays: list[np.ndarray], chunk_size: int) -> list[list[np.ndarray]]:
+    size = max(1, int(chunk_size or 1))
+    return [arrays[idx : idx + size] for idx in range(0, len(arrays), size)]
+
+
+def _decode_array_chunk_worker(model_payload: dict[str, Any], array_chunk: list[np.ndarray]) -> list[_DecodeResult]:
+    model = DiscreteDurationGaussianHSMM.from_dict(model_payload)
+    return [model._viterbi_array(np.asarray(arr, dtype=float)) for arr in array_chunk]
+
+
 class DiscreteDurationGaussianHSMM:
     def __init__(
         self,
@@ -73,6 +94,8 @@ class DiscreteDurationGaussianHSMM:
         variance_floor: float = 1e-4,
         random_state: int | None = 42,
         engine: str = "python",
+        n_jobs: int | str = 1,
+        sequence_chunk_size: int = 32,
     ):
         if n_states < 2:
             raise ValueError("n_states must be >= 2")
@@ -88,6 +111,8 @@ class DiscreteDurationGaussianHSMM:
         self.random_state = random_state
         self.engine = str(engine or "python")
         resolve_hsmm_engine(self.engine)
+        self.n_jobs = n_jobs
+        self.sequence_chunk_size = max(1, int(sequence_chunk_size or 1))
 
         self.startprob_: np.ndarray | None = None
         self.transmat_: np.ndarray | None = None
@@ -98,6 +123,14 @@ class DiscreteDurationGaussianHSMM:
         self.scaler_: StandardScaler | None = None
         self.state_labels_: dict[int, str] = {}
         self.monitor_history_: list[float] = []
+        self.fit_parallel_enabled_: bool = False
+        self.fit_parallel_fallback_: bool = False
+        self.fit_parallel_warning_: str | None = None
+        self.fit_decode_seconds_: float = 0.0
+        self.fit_update_seconds_: float = 0.0
+        self.fit_iteration_count_: int = 0
+        self.fit_n_jobs_: int = _resolve_n_jobs(n_jobs)
+        self.fit_sequence_count_: int = 0
 
     def fit(self, sequences: list[pd.DataFrame], feature_cols: list[str]) -> "DiscreteDurationGaussianHSMM":
         clean_sequences = self._prepare_input_frames(sequences, feature_cols)
@@ -109,16 +142,31 @@ class DiscreteDurationGaussianHSMM:
         self.scaler_.fit(train_df[self.feature_cols_].to_numpy(dtype=float))
         arrays = [self.scaler_.transform(seq[self.feature_cols_].to_numpy(dtype=float)) for seq in clean_sequences]
         paths = self._initial_paths(arrays, train_df)
+        self.fit_parallel_enabled_ = False
+        self.fit_parallel_fallback_ = False
+        self.fit_parallel_warning_ = None
+        self.fit_decode_seconds_ = 0.0
+        self.fit_update_seconds_ = 0.0
+        self.fit_iteration_count_ = 0
+        self.fit_n_jobs_ = _resolve_n_jobs(self.n_jobs)
+        self.fit_sequence_count_ = len(arrays)
+        update_started = time.perf_counter()
         self._update_parameters(arrays, paths)
+        self.fit_update_seconds_ += time.perf_counter() - update_started
 
         previous_score: float | None = None
         self.monitor_history_ = []
         for _ in range(self.n_iter):
-            decoded = [self._viterbi_array(arr) for arr in arrays]
+            decode_started = time.perf_counter()
+            decoded = self._decode_arrays(arrays)
+            self.fit_decode_seconds_ += time.perf_counter() - decode_started
             paths = [item.path for item in decoded]
             score = float(sum(item.score for item in decoded))
             self.monitor_history_.append(score)
+            update_started = time.perf_counter()
             self._update_parameters(arrays, paths)
+            self.fit_update_seconds_ += time.perf_counter() - update_started
+            self.fit_iteration_count_ += 1
             if previous_score is not None:
                 denom = max(abs(previous_score), 1.0)
                 if abs(score - previous_score) / denom < self.tol:
@@ -551,6 +599,35 @@ class DiscreteDurationGaussianHSMM:
         self.duration_pmf_ = _normalize(duration_counts, axis=1)
         self.means_ = means
         self.vars_ = vars_
+
+    def _decode_arrays(self, arrays: list[np.ndarray]) -> list[_DecodeResult]:
+        n_jobs = _resolve_n_jobs(self.n_jobs)
+        self.fit_n_jobs_ = n_jobs
+        if n_jobs <= 1 or len(arrays) <= 1:
+            return self._decode_arrays_serial(arrays)
+        return self._decode_arrays_parallel(arrays, n_jobs, self.sequence_chunk_size)
+
+    def _decode_arrays_serial(self, arrays: list[np.ndarray]) -> list[_DecodeResult]:
+        return [self._viterbi_array(arr) for arr in arrays]
+
+    def _decode_arrays_parallel(self, arrays: list[np.ndarray], n_jobs: int, sequence_chunk_size: int) -> list[_DecodeResult]:
+        try:
+            from joblib import Parallel, delayed
+
+            model_payload = self.to_dict()
+            chunks = _chunked_arrays(arrays, sequence_chunk_size)
+            parts = Parallel(n_jobs=n_jobs, prefer="processes")(
+                delayed(_decode_array_chunk_worker)(model_payload, chunk) for chunk in chunks
+            )
+            decoded = [item for part in parts for item in part]
+            if len(decoded) != len(arrays):
+                raise RuntimeError("parallel HSMM fit decode returned an unexpected sequence count")
+            self.fit_parallel_enabled_ = True
+            return decoded
+        except Exception as exc:
+            self.fit_parallel_fallback_ = True
+            self.fit_parallel_warning_ = f"{type(exc).__name__}: {exc}"
+            return self._decode_arrays_serial(arrays)
 
     def _emission_logprob(self, x: np.ndarray) -> np.ndarray:
         self._check_fitted()
