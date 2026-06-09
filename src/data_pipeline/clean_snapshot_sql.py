@@ -611,28 +611,49 @@ def validate_clean_snapshot_sql(
         ).fetchdf()
         source_df = con.execute("SELECT source, count(*) AS rows FROM stock_ohlcv GROUP BY source ORDER BY source").fetchdf()
         low_coverage_dates: list[str] = []
+        severe_low_coverage_dates: list[str] = []
         if expected_dates and expected_codes:
             con.register("expected_dates", pd.DataFrame({"trade_date": expected_dates}))
             con.register("expected_codes", pd.DataFrame({"stock_code": expected_codes}))
+            universe_rows = int(con.execute("SELECT count(*) AS n FROM all_a_stock_universe").fetchone()[0] or 0)
             low_df = con.execute(
                 """
-                WITH daily_counts AS (
-                  SELECT e.trade_date, count(DISTINCT s.stock_code) AS covered_count
+                WITH expected_universe AS (
+                  SELECT e.trade_date, c.stock_code
                   FROM expected_dates e
+                  CROSS JOIN expected_codes c
+                  LEFT JOIN all_a_stock_universe u
+                    ON u.stock_code = c.stock_code
+                  WHERE ? = 0
+                     OR (
+                       u.stock_code IS NOT NULL
+                       AND (u.list_date IS NULL OR u.list_date <= e.trade_date)
+                       AND (u.delist_date IS NULL OR u.delist_date >= e.trade_date)
+                     )
+                ),
+                daily_counts AS (
+                  SELECT
+                    e.trade_date,
+                    count(DISTINCT e.stock_code) AS expected_count,
+                    count(DISTINCT s.stock_code) AS covered_count
+                  FROM expected_universe e
                   LEFT JOIN stock_ohlcv s
                     ON s.trade_date = e.trade_date
-                   AND s.stock_code IN (SELECT stock_code FROM expected_codes)
+                   AND s.stock_code = e.stock_code
                   GROUP BY e.trade_date
                 )
-                SELECT trade_date, covered_count
+                SELECT trade_date, covered_count, expected_count
                 FROM daily_counts
-                WHERE covered_count < ?
+                WHERE expected_count > 0
+                  AND covered_count::DOUBLE / NULLIF(expected_count::DOUBLE, 0) < 0.8
                 ORDER BY trade_date
-                LIMIT 20
                 """,
-                [max(1, int(len(expected_codes) * 0.8))],
+                [universe_rows],
             ).fetchdf()
             low_coverage_dates = pd.to_datetime(low_df["trade_date"]).dt.strftime("%Y%m%d").tolist() if not low_df.empty else []
+            if not low_df.empty:
+                severe = low_df[pd.to_numeric(low_df["covered_count"], errors="coerce") / pd.to_numeric(low_df["expected_count"], errors="coerce") < 0.4]
+                severe_low_coverage_dates = pd.to_datetime(severe["trade_date"]).dt.strftime("%Y%m%d").tolist() if not severe.empty else []
         stock_rows = con.execute("SELECT count(*) AS n FROM stock_ohlcv").fetchone()[0]
         breadth_rows = con.execute("SELECT count(*) AS n FROM market_breadth_daily").fetchone()[0]
         sector_constituent_rows = con.execute("SELECT count(*) AS n FROM sector_constituents").fetchone()[0]
@@ -653,7 +674,9 @@ def validate_clean_snapshot_sql(
     if expected_dates and latest_trade_date != pd.to_datetime(expected_dates[-1]).strftime("%Y%m%d"):
         failures.append(f"latest stock trade_date {latest_trade_date} does not match trade calendar {pd.to_datetime(expected_dates[-1]).strftime('%Y%m%d')}")
     if low_coverage_dates:
-        failures.append("universe coverage below 80% on " + ",".join(low_coverage_dates[:10]))
+        warnings.append("universe trading coverage below 80% on " + ",".join(low_coverage_dates[:10]) + "; this can happen on suspension/no-trade dates")
+    if severe_low_coverage_dates:
+        failures.append("universe coverage below 40% on " + ",".join(severe_low_coverage_dates[:10]))
     if int(breadth_rows) == 0:
         failures.append("market_breadth_daily was not rebuilt")
     if int(sector_constituent_rows) > 0 and int(sector_rows) == 0:
@@ -669,6 +692,7 @@ def validate_clean_snapshot_sql(
         "legacy_source_count": int(legacy_source_count),
         "invalid_source_count": int(invalid_source_count),
         "low_coverage_dates": low_coverage_dates,
+        "severe_low_coverage_dates": severe_low_coverage_dates,
         "latest_trade_date": latest_trade_date,
         "sample_invalid_rows": sample_invalid_rows.to_dict("records"),
         "source_distribution": source_distribution,

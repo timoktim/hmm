@@ -350,6 +350,54 @@ def test_sql_validation_detects_duplicate_keys(tmp_path: Path) -> None:
     assert any("duplicate" in failure for failure in result["failures"])
 
 
+def test_sql_validation_coverage_uses_date_eligible_universe(tmp_path: Path) -> None:
+    storage = _storage(tmp_path)
+    storage.insert_df(
+        "all_a_stock_universe",
+        pd.DataFrame(
+            {
+                "stock_code": ["000001", "000002", "000003"],
+                "stock_name": ["One", "Two", "Future"],
+                "exchange": ["SZ", "SZ", "SZ"],
+                "list_status": ["active", "active", "active"],
+                "is_st": [False, False, False],
+                "list_date": [
+                    pd.Timestamp("2020-01-01").date(),
+                    pd.Timestamp("2020-01-01").date(),
+                    pd.Timestamp("2024-01-03").date(),
+                ],
+                "delist_date": [pd.NaT, pd.NaT, pd.NaT],
+                "source": ["tushare", "tushare", "tushare"],
+                "fetched_at": [pd.Timestamp("2024-01-31")] * 3,
+                "source_priority": [0, 0, 0],
+                "is_provisional": [False, False, False],
+                "validation_status": ["validated", "validated", "validated"],
+                "vendor_update_time": [pd.NaT, pd.NaT, pd.NaT],
+            }
+        ),
+    )
+    storage.insert_df("stock_ohlcv", _stock_rows(["000001", "000002"], ["20240102"]))
+
+    result = sql.validate_clean_snapshot_sql(storage, ["20240102"], ["000001", "000002", "000003"])
+
+    assert result["low_coverage_dates"] == []
+    assert not any("universe coverage below" in failure for failure in result["failures"])
+
+
+def test_sql_validation_low_trading_coverage_is_warning_not_failure(tmp_path: Path) -> None:
+    storage = _storage(tmp_path)
+    codes = [f"{idx:06d}" for idx in range(1, 11)]
+    storage.insert_df("all_a_stock_universe", _universe_rows(codes))
+    storage.insert_df("stock_ohlcv", _stock_rows(codes[:5], ["20240102"]))
+
+    result = sql.validate_clean_snapshot_sql(storage, ["20240102"], codes)
+
+    assert result["low_coverage_dates"] == ["20240102"]
+    assert result["severe_low_coverage_dates"] == []
+    assert any("trading coverage below 80%" in warning for warning in result["warnings"])
+    assert not any("universe coverage below 80%" in failure for failure in result["failures"])
+
+
 def test_market_breadth_sql_matches_pandas_baseline_on_synthetic_data(tmp_path: Path) -> None:
     storage = _storage(tmp_path)
     codes = ["000001", "000002"]
