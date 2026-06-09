@@ -11,11 +11,21 @@ from typing import Any, Callable
 import pandas as pd
 
 from src.config import PROJECT_ROOT, settings
-from src.data_pipeline.market_updater import DEFAULT_MARKET_INDEX_CODES, update_market_breadth, update_market_indices
-from src.data_pipeline.qfq_rebuild import rebuild_sector_feature_cache, update_adj_factor_snapshot
+from src.data_pipeline.clean_snapshot_sql import (
+    append_clean_snapshot_stage_batch,
+    build_reference_factor_table,
+    build_stock_ohlcv_from_staging_sql,
+    clear_clean_snapshot_staging,
+    rebuild_market_breadth_sql,
+    rebuild_sector_features_sql,
+    rebuild_sector_ohlcv_sql,
+    refresh_adj_factor_snapshot_from_staging,
+    stage_selected_stock_codes,
+    validate_clean_snapshot_sql,
+)
+from src.data_pipeline.market_updater import DEFAULT_MARKET_INDEX_CODES, update_market_indices
 from src.data_pipeline.storage import DuckDBStorage
 from src.data_pipeline.updater import update_market_benchmark
-from src.data_pipeline.validators import validate_ohlcv
 from src.data_sources.base import DataResult, MarketDataClient
 from src.data_sources.factory import create_data_client
 from src.data_sources.tushare_client import SOURCE_PRIORITY_PRIMARY, TushareClient
@@ -102,9 +112,6 @@ WP2_REQUIRED_TABLES = (
     "qfq_rebuild_runs",
     "qfq_rebuild_affected_stocks",
 )
-
-LEGACY_SOURCE_MARKERS = ("akshare", "ths", "eastmoney", "mootdx")
-VALID_STOCK_SOURCES = {"tushare_qfq", "tushare_qfq_rebased"}
 
 
 @dataclass
@@ -366,6 +373,18 @@ def _base_summary(config: CleanSnapshotConfig) -> dict[str, object]:
         "failures": [],
         "warnings": [],
         "duration_by_stage": {},
+        "fetch_rows": {},
+        "staging_rows": {},
+        "fetch_duration_seconds": 0.0,
+        "staging_write_duration_seconds": 0.0,
+        "qfq_sql_transform_duration_seconds": 0.0,
+        "stock_write_duration_seconds": 0.0,
+        "validation_sql_duration_seconds": 0.0,
+        "market_breadth_sql_duration_seconds": 0.0,
+        "sector_ohlcv_sql_duration_seconds": 0.0,
+        "sector_features_duration_seconds": 0.0,
+        "rows_per_second": {},
+        "memory_safety_note": "clean snapshot uses bounded per-batch pandas frames, DuckDB raw staging, SQL transforms, and SQL validation; it does not load full stock_ohlcv into pandas.",
         "stages": [],
         "stale_model_artifacts_plan": stale_model_artifacts_plan(),
         "set_active": bool(config.set_active),
@@ -418,8 +437,24 @@ def _write_report(path: Path | str | None, summary: dict[str, object]) -> None:
             lines.append(f"  - warning: {warning}")
         for failure in stage.get("failures", []) or []:
             lines.append(f"  - failure: {failure}")
+    perf_keys = [
+        "fetch_duration_seconds",
+        "staging_write_duration_seconds",
+        "qfq_sql_transform_duration_seconds",
+        "stock_write_duration_seconds",
+        "validation_sql_duration_seconds",
+        "market_breadth_sql_duration_seconds",
+        "sector_ohlcv_sql_duration_seconds",
+        "sector_features_duration_seconds",
+    ]
     lines.extend(
         [
+            "",
+            "## Performance Benchmarks",
+            "",
+            *[f"- {key}: {summary.get(key, 0)}" for key in perf_keys],
+            f"- rows_per_second: {json.dumps(summary.get('rows_per_second', {}), ensure_ascii=False, default=_safe_json_default)}",
+            f"- memory_safety_note: {summary.get('memory_safety_note')}",
             "",
             "## Source Distribution",
             "",
@@ -630,11 +665,12 @@ def fetch_clean_stock_ohlcv_qfq(
     progress_callback: ProgressCallback | None = None,
     job_id: str | None = None,
 ) -> dict[str, object]:
-    daily_frames: list[pd.DataFrame] = []
-    adj_frames: list[pd.DataFrame] = []
-    basic_frames: list[pd.DataFrame] = []
+    snapshot_build_id = job_id or f"clean_snapshot_{int(time.time() * 1000)}"
+    batch_trade_dates = 40
+    daily_batch: list[pd.DataFrame] = []
+    adj_batch: list[pd.DataFrame] = []
+    basic_batch: list[pd.DataFrame] = []
     warnings: list[str] = []
-    code_set = {str(code).zfill(6) for code in selected_stock_codes}
     daily_fn = getattr(client, "_daily_raw_by_trade_date", None)
     adj_fn = getattr(client, "_adj_factor_by_trade_date", None)
     if not callable(daily_fn) or not callable(adj_fn):
@@ -644,6 +680,10 @@ def fetch_clean_stock_ohlcv_qfq(
     stock_total = max(1, len(trade_dates) * (2 + (1 if include_basic else 0)))
     stock_current = 0
     fetch_stage_share = 0.88
+    fetch_rows = {"daily_raw_rows": 0, "adj_factor_rows": 0, "daily_basic_rows": 0}
+    staging_rows = {"daily_raw_rows": 0, "adj_factor_rows": 0, "daily_basic_rows": 0}
+    staging_write_duration = 0.0
+    fetch_started = time.monotonic()
 
     def emit_stock(api_name: str, trade_date_value: str, message: str) -> None:
         fetch_progress = stock_current / stock_total
@@ -677,53 +717,71 @@ def fetch_clean_stock_ohlcv_qfq(
             stock_trade_date=str(trade_dates[-1] if trade_dates else ""),
         )
 
-    for trade_date in trade_dates:
+    def flush_batch(batch_index: int) -> None:
+        nonlocal daily_batch, adj_batch, basic_batch, staging_write_duration
+        if not daily_batch and not adj_batch and not basic_batch:
+            return
+        emit_post_fetch("stage_batch", min(0.89, fetch_stage_share + 0.01), f"写入 clean snapshot staging batch {batch_index}")
+        result = append_clean_snapshot_stage_batch(
+            storage,
+            snapshot_build_id,
+            daily_frames=daily_batch,
+            adj_frames=adj_batch,
+            basic_frames=basic_batch,
+            selected_stock_codes=selected_stock_codes,
+        )
+        staging_write_duration += float(result.get("duration_seconds", 0.0) or 0.0)
+        for key in staging_rows:
+            staging_rows[key] += int(result.get(key, 0) or 0)
+        daily_batch = []
+        adj_batch = []
+        basic_batch = []
+
+    clear_clean_snapshot_staging(storage, snapshot_build_id)
+    stage_selected_stock_codes(storage, snapshot_build_id, selected_stock_codes)
+
+    for idx, trade_date in enumerate(trade_dates, start=1):
         emit_stock("daily", trade_date, f"Tushare daily(trade_date={trade_date})")
-        daily_frames.append(_client_result_data(daily_fn(trade_date, force_refresh=force_refresh)))
+        daily_data = _client_result_data(daily_fn(trade_date, force_refresh=force_refresh))
+        daily_batch.append(daily_data)
+        fetch_rows["daily_raw_rows"] += int(len(daily_data))
         stock_current += 1
         emit_stock("daily", trade_date, f"Tushare daily done: {trade_date}")
 
         emit_stock("adj_factor", trade_date, f"Tushare adj_factor(trade_date={trade_date})")
-        adj_frames.append(_client_result_data(adj_fn(trade_date, force_refresh=force_refresh)))
+        adj_data = _client_result_data(adj_fn(trade_date, force_refresh=force_refresh))
+        adj_batch.append(adj_data)
+        fetch_rows["adj_factor_rows"] += int(len(adj_data))
         stock_current += 1
         emit_stock("adj_factor", trade_date, f"Tushare adj_factor done: {trade_date}")
 
         if include_basic:
             emit_stock("daily_basic", trade_date, f"Tushare daily_basic(trade_date={trade_date})")
             try:
-                basic_frames.append(_client_result_data(basic_fn(trade_date, force_refresh=force_refresh)))
+                basic_data = _client_result_data(basic_fn(trade_date, force_refresh=force_refresh))
+                basic_batch.append(basic_data)
+                fetch_rows["daily_basic_rows"] += int(len(basic_data))
             except Exception as exc:
                 warnings.append(f"{trade_date}: daily_basic unavailable ({type(exc).__name__})")
             stock_current += 1
             emit_stock("daily_basic", trade_date, f"Tushare daily_basic done: {trade_date}")
+        if idx % batch_trade_dates == 0:
+            flush_batch(idx // batch_trade_dates)
 
-    emit_post_fetch("concat_daily", 0.89, "合并 Tushare daily 批量结果")
-    daily = pd.concat(daily_frames, ignore_index=True) if daily_frames else pd.DataFrame()
-    emit_post_fetch("concat_adj_factor", 0.90, "合并 Tushare adj_factor 批量结果")
-    adj = pd.concat(adj_frames, ignore_index=True) if adj_frames else pd.DataFrame()
-    emit_post_fetch("concat_daily_basic", 0.91, "合并 Tushare daily_basic 批量结果")
-    basic = pd.concat(basic_frames, ignore_index=True) if basic_frames else pd.DataFrame()
-    if daily.empty:
+    flush_batch((len(trade_dates) + batch_trade_dates - 1) // batch_trade_dates)
+    if staging_rows["daily_raw_rows"] == 0:
         raise ValueError("Tushare daily returned no rows for clean snapshot")
-    emit_post_fetch("filter_universe", 0.92, "按目标 universe 过滤 daily/adj_factor/daily_basic")
-    if "ts_code" in daily.columns:
-        daily = daily[daily["ts_code"].map(_stock_code_from_ts_code).isin(code_set)].copy()
-    if "ts_code" in adj.columns:
-        adj = adj[adj["ts_code"].map(_stock_code_from_ts_code).isin(code_set)].copy()
-    if not basic.empty and "ts_code" in basic.columns:
-        basic = basic[basic["ts_code"].map(_stock_code_from_ts_code).isin(code_set)].copy()
-    emit_post_fetch("reference_factors", 0.94, "计算每只股票的 QFQ reference factor", rows=len(adj))
-    reference_factors = build_reference_factors(adj, end_date, selected_stock_codes)
-    emit_post_fetch("normalize_qfq", 0.96, "执行 QFQ 归一化与 daily_basic 合并", rows=len(daily))
-    stock_ohlcv = normalize_all_qfq_with_reference(daily, adj, reference_factors, basic)
-    stock_ohlcv = stock_ohlcv[stock_ohlcv["stock_code"].astype(str).str.zfill(6).isin(code_set)].copy()
-    emit_post_fetch("validate_stock_ohlcv", 0.98, "校验 clean stock_ohlcv", rows=len(stock_ohlcv))
-    validate_ohlcv(stock_ohlcv, "clean Tushare stock_ohlcv", entity_key="stock_code")
-    emit_post_fetch("upsert_stock_ohlcv", 0.99, "写入 clean stock_ohlcv", rows=len(stock_ohlcv))
-    stock_write_mode = _insert_or_upsert_df(storage, "stock_ohlcv", stock_ohlcv, ["stock_code", "trade_date"])
-    emit_post_fetch("stock_ohlcv_written", 0.992, f"clean stock_ohlcv 写入完成 ({stock_write_mode})", rows=len(stock_ohlcv))
-    emit_post_fetch("update_adj_snapshot", 0.995, "写入 adj_factor snapshot", rows=len(adj))
-    snapshot_rows = update_adj_factor_snapshot(storage, adj)
+    emit_post_fetch("filter_universe", 0.92, "staging 已按目标 universe 过滤", rows=staging_rows["daily_raw_rows"])
+    emit_post_fetch("reference_factors", 0.94, "SQL 计算每只股票的 QFQ reference factor", rows=staging_rows["adj_factor_rows"])
+    reference_result = build_reference_factor_table(storage, snapshot_build_id, end_date, selected_stock_codes)
+    emit_post_fetch("normalize_qfq", 0.96, "SQL 执行 QFQ 归一化与 daily_basic 合并", rows=staging_rows["daily_raw_rows"])
+    emit_post_fetch("upsert_stock_ohlcv", 0.99, "SQL 写入 clean stock_ohlcv", rows=staging_rows["daily_raw_rows"])
+    stock_result = build_stock_ohlcv_from_staging_sql(storage, snapshot_build_id, replace_existing=True)
+    stock_write_mode = str(stock_result.get("write_mode", "sql"))
+    emit_post_fetch("stock_ohlcv_written", 0.992, f"clean stock_ohlcv 写入完成 ({stock_write_mode})", rows=int(stock_result.get("rows", 0) or 0))
+    emit_post_fetch("update_adj_snapshot", 0.995, "从 staging 写入 adj_factor snapshot", rows=staging_rows["adj_factor_rows"])
+    snapshot_result = refresh_adj_factor_snapshot_from_staging(storage, snapshot_build_id)
+    snapshot_rows = int(snapshot_result.get("rows", 0) or 0)
     _emit_progress(
         progress_callback,
         job_id=job_id,
@@ -731,7 +789,7 @@ def fetch_clean_stock_ohlcv_qfq(
         stage="fetch_stock_ohlcv_qfq",
         stage_progress=1.0,
         message="个股日线批量拉取与 QFQ 写入完成",
-        rows=len(stock_ohlcv),
+        rows=int(stock_result.get("rows", 0) or 0),
         warnings=warnings,
         stock_progress=1.0,
         stock_current=stock_total,
@@ -739,11 +797,25 @@ def fetch_clean_stock_ohlcv_qfq(
         stock_api="write_stock_ohlcv",
         stock_trade_date=str(trade_dates[-1] if trade_dates else ""),
     )
+    fetch_duration = time.monotonic() - fetch_started - staging_write_duration
+    rows_per_second = {
+        "fetch_daily_raw_rows_per_second": round(fetch_rows["daily_raw_rows"] / max(fetch_duration, 0.001), 3),
+        "stage_daily_raw_rows_per_second": round(staging_rows["daily_raw_rows"] / max(staging_write_duration, 0.001), 3),
+        "qfq_sql_rows_per_second": round(int(stock_result.get("rows", 0) or 0) / max(float(stock_result.get("duration_seconds", 0.0) or 0.0), 0.001), 3),
+    }
     return {
-        "stock_ohlcv_rows": int(len(stock_ohlcv)),
+        "stock_ohlcv_rows": int(stock_result.get("rows", 0) or 0),
         "adj_factor_rows": int(snapshot_rows),
-        "daily_basic_rows": int(len(basic)),
-        "reference_factor_count": int(len(reference_factors)),
+        "daily_basic_rows": int(staging_rows["daily_basic_rows"]),
+        "reference_factor_count": int(reference_result.get("rows", 0) or 0),
+        "fetch_rows": {key: int(value) for key, value in fetch_rows.items()},
+        "staging_rows": {key: int(value) for key, value in staging_rows.items()},
+        "fetch_duration_seconds": round(max(fetch_duration, 0.0), 3),
+        "staging_write_duration_seconds": round(staging_write_duration, 3),
+        "qfq_sql_transform_duration_seconds": float(stock_result.get("qfq_sql_transform_duration_seconds", stock_result.get("duration_seconds", 0.0)) or 0.0),
+        "stock_write_duration_seconds": float(stock_result.get("stock_write_duration_seconds", 0.0) or 0.0),
+        "adj_snapshot_write_duration_seconds": float(snapshot_result.get("duration_seconds", 0.0) or 0.0),
+        "rows_per_second": rows_per_second,
         "warnings": warnings,
     }
 
@@ -789,33 +861,8 @@ def fetch_sector_constituents(client: MarketDataClient, storage: DuckDBStorage, 
 
 
 def rebuild_sector_ohlcv_local_aggregate(storage: DuckDBStorage, start: str, end: str) -> dict[str, object]:
-    meta = storage.read_df(
-        """
-        SELECT sector_id, sector_type, sector_name
-        FROM sector_meta
-        WHERE sector_type = 'industry'
-          AND COALESCE(is_active, TRUE)
-        ORDER BY sector_id
-        """
-    )
-    if meta.empty:
-        return {"rows": 0, "sector_count": 0, "warnings": ["no industry sectors available"]}
-    local_client = TushareClient(storage=storage)
-    rows = 0
-    rebuilt = 0
-    failures: list[str] = []
-    for row in meta.itertuples(index=False):
-        sector_name = str(row.sector_name)
-        try:
-            result = local_client._local_sector_basket_hist("industry", sector_name, start, end)
-            validate_ohlcv(result.data, f"clean snapshot sector {sector_name}", entity_key="sector_id")
-            storage.upsert_df("sector_ohlcv", result.data, ["sector_id", "trade_date"])
-            rows += len(result.data)
-            rebuilt += 1
-        except Exception as exc:
-            failures.append(f"{sector_name}: {type(exc).__name__}: {exc}")
-    status = "pass" if not failures else ("partial" if rows else "failed")
-    return {"rows": int(rows), "sector_count": int(rebuilt), "status": status, "failures": failures}
+    """Compatibility wrapper for the old clean snapshot sector rebuild entry point."""
+    return rebuild_sector_ohlcv_sql(storage, start, end)
 
 
 def rebuild_market_indices_and_benchmarks(client: MarketDataClient, storage: DuckDBStorage, start: str, end: str) -> dict[str, object]:
@@ -831,87 +878,7 @@ def rebuild_market_indices_and_benchmarks(client: MarketDataClient, storage: Duc
 
 
 def validate_clean_snapshot(storage: DuckDBStorage, trade_dates: list[str], selected_stock_codes: list[str]) -> dict[str, object]:
-    failures: list[str] = []
-    warnings: list[str] = []
-    duplicates = storage.read_df(
-        """
-        SELECT count(*) AS n
-        FROM (
-          SELECT stock_code, trade_date, count(*) AS row_count
-          FROM stock_ohlcv
-          GROUP BY stock_code, trade_date
-          HAVING count(*) > 1
-        )
-        """
-    )
-    duplicate_count = int(duplicates.loc[0, "n"]) if not duplicates.empty else 0
-    if duplicate_count:
-        failures.append("stock_ohlcv has duplicate stock_code + trade_date rows")
-    stock = storage.read_df(
-        """
-        SELECT *
-        FROM stock_ohlcv
-        ORDER BY stock_code, trade_date
-        """
-    )
-    if stock.empty:
-        failures.append("stock_ohlcv is empty")
-    else:
-        try:
-            validate_ohlcv(stock, "clean snapshot stock_ohlcv", entity_key="stock_code")
-        except Exception as exc:
-            failures.append(str(exc))
-        null_validation = int(stock["validation_status"].isna().sum()) if "validation_status" in stock.columns else len(stock)
-        if null_validation:
-            failures.append("stock_ohlcv validation_status contains nulls")
-        sources = set(stock.get("source", pd.Series(dtype=str)).dropna().astype(str).str.lower().tolist())
-        legacy_sources = sorted(source for source in sources if any(marker in source for marker in LEGACY_SOURCE_MARKERS))
-        invalid_sources = sorted(source for source in sources if source not in VALID_STOCK_SOURCES)
-        if legacy_sources:
-            failures.append("stock_ohlcv contains legacy source rows: " + ",".join(legacy_sources))
-        if invalid_sources:
-            failures.append("stock_ohlcv contains non-clean Tushare source rows: " + ",".join(invalid_sources))
-    if trade_dates:
-        latest_expected = pd.to_datetime(trade_dates[-1]).date()
-        latest_df = storage.read_df("SELECT max(trade_date) AS latest_trade_date FROM stock_ohlcv")
-        latest_actual = None if latest_df.empty or pd.isna(latest_df.loc[0, "latest_trade_date"]) else pd.to_datetime(latest_df.loc[0, "latest_trade_date"]).date()
-        if latest_actual != latest_expected:
-            failures.append(f"latest stock trade_date {latest_actual} does not match trade calendar {latest_expected}")
-    if selected_stock_codes and trade_dates:
-        counts = storage.read_df(
-            """
-            SELECT trade_date, count(DISTINCT stock_code) AS n
-            FROM stock_ohlcv
-            GROUP BY trade_date
-            ORDER BY trade_date
-            """
-        )
-        expected = len({str(code).zfill(6) for code in selected_stock_codes})
-        low = counts[pd.to_numeric(counts["n"], errors="coerce") < max(1, int(expected * 0.8))]
-        if not low.empty:
-            failures.append("universe coverage below 80% on " + ",".join(pd.to_datetime(low["trade_date"]).dt.strftime("%Y%m%d").tolist()[:10]))
-    breadth_rows = _table_row_count(storage, "market_breadth_daily")
-    if breadth_rows == 0:
-        failures.append("market_breadth_daily was not rebuilt")
-    sector_constituent_rows = _table_row_count(storage, "sector_constituents")
-    sector_rows = _table_row_count(storage, "sector_ohlcv")
-    if sector_constituent_rows > 0 and sector_rows == 0:
-        failures.append("sector_ohlcv was not rebuilt from target stock_ohlcv")
-    feature_rows = _table_row_count(storage, "sector_features")
-    if sector_rows > 0 and feature_rows == 0:
-        failures.append("sector_features was not rebuilt after sector_ohlcv")
-    source_distribution = {}
-    if _table_exists(storage, "stock_ohlcv"):
-        source_df = storage.read_df("SELECT source, count(*) AS rows FROM stock_ohlcv GROUP BY source ORDER BY source")
-        source_distribution = dict(zip(source_df["source"].fillna("null").astype(str), source_df["rows"].astype(int), strict=False)) if not source_df.empty else {}
-    status = "pass" if not failures else "failed"
-    return {
-        "validation_status": status,
-        "duplicate_stock_trade_date_count": duplicate_count,
-        "source_distribution": source_distribution,
-        "failures": failures,
-        "warnings": warnings,
-    }
+    return validate_clean_snapshot_sql(storage, trade_dates, selected_stock_codes)
 
 
 def write_snapshot_manifest(storage: DuckDBStorage, summary: dict[str, object]) -> None:
@@ -1036,6 +1003,7 @@ def run_clean_tushare_snapshot(
                 )
             )
             summary.update(validation)
+            summary["validation_sql_duration_seconds"] = float(validation.get("duration_seconds", 0.0) or 0.0)
             summary["status"] = "PASS" if validation["validation_status"] == "pass" else "FAILED"
             if set_active:
                 if validation["validation_status"] != "pass":
@@ -1133,6 +1101,13 @@ def run_clean_tushare_snapshot(
         summary["adj_factor_rows"] = int(stock_result["adj_factor_rows"])
         summary["daily_basic_rows"] = int(stock_result["daily_basic_rows"])
         summary["reference_factor_count"] = int(stock_result["reference_factor_count"])
+        summary["fetch_rows"] = stock_result.get("fetch_rows", {})
+        summary["staging_rows"] = stock_result.get("staging_rows", {})
+        summary["fetch_duration_seconds"] = stock_result.get("fetch_duration_seconds", 0.0)
+        summary["staging_write_duration_seconds"] = stock_result.get("staging_write_duration_seconds", 0.0)
+        summary["qfq_sql_transform_duration_seconds"] = stock_result.get("qfq_sql_transform_duration_seconds", 0.0)
+        summary["stock_write_duration_seconds"] = stock_result.get("stock_write_duration_seconds", 0.0)
+        summary["rows_per_second"] = stock_result.get("rows_per_second", {})
 
         started = time.monotonic()
         index_result = rebuild_market_indices_and_benchmarks(client, target_storage, config.start, effective_end)
@@ -1159,7 +1134,7 @@ def run_clean_tushare_snapshot(
         summary["sector_count"] = int(sector_result.get("sector_count", 0) or 0)
 
         started = time.monotonic()
-        sector_ohlcv_result = rebuild_sector_ohlcv_local_aggregate(target_storage, config.start, effective_end)
+        sector_ohlcv_result = rebuild_sector_ohlcv_sql(target_storage, config.start, effective_end)
         sector_ohlcv_status = str(sector_ohlcv_result.get("status", "pass"))
         sector_ohlcv_failures = list(sector_ohlcv_result.get("failures", []))
         emit_record(
@@ -1174,24 +1149,28 @@ def run_clean_tushare_snapshot(
             )
         )
         summary["sector_ohlcv_rows"] = int(sector_ohlcv_result.get("rows", 0) or 0)
+        summary["sector_ohlcv_sql_duration_seconds"] = float(sector_ohlcv_result.get("duration_seconds", 0.0) or 0.0)
         if int(sector_ohlcv_result.get("sector_count", 0) or 0):
             summary["sector_count"] = int(sector_ohlcv_result.get("sector_count", 0) or 0)
 
         started = time.monotonic()
-        breadth_summary = update_market_breadth(config.start, effective_end, incremental=False, mode="full_market", storage=target_storage)
-        emit_record(_record_stage(stages, "rebuild_market_breadth", "pass" if not breadth_summary.failures else "failed", start_time=started, rows=int(breadth_summary.rows), failures=list(breadth_summary.failures)))
-        summary["market_breadth_rows"] = int(breadth_summary.rows)
+        breadth_summary = rebuild_market_breadth_sql(target_storage, config.start, effective_end, mode="full_market")
+        breadth_failures = list(breadth_summary.get("failures", []))
+        emit_record(_record_stage(stages, "rebuild_market_breadth", "pass" if not breadth_failures else "failed", start_time=started, rows=int(breadth_summary.get("rows", 0) or 0), failures=breadth_failures))
+        summary["market_breadth_rows"] = int(breadth_summary.get("rows", 0) or 0)
+        summary["market_breadth_sql_duration_seconds"] = float(breadth_summary.get("duration_seconds", 0.0) or 0.0)
 
         started = time.monotonic()
-        sectors = target_storage.read_df("SELECT DISTINCT sector_id FROM sector_ohlcv ORDER BY sector_id")
-        sector_ids = sectors["sector_id"].astype(str).tolist() if not sectors.empty else []
-        feature_rows = rebuild_sector_feature_cache(target_storage, sector_ids, config.start, effective_end)
-        emit_record(_record_stage(stages, "rebuild_sector_features", "pass", start_time=started, rows=int(feature_rows)))
+        feature_result = rebuild_sector_features_sql(target_storage, config.start, effective_end)
+        feature_rows = int(feature_result.get("rows", 0) or 0)
+        emit_record(_record_stage(stages, "rebuild_sector_features", "pass", start_time=started, rows=feature_rows))
         summary["sector_feature_rows"] = int(feature_rows)
+        summary["sector_features_duration_seconds"] = float(feature_result.get("duration_seconds", 0.0) or 0.0)
 
         started = time.monotonic()
         validation = validate_clean_snapshot(target_storage, trade_dates, selected_codes)
         emit_record(_record_stage(stages, "validate_clean_snapshot", validation["validation_status"], start_time=started, failures=list(validation.get("failures", [])), warnings=list(validation.get("warnings", []))))
+        summary["validation_sql_duration_seconds"] = float(validation.get("duration_seconds", 0.0) or 0.0)
         summary.update(validation)
 
         summary["stale_model_artifacts_plan"] = stale_model_artifacts_plan()
