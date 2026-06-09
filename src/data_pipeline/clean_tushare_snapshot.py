@@ -360,7 +360,10 @@ def _base_summary(config: CleanSnapshotConfig) -> dict[str, object]:
         "source_db": _display_path(config.source_db),
         "start_date": config.start,
         "end_date": config.end,
+        "requested_trade_day_count": 0,
         "trade_day_count": 0,
+        "skipped_trade_date_count": 0,
+        "skipped_trade_dates": [],
         "stock_count": 0,
         "stock_ohlcv_rows": 0,
         "adj_factor_rows": 0,
@@ -419,7 +422,9 @@ def _write_report(path: Path | str | None, summary: dict[str, object]) -> None:
         f"- source_db: {summary.get('source_db')}",
         f"- start_date: {summary.get('start_date')}",
         f"- end_date: {summary.get('end_date')}",
+        f"- requested_trade_day_count: {summary.get('requested_trade_day_count')}",
         f"- trade_day_count: {summary.get('trade_day_count')}",
+        f"- skipped_trade_date_count: {summary.get('skipped_trade_date_count')}",
         f"- stock_count: {summary.get('stock_count')}",
         f"- stock_ohlcv_rows: {summary.get('stock_ohlcv_rows')}",
         f"- adj_factor_rows: {summary.get('adj_factor_rows')}",
@@ -664,6 +669,30 @@ def _client_result_data(result: DataResult | pd.DataFrame) -> pd.DataFrame:
     return result.data
 
 
+def _is_unpublished_current_tail_error(exc: Exception, api_name: str, trade_date: str, trade_dates: list[str]) -> bool:
+    if not trade_dates:
+        return False
+    date = normalize_yyyymmdd(trade_date)
+    if date != normalize_yyyymmdd(trade_dates[-1]) or date != today_yyyymmdd():
+        return False
+    text = f"{type(exc).__name__}: {exc}"
+    lowered = text.lower()
+    api_markers = {
+        "daily": ("tushare_daily_by_trade_date", "daily"),
+        "adj_factor": ("tushare_adj_factor_by_trade_date", "adj_factor"),
+    }.get(api_name, (api_name,))
+    if not any(marker in lowered for marker in api_markers):
+        return False
+    return any(marker in lowered for marker in ("valueerror", "返回空数据", "empty", "no data"))
+
+
+def _is_unpublished_current_tail_empty(df: pd.DataFrame, trade_date: str, trade_dates: list[str]) -> bool:
+    if not trade_dates:
+        return False
+    date = normalize_yyyymmdd(trade_date)
+    return bool(df.empty and date == normalize_yyyymmdd(trade_dates[-1]) and date == today_yyyymmdd())
+
+
 def fetch_clean_stock_ohlcv_qfq(
     client: MarketDataClient,
     storage: DuckDBStorage,
@@ -693,6 +722,8 @@ def fetch_clean_stock_ohlcv_qfq(
     fetch_rows = {"daily_raw_rows": 0, "adj_factor_rows": 0, "daily_basic_rows": 0}
     staging_rows = {"daily_raw_rows": 0, "adj_factor_rows": 0, "daily_basic_rows": 0}
     staging_write_duration = 0.0
+    effective_trade_dates: list[str] = []
+    skipped_trade_dates: list[str] = []
     fetch_started = time.monotonic()
 
     def emit_stock(api_name: str, trade_date_value: str, message: str) -> None:
@@ -750,40 +781,79 @@ def fetch_clean_stock_ohlcv_qfq(
     clear_clean_snapshot_staging(storage, snapshot_build_id)
     stage_selected_stock_codes(storage, snapshot_build_id, selected_stock_codes)
 
+    def skip_tail_trade_date(trade_date_value: str, api_name: str, attempted_slots: int, reason: str) -> None:
+        nonlocal stock_current
+        skipped_trade_dates.append(trade_date_value)
+        warning = f"{trade_date_value}: skipped current trade date because Tushare {api_name} is not published yet ({reason})"
+        warnings.append(warning)
+        remaining_slots = (2 + (1 if include_basic else 0)) - attempted_slots
+        stock_current = min(stock_total, stock_current + max(0, remaining_slots))
+        emit_stock(api_name, trade_date_value, warning)
+
     for idx, trade_date in enumerate(trade_dates, start=1):
         emit_stock("daily", trade_date, f"Tushare daily(trade_date={trade_date})")
-        daily_data = _client_result_data(daily_fn(trade_date, force_refresh=force_refresh))
-        daily_batch.append(daily_data)
+        try:
+            daily_data = _client_result_data(daily_fn(trade_date, force_refresh=force_refresh))
+        except Exception as exc:
+            stock_current += 1
+            if _is_unpublished_current_tail_error(exc, "daily", trade_date, trade_dates):
+                skip_tail_trade_date(trade_date, "daily", 1, type(exc).__name__)
+                continue
+            raise
+        if _is_unpublished_current_tail_empty(daily_data, trade_date, trade_dates):
+            stock_current += 1
+            skip_tail_trade_date(trade_date, "daily", 1, "empty result")
+            continue
+        if daily_data.empty:
+            raise ValueError(f"Tushare daily returned no rows for historical trade_date={trade_date}")
         fetch_rows["daily_raw_rows"] += int(len(daily_data))
         stock_current += 1
         emit_stock("daily", trade_date, f"Tushare daily done: {trade_date}")
 
         emit_stock("adj_factor", trade_date, f"Tushare adj_factor(trade_date={trade_date})")
-        adj_data = _client_result_data(adj_fn(trade_date, force_refresh=force_refresh))
-        adj_batch.append(adj_data)
+        try:
+            adj_data = _client_result_data(adj_fn(trade_date, force_refresh=force_refresh))
+        except Exception as exc:
+            stock_current += 1
+            if _is_unpublished_current_tail_error(exc, "adj_factor", trade_date, trade_dates):
+                skip_tail_trade_date(trade_date, "adj_factor", 2, type(exc).__name__)
+                continue
+            raise
+        if _is_unpublished_current_tail_empty(adj_data, trade_date, trade_dates):
+            stock_current += 1
+            skip_tail_trade_date(trade_date, "adj_factor", 2, "empty result")
+            continue
+        if adj_data.empty:
+            raise ValueError(f"Tushare adj_factor returned no rows for historical trade_date={trade_date}")
         fetch_rows["adj_factor_rows"] += int(len(adj_data))
         stock_current += 1
         emit_stock("adj_factor", trade_date, f"Tushare adj_factor done: {trade_date}")
 
+        basic_data: pd.DataFrame | None = None
         if include_basic:
             emit_stock("daily_basic", trade_date, f"Tushare daily_basic(trade_date={trade_date})")
             try:
                 basic_data = _client_result_data(basic_fn(trade_date, force_refresh=force_refresh))
-                basic_batch.append(basic_data)
                 fetch_rows["daily_basic_rows"] += int(len(basic_data))
             except Exception as exc:
                 warnings.append(f"{trade_date}: daily_basic unavailable ({type(exc).__name__})")
             stock_current += 1
             emit_stock("daily_basic", trade_date, f"Tushare daily_basic done: {trade_date}")
+        daily_batch.append(daily_data)
+        adj_batch.append(adj_data)
+        if basic_data is not None:
+            basic_batch.append(basic_data)
+        effective_trade_dates.append(trade_date)
         if idx % batch_trade_dates == 0:
             flush_batch(idx // batch_trade_dates)
 
     flush_batch((len(trade_dates) + batch_trade_dates - 1) // batch_trade_dates)
     if staging_rows["daily_raw_rows"] == 0:
         raise ValueError("Tushare daily returned no rows for clean snapshot")
+    effective_end_date = effective_trade_dates[-1]
     emit_post_fetch("filter_universe", 0.92, "staging 已按目标 universe 过滤", rows=staging_rows["daily_raw_rows"])
     emit_post_fetch("reference_factors", 0.94, "SQL 计算每只股票的 QFQ reference factor", rows=staging_rows["adj_factor_rows"])
-    reference_result = build_reference_factor_table(storage, snapshot_build_id, end_date, selected_stock_codes)
+    reference_result = build_reference_factor_table(storage, snapshot_build_id, effective_end_date, selected_stock_codes)
     emit_post_fetch("normalize_qfq", 0.96, "SQL 执行 QFQ 归一化与 daily_basic 合并", rows=staging_rows["daily_raw_rows"])
     emit_post_fetch("upsert_stock_ohlcv", 0.99, "SQL 写入 clean stock_ohlcv", rows=staging_rows["daily_raw_rows"])
     stock_result = build_stock_ohlcv_from_staging_sql(storage, snapshot_build_id, replace_existing=True)
@@ -805,7 +875,7 @@ def fetch_clean_stock_ohlcv_qfq(
         stock_current=stock_total,
         stock_total=stock_total,
         stock_api="write_stock_ohlcv",
-        stock_trade_date=str(trade_dates[-1] if trade_dates else ""),
+        stock_trade_date=str(effective_end_date),
     )
     fetch_duration = time.monotonic() - fetch_started - staging_write_duration
     rows_per_second = {
@@ -819,6 +889,10 @@ def fetch_clean_stock_ohlcv_qfq(
         "daily_basic_rows": int(staging_rows["daily_basic_rows"]),
         "reference_factor_count": int(reference_result.get("rows", 0) or 0),
         "snapshot_build_id": snapshot_build_id,
+        "effective_trade_dates": effective_trade_dates,
+        "effective_end_date": effective_end_date,
+        "skipped_trade_dates": skipped_trade_dates,
+        "skipped_trade_date_count": int(len(skipped_trade_dates)),
         "fetch_rows": {key: int(value) for key, value in fetch_rows.items()},
         "staging_rows": {key: int(value) for key, value in staging_rows.items()},
         "fetch_duration_seconds": round(max(fetch_duration, 0.0), 3),
@@ -1076,6 +1150,7 @@ def run_clean_tushare_snapshot(
         if not trade_dates:
             raise ValueError("Tushare trade_cal returned no open trade dates")
         emit_record(_record_stage(stages, "fetch_trade_calendar", "pass", start_time=started, rows=len(trade_dates)))
+        summary["requested_trade_day_count"] = int(len(trade_dates))
         summary["trade_day_count"] = int(len(trade_dates))
         effective_end = trade_dates[-1]
         summary["end_date"] = effective_end
@@ -1115,6 +1190,24 @@ def run_clean_tushare_snapshot(
         summary["adj_factor_rows"] = int(stock_result["adj_factor_rows"])
         summary["daily_basic_rows"] = int(stock_result["daily_basic_rows"])
         summary["reference_factor_count"] = int(stock_result["reference_factor_count"])
+        effective_trade_dates = [str(date) for date in stock_result.get("effective_trade_dates", trade_dates)]
+        if not effective_trade_dates:
+            raise ValueError("clean snapshot has no effective trade dates after stock fetch")
+        skipped_trade_dates = [str(date) for date in stock_result.get("skipped_trade_dates", [])]
+        if effective_trade_dates != trade_dates:
+            trade_dates = effective_trade_dates
+            effective_end = trade_dates[-1]
+            summary["trade_day_count"] = int(len(trade_dates))
+            summary["end_date"] = effective_end
+            _write_metadata(
+                target_storage,
+                {
+                    "snapshot_effective_end_date": effective_end,
+                    "snapshot_skipped_trade_dates": ",".join(skipped_trade_dates),
+                },
+            )
+        summary["skipped_trade_dates"] = skipped_trade_dates
+        summary["skipped_trade_date_count"] = int(stock_result.get("skipped_trade_date_count", len(skipped_trade_dates)) or 0)
         summary["fetch_rows"] = stock_result.get("fetch_rows", {})
         summary["staging_rows"] = stock_result.get("staging_rows", {})
         summary["fetch_duration_seconds"] = stock_result.get("fetch_duration_seconds", 0.0)
