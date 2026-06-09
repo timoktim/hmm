@@ -11,6 +11,9 @@ MAX_DURATION="${HSMM_PROFILE_MAX_DURATION:-${HSMM_MAX_DURATION:-40}}"
 N_ITER="${HSMM_PROFILE_N_ITER:-${HSMM_N_ITER:-10}}"
 PYTHON_BIN="${PYTHON_BIN:-python}"
 
+echo "HSMM_PROFILE_REQUESTED_ENGINE=$HSMM_ENGINE_VALUE"
+echo "HSMM_PROFILE_ENGINE_NOTE=auto may fall back to python; fallback means no numba DP speedup"
+
 if [[ ! -f "$DB_PATH" ]]; then
   echo "HSMM_PROFILE_STATUS=skipped reason=missing_db db_path=$DB_PATH"
   exit 0

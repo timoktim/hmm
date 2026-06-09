@@ -1,6 +1,31 @@
 from __future__ import annotations
 
+from dataclasses import asdict, dataclass
+from typing import Callable
+
 import numpy as np
+
+
+@dataclass(frozen=True)
+class HSMMEngineDiagnostic:
+    requested_engine: str
+    resolved_engine: str
+    fallback_reason: str | None = None
+    numba_available: bool = False
+    compile_warmed: bool = False
+
+
+_NUMBA_KERNEL: Callable | None = None
+_NUMBA_LOAD_ATTEMPTED = False
+_NUMBA_LOAD_ERROR: str | None = None
+_NUMBA_COMPILE_WARMED = False
+_LAST_ENGINE_DIAGNOSTIC = HSMMEngineDiagnostic(
+    requested_engine="python",
+    resolved_engine="python",
+    fallback_reason=None,
+    numba_available=False,
+    compile_warmed=False,
+)
 
 
 def hsmm_viterbi_dp_python(
@@ -60,11 +85,9 @@ def hsmm_viterbi_dp_python(
     return dp, back_state, back_duration, score_by_t
 
 
-try:  # pragma: no cover - exercised only when optional numba is installed.
-    from numba import njit
-
-    @njit(cache=True)
-    def hsmm_viterbi_dp_numba(
+def _build_numba_kernel(njit: Callable) -> Callable:
+    @njit
+    def _hsmm_viterbi_dp_numba(
         emission: np.ndarray,
         log_start: np.ndarray,
         log_trans: np.ndarray,
@@ -126,19 +149,71 @@ try:  # pragma: no cover - exercised only when optional numba is installed.
             score_by_t[t] = best
         return dp, back_state, back_duration, score_by_t
 
-except Exception:  # pragma: no cover - normal path when numba is absent.
-    hsmm_viterbi_dp_numba = None
+    return _hsmm_viterbi_dp_numba
+
+
+def _set_engine_diagnostic(
+    requested_engine: str,
+    resolved_engine: str,
+    fallback_reason: str | None = None,
+) -> None:
+    global _LAST_ENGINE_DIAGNOSTIC
+    _LAST_ENGINE_DIAGNOSTIC = HSMMEngineDiagnostic(
+        requested_engine=requested_engine,
+        resolved_engine=resolved_engine,
+        fallback_reason=fallback_reason,
+        numba_available=_NUMBA_KERNEL is not None,
+        compile_warmed=_NUMBA_COMPILE_WARMED,
+    )
+
+
+def last_hsmm_engine_diagnostic() -> dict[str, object]:
+    return asdict(_LAST_ENGINE_DIAGNOSTIC)
+
+
+def _load_numba_kernel() -> Callable:
+    global _NUMBA_KERNEL, _NUMBA_LOAD_ATTEMPTED, _NUMBA_LOAD_ERROR
+    if _NUMBA_KERNEL is not None:
+        return _NUMBA_KERNEL
+    if _NUMBA_LOAD_ATTEMPTED:
+        raise RuntimeError(_NUMBA_LOAD_ERROR or "numba HSMM kernel is unavailable")
+    _NUMBA_LOAD_ATTEMPTED = True
+    try:
+        from numba import njit
+
+        _NUMBA_KERNEL = _build_numba_kernel(njit)
+        _NUMBA_LOAD_ERROR = None
+        return _NUMBA_KERNEL
+    except Exception as exc:  # pragma: no cover - normal path when numba is absent.
+        _NUMBA_LOAD_ERROR = f"{type(exc).__name__}: {exc}"
+        _NUMBA_KERNEL = None
+        raise RuntimeError(f"numba HSMM kernel is unavailable: {_NUMBA_LOAD_ERROR}") from exc
+
+
+def _mark_numba_runtime_failure(exc: Exception) -> str:
+    global _NUMBA_KERNEL, _NUMBA_LOAD_ERROR
+    _NUMBA_KERNEL = None
+    _NUMBA_LOAD_ERROR = f"{type(exc).__name__}: {exc}"
+    return f"numba HSMM kernel failed: {_NUMBA_LOAD_ERROR}"
 
 
 def resolve_hsmm_engine(engine: str) -> str:
     engine = str(engine or "python").lower()
-    if engine == "auto":
-        return "numba" if hsmm_viterbi_dp_numba is not None else "python"
-    if engine == "numba" and hsmm_viterbi_dp_numba is None:
-        raise RuntimeError("hsmm_engine='numba' was requested, but numba is not installed.")
-    if engine not in {"python", "numba"}:
+    if engine == "python":
+        _set_engine_diagnostic(engine, "python")
+        return "python"
+    if engine not in {"auto", "numba"}:
         raise ValueError("hsmm_engine must be one of: python, auto, numba")
-    return engine
+    try:
+        _load_numba_kernel()
+    except RuntimeError as exc:
+        if engine == "numba":
+            _set_engine_diagnostic(engine, "unavailable", str(exc))
+            raise RuntimeError(f"hsmm_engine='numba' was requested, but {exc}") from exc
+        _set_engine_diagnostic(engine, "python", str(exc))
+        return "python"
+    _set_engine_diagnostic(engine, "numba")
+    return "numba"
 
 
 def hsmm_viterbi_dp(
@@ -148,8 +223,41 @@ def hsmm_viterbi_dp(
     log_duration: np.ndarray,
     engine: str = "python",
 ) -> tuple[np.ndarray, np.ndarray, np.ndarray, np.ndarray]:
+    global _NUMBA_COMPILE_WARMED
+    requested = str(engine or "python").lower()
     resolved = resolve_hsmm_engine(engine)
     if resolved == "numba":
-        return hsmm_viterbi_dp_numba(emission, log_start, log_trans, log_duration)
+        try:
+            kernel = _load_numba_kernel()
+            out = kernel(
+                np.asarray(emission, dtype=np.float64),
+                np.asarray(log_start, dtype=np.float64),
+                np.asarray(log_trans, dtype=np.float64),
+                np.asarray(log_duration, dtype=np.float64),
+            )
+            _NUMBA_COMPILE_WARMED = True
+            _set_engine_diagnostic(requested, "numba")
+            return out
+        except Exception as exc:
+            fallback_reason = _mark_numba_runtime_failure(exc)
+            if requested == "numba":
+                _set_engine_diagnostic(requested, "failed", fallback_reason)
+                raise RuntimeError(f"hsmm_engine='numba' was requested, but {fallback_reason}") from exc
+            _set_engine_diagnostic(requested, "python", fallback_reason)
     return hsmm_viterbi_dp_python(emission, log_start, log_trans, log_duration)
 
+
+def warm_hsmm_numba_engine(n_states: int = 2, max_duration: int = 3, length: int = 5) -> dict[str, object]:
+    n_states = max(2, int(n_states))
+    max_duration = max(2, int(max_duration))
+    length = max(1, int(length))
+    emission = np.zeros((length, n_states), dtype=float)
+    log_start = np.log(np.full(n_states, 1.0 / n_states, dtype=float))
+    trans = np.full((n_states, n_states), 1.0 / max(n_states - 1, 1), dtype=float)
+    np.fill_diagonal(trans, 0.0)
+    log_trans = np.full_like(trans, -np.inf, dtype=float)
+    positive = trans > 0
+    log_trans[positive] = np.log(trans[positive])
+    log_duration = np.log(np.full((n_states, max_duration), 1.0 / max_duration, dtype=float))
+    hsmm_viterbi_dp(emission, log_start, log_trans, log_duration, engine="numba")
+    return last_hsmm_engine_diagnostic()
