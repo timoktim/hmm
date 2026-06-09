@@ -158,7 +158,11 @@ def update_adj_factor_snapshot(storage: DuckDBStorage, adj_df: pd.DataFrame) -> 
     snapshot = _normalize_adj_factor_frame(adj_df)
     if snapshot.empty:
         return 0
-    storage.upsert_df("tushare_adj_factor_snapshot", snapshot, ["stock_code", "trade_date"])
+    existing = storage.read_df("SELECT count(*) AS n FROM tushare_adj_factor_snapshot")
+    if int(existing.loc[0, "n"]) == 0:
+        storage.insert_df("tushare_adj_factor_snapshot", snapshot)
+    else:
+        storage.upsert_df("tushare_adj_factor_snapshot", snapshot, ["stock_code", "trade_date"])
     return len(snapshot)
 
 

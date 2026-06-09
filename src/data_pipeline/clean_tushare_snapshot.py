@@ -6,7 +6,7 @@ import os
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any
+from typing import Any, Callable
 
 import pandas as pd
 
@@ -43,6 +43,24 @@ STAGE_NAMES = [
     "write_snapshot_manifest",
     "stale_model_artifacts_plan",
 ]
+
+STAGE_PROGRESS_WEIGHTS: dict[str, float] = {
+    "preflight": 0.02,
+    "create_target_db": 0.03,
+    "copy_user_assets": 0.03,
+    "fetch_trade_calendar": 0.04,
+    "fetch_all_a_stock_universe": 0.05,
+    "fetch_stock_ohlcv_qfq": 0.58,
+    "fetch_index_and_benchmark_ohlcv": 0.04,
+    "fetch_sector_constituents": 0.05,
+    "rebuild_sector_ohlcv_local_aggregate": 0.06,
+    "rebuild_market_breadth": 0.04,
+    "rebuild_sector_features": 0.03,
+    "validate_clean_snapshot": 0.02,
+    "write_snapshot_manifest": 0.005,
+    "stale_model_artifacts_plan": 0.005,
+}
+ProgressCallback = Callable[[dict[str, object]], None]
 
 USER_ASSET_TABLE_KEYS: dict[str, list[str]] = {
     "user_universe": ["universe_id"],
@@ -151,6 +169,93 @@ def _safe_json_default(value: object) -> str:
     return str(value)
 
 
+def _progress_bounds(stage_name: str) -> tuple[float, float]:
+    start = 0.0
+    for name in STAGE_NAMES:
+        weight = float(STAGE_PROGRESS_WEIGHTS.get(name, 0.0))
+        if name == stage_name:
+            return start, weight
+        start += weight
+    return 0.0, 0.0
+
+
+def _stage_progress_value(stage_name: str, stage_progress: float = 1.0) -> float:
+    start, weight = _progress_bounds(stage_name)
+    bounded = min(1.0, max(0.0, float(stage_progress)))
+    return min(1.0, max(0.0, start + weight * bounded))
+
+
+def _emit_progress(
+    callback: ProgressCallback | None,
+    *,
+    job_id: str | None = None,
+    status: str = "running",
+    stage: str,
+    stage_progress: float = 1.0,
+    message: str = "",
+    rows: int | None = None,
+    failures: list[str] | None = None,
+    warnings: list[str] | None = None,
+    stock_progress: float | None = None,
+    stock_current: int | None = None,
+    stock_total: int | None = None,
+    stock_api: str | None = None,
+    stock_trade_date: str | None = None,
+) -> None:
+    if callback is None:
+        return
+    stage_index = STAGE_NAMES.index(stage) + 1 if stage in STAGE_NAMES else 0
+    payload: dict[str, object] = {
+        "snapshot_profile": SNAPSHOT_PROFILE,
+        "job_id": job_id or "",
+        "status": status,
+        "stage": stage,
+        "stage_index": stage_index,
+        "stage_total": len(STAGE_NAMES),
+        "stage_progress": min(1.0, max(0.0, float(stage_progress))),
+        "overall_progress": _stage_progress_value(stage, stage_progress),
+        "message": message,
+        "updated_at": pd.Timestamp.now().isoformat(),
+    }
+    if rows is not None:
+        payload["rows"] = int(rows)
+    if failures:
+        payload["failures"] = list(failures)
+    if warnings:
+        payload["warnings"] = list(warnings)
+    if stock_progress is not None:
+        payload["stock_progress"] = min(1.0, max(0.0, float(stock_progress)))
+        payload["stock_level_label"] = "个股日线批量拉取（按交易日/API，不逐股循环）"
+    if stock_current is not None:
+        payload["stock_current"] = int(stock_current)
+    if stock_total is not None:
+        payload["stock_total"] = int(stock_total)
+    if stock_api:
+        payload["stock_api"] = stock_api
+    if stock_trade_date:
+        payload["stock_trade_date"] = stock_trade_date
+    callback(payload)
+
+
+def _write_progress_json(path: Path | str | None, payload: dict[str, object]) -> None:
+    if path is None:
+        return
+    target = Path(path)
+    target.parent.mkdir(parents=True, exist_ok=True)
+    merged: dict[str, object] = {}
+    if target.exists():
+        try:
+            existing = json.loads(target.read_text(encoding="utf-8"))
+            if isinstance(existing, dict):
+                merged.update(existing)
+        except (OSError, json.JSONDecodeError):
+            pass
+    merged.update(payload)
+    tmp = target.with_name(f"{target.name}.tmp")
+    tmp.write_text(json.dumps(merged, ensure_ascii=False, indent=2, default=_safe_json_default) + "\n", encoding="utf-8")
+    tmp.replace(target)
+
+
 def _normalize_snapshot_date(value: str | None) -> str:
     if value is None or str(value).strip().lower() == "today":
         return today_yyyymmdd()
@@ -192,6 +297,16 @@ def _table_row_count(storage: DuckDBStorage, table: str) -> int:
         return 0
     df = storage.read_df(f'SELECT count(*) AS n FROM "{table}"')
     return int(df.loc[0, "n"]) if not df.empty else 0
+
+
+def _insert_or_upsert_df(storage: DuckDBStorage, table: str, df: pd.DataFrame, key_cols: list[str]) -> str:
+    if df.empty:
+        return "empty"
+    if _table_row_count(storage, table) == 0:
+        storage.insert_df(table, df)
+        return "bulk_insert"
+    storage.upsert_df(table, df, key_cols)
+    return "upsert"
 
 
 def _metadata_value(storage: DuckDBStorage, key: str) -> str | None:
@@ -469,13 +584,13 @@ def build_reference_factors(adj_df: pd.DataFrame, end_date: str, stock_codes: li
     adj = _normalize_adj_frame(adj_df)
     end = pd.to_datetime(normalize_yyyymmdd(end_date)).date()
     codes = sorted({str(code).zfill(6) for code in stock_codes}) if stock_codes is not None else sorted(adj["stock_code"].astype(str).str.zfill(6).unique().tolist())
-    references: dict[str, float] = {}
-    for code in codes:
-        group = adj[(adj["stock_code"].astype(str).str.zfill(6) == code) & (pd.to_datetime(adj["trade_date"]).dt.date <= end)].copy()
-        if group.empty:
-            continue
-        row = group.sort_values("trade_date").iloc[-1]
-        references[code] = float(row["adj_factor"])
+    code_set = set(codes)
+    eligible = adj[adj["stock_code"].astype(str).str.zfill(6).isin(code_set) & (adj["trade_date"] <= end)].copy()
+    if eligible.empty:
+        references: dict[str, float] = {}
+    else:
+        latest = eligible.sort_values(["stock_code", "trade_date"]).drop_duplicates("stock_code", keep="last")
+        references = dict(zip(latest["stock_code"].astype(str).str.zfill(6), latest["adj_factor"].astype(float), strict=False))
     missing = [code for code in codes if code not in references]
     if missing:
         raise ValueError("missing reference_factor for stock_code: " + ",".join(missing[:20]))
@@ -512,43 +627,118 @@ def fetch_clean_stock_ohlcv_qfq(
     end_date: str,
     *,
     force_refresh: bool = False,
+    progress_callback: ProgressCallback | None = None,
+    job_id: str | None = None,
 ) -> dict[str, object]:
     daily_frames: list[pd.DataFrame] = []
     adj_frames: list[pd.DataFrame] = []
     basic_frames: list[pd.DataFrame] = []
     warnings: list[str] = []
     code_set = {str(code).zfill(6) for code in selected_stock_codes}
+    daily_fn = getattr(client, "_daily_raw_by_trade_date", None)
+    adj_fn = getattr(client, "_adj_factor_by_trade_date", None)
+    if not callable(daily_fn) or not callable(adj_fn):
+        raise TypeError("client must support _daily_raw_by_trade_date and _adj_factor_by_trade_date")
+    basic_fn = getattr(client, "_daily_basic_by_trade_date", None)
+    include_basic = callable(basic_fn)
+    stock_total = max(1, len(trade_dates) * (2 + (1 if include_basic else 0)))
+    stock_current = 0
+    fetch_stage_share = 0.88
+
+    def emit_stock(api_name: str, trade_date_value: str, message: str) -> None:
+        fetch_progress = stock_current / stock_total
+        _emit_progress(
+            progress_callback,
+            job_id=job_id,
+            status="running",
+            stage="fetch_stock_ohlcv_qfq",
+            stage_progress=fetch_stage_share * fetch_progress,
+            message=message,
+            stock_progress=fetch_progress,
+            stock_current=stock_current,
+            stock_total=stock_total,
+            stock_api=api_name,
+            stock_trade_date=trade_date_value,
+        )
+
+    def emit_post_fetch(api_name: str, stage_progress: float, message: str, rows: int | None = None) -> None:
+        _emit_progress(
+            progress_callback,
+            job_id=job_id,
+            status="running",
+            stage="fetch_stock_ohlcv_qfq",
+            stage_progress=stage_progress,
+            message=message,
+            rows=rows,
+            stock_progress=1.0,
+            stock_current=stock_total,
+            stock_total=stock_total,
+            stock_api=api_name,
+            stock_trade_date=str(trade_dates[-1] if trade_dates else ""),
+        )
+
     for trade_date in trade_dates:
-        daily_fn = getattr(client, "_daily_raw_by_trade_date", None)
-        adj_fn = getattr(client, "_adj_factor_by_trade_date", None)
-        if not callable(daily_fn) or not callable(adj_fn):
-            raise TypeError("client must support _daily_raw_by_trade_date and _adj_factor_by_trade_date")
+        emit_stock("daily", trade_date, f"Tushare daily(trade_date={trade_date})")
         daily_frames.append(_client_result_data(daily_fn(trade_date, force_refresh=force_refresh)))
+        stock_current += 1
+        emit_stock("daily", trade_date, f"Tushare daily done: {trade_date}")
+
+        emit_stock("adj_factor", trade_date, f"Tushare adj_factor(trade_date={trade_date})")
         adj_frames.append(_client_result_data(adj_fn(trade_date, force_refresh=force_refresh)))
-        basic_fn = getattr(client, "_daily_basic_by_trade_date", None)
-        if callable(basic_fn):
+        stock_current += 1
+        emit_stock("adj_factor", trade_date, f"Tushare adj_factor done: {trade_date}")
+
+        if include_basic:
+            emit_stock("daily_basic", trade_date, f"Tushare daily_basic(trade_date={trade_date})")
             try:
                 basic_frames.append(_client_result_data(basic_fn(trade_date, force_refresh=force_refresh)))
             except Exception as exc:
                 warnings.append(f"{trade_date}: daily_basic unavailable ({type(exc).__name__})")
+            stock_current += 1
+            emit_stock("daily_basic", trade_date, f"Tushare daily_basic done: {trade_date}")
 
+    emit_post_fetch("concat_daily", 0.89, "合并 Tushare daily 批量结果")
     daily = pd.concat(daily_frames, ignore_index=True) if daily_frames else pd.DataFrame()
+    emit_post_fetch("concat_adj_factor", 0.90, "合并 Tushare adj_factor 批量结果")
     adj = pd.concat(adj_frames, ignore_index=True) if adj_frames else pd.DataFrame()
+    emit_post_fetch("concat_daily_basic", 0.91, "合并 Tushare daily_basic 批量结果")
     basic = pd.concat(basic_frames, ignore_index=True) if basic_frames else pd.DataFrame()
     if daily.empty:
         raise ValueError("Tushare daily returned no rows for clean snapshot")
+    emit_post_fetch("filter_universe", 0.92, "按目标 universe 过滤 daily/adj_factor/daily_basic")
     if "ts_code" in daily.columns:
         daily = daily[daily["ts_code"].map(_stock_code_from_ts_code).isin(code_set)].copy()
     if "ts_code" in adj.columns:
         adj = adj[adj["ts_code"].map(_stock_code_from_ts_code).isin(code_set)].copy()
     if not basic.empty and "ts_code" in basic.columns:
         basic = basic[basic["ts_code"].map(_stock_code_from_ts_code).isin(code_set)].copy()
+    emit_post_fetch("reference_factors", 0.94, "计算每只股票的 QFQ reference factor", rows=len(adj))
     reference_factors = build_reference_factors(adj, end_date, selected_stock_codes)
+    emit_post_fetch("normalize_qfq", 0.96, "执行 QFQ 归一化与 daily_basic 合并", rows=len(daily))
     stock_ohlcv = normalize_all_qfq_with_reference(daily, adj, reference_factors, basic)
     stock_ohlcv = stock_ohlcv[stock_ohlcv["stock_code"].astype(str).str.zfill(6).isin(code_set)].copy()
+    emit_post_fetch("validate_stock_ohlcv", 0.98, "校验 clean stock_ohlcv", rows=len(stock_ohlcv))
     validate_ohlcv(stock_ohlcv, "clean Tushare stock_ohlcv", entity_key="stock_code")
-    storage.upsert_df("stock_ohlcv", stock_ohlcv, ["stock_code", "trade_date"])
+    emit_post_fetch("upsert_stock_ohlcv", 0.99, "写入 clean stock_ohlcv", rows=len(stock_ohlcv))
+    stock_write_mode = _insert_or_upsert_df(storage, "stock_ohlcv", stock_ohlcv, ["stock_code", "trade_date"])
+    emit_post_fetch("stock_ohlcv_written", 0.992, f"clean stock_ohlcv 写入完成 ({stock_write_mode})", rows=len(stock_ohlcv))
+    emit_post_fetch("update_adj_snapshot", 0.995, "写入 adj_factor snapshot", rows=len(adj))
     snapshot_rows = update_adj_factor_snapshot(storage, adj)
+    _emit_progress(
+        progress_callback,
+        job_id=job_id,
+        status="running",
+        stage="fetch_stock_ohlcv_qfq",
+        stage_progress=1.0,
+        message="个股日线批量拉取与 QFQ 写入完成",
+        rows=len(stock_ohlcv),
+        warnings=warnings,
+        stock_progress=1.0,
+        stock_current=stock_total,
+        stock_total=stock_total,
+        stock_api="write_stock_ohlcv",
+        stock_trade_date=str(trade_dates[-1] if trade_dates else ""),
+    )
     return {
         "stock_ohlcv_rows": int(len(stock_ohlcv)),
         "adj_factor_rows": int(snapshot_rows),
@@ -757,6 +947,8 @@ def run_clean_tushare_snapshot(
     report: str | Path | None = None,
     set_active: bool = False,
     client: MarketDataClient | None = None,
+    progress_callback: ProgressCallback | None = None,
+    job_id: str | None = None,
 ) -> dict[str, object]:
     effective_mode = "plan-only" if mode == "dry-run" else mode
     target_path = db_workspace.project_safe_db_path(target_db)
@@ -778,10 +970,32 @@ def run_clean_tushare_snapshot(
     )
     stages: list[StageRecord] = []
     summary = _base_summary(config)
+
+    def emit_record(record: StageRecord, *, status: str = "running", message: str | None = None) -> None:
+        _emit_progress(
+            progress_callback,
+            job_id=job_id,
+            status=status,
+            stage=record.name,
+            stage_progress=1.0,
+            message=message or f"{record.name}: {record.status}",
+            rows=record.rows,
+            failures=record.failures,
+            warnings=record.warnings,
+        )
+
     try:
+        _emit_progress(
+            progress_callback,
+            job_id=job_id,
+            status="running",
+            stage="preflight",
+            stage_progress=0.0,
+            message="Clean Tushare snapshot job started",
+        )
         started = time.monotonic()
         preflight = preflight_clean_snapshot(config)
-        _record_stage(stages, "preflight", "pass", start_time=started, warnings=list(preflight.get("warnings", [])))
+        emit_record(_record_stage(stages, "preflight", "pass", start_time=started, warnings=list(preflight.get("warnings", []))))
         if effective_mode == "plan-only":
             for stage in STAGE_NAMES[1:]:
                 _record_stage(stages, stage, "planned")
@@ -797,13 +1011,30 @@ def run_clean_tushare_snapshot(
             _finalize_summary(summary, stages)
             _write_summary_json(config.summary_json, summary)
             _write_report(config.report, summary)
+            _emit_progress(
+                progress_callback,
+                job_id=job_id,
+                status="plan_only",
+                stage="stale_model_artifacts_plan",
+                stage_progress=1.0,
+                message="Clean Tushare snapshot plan-only completed",
+            )
             return summary
 
         if effective_mode == "validate-only":
             target_storage = DuckDBStorage(target_path)
             started = time.monotonic()
             validation = validate_clean_snapshot(target_storage, [], [])
-            _record_stage(stages, "validate_clean_snapshot", validation["validation_status"], start_time=started, failures=list(validation.get("failures", [])), warnings=list(validation.get("warnings", [])))
+            emit_record(
+                _record_stage(
+                    stages,
+                    "validate_clean_snapshot",
+                    validation["validation_status"],
+                    start_time=started,
+                    failures=list(validation.get("failures", [])),
+                    warnings=list(validation.get("warnings", [])),
+                )
+            )
             summary.update(validation)
             summary["status"] = "PASS" if validation["validation_status"] == "pass" else "FAILED"
             if set_active:
@@ -813,6 +1044,14 @@ def run_clean_tushare_snapshot(
             _finalize_summary(summary, stages)
             _write_summary_json(config.summary_json, summary)
             _write_report(config.report, summary)
+            _emit_progress(
+                progress_callback,
+                job_id=job_id,
+                status=str(summary["status"]).lower(),
+                stage="validate_clean_snapshot",
+                stage_progress=1.0,
+                message="Clean Tushare snapshot validate-only completed",
+            )
             return summary
 
         source_storage = DuckDBStorage(source_path)
@@ -837,13 +1076,13 @@ def run_clean_tushare_snapshot(
                 "created_at": pd.Timestamp.now().isoformat(),
             },
         )
-        _record_stage(stages, "create_target_db", "pass", start_time=started, rows=1)
+        emit_record(_record_stage(stages, "create_target_db", "pass", start_time=started, rows=1))
 
         started = time.monotonic()
         copied: dict[str, int] = {}
         if config.copy_user_assets:
             copied = copy_user_assets(source_storage, target_storage)
-        _record_stage(stages, "copy_user_assets", "pass", start_time=started, rows=sum(copied.values()))
+        emit_record(_record_stage(stages, "copy_user_assets", "pass", start_time=started, rows=sum(copied.values())))
         summary["copied_user_assets"] = copied
 
         client = client or create_data_client(storage=target_storage)
@@ -854,7 +1093,7 @@ def run_clean_tushare_snapshot(
             trade_dates = trade_dates[: max(0, int(config.max_trade_dates))]
         if not trade_dates:
             raise ValueError("Tushare trade_cal returned no open trade dates")
-        _record_stage(stages, "fetch_trade_calendar", "pass", start_time=started, rows=len(trade_dates))
+        emit_record(_record_stage(stages, "fetch_trade_calendar", "pass", start_time=started, rows=len(trade_dates)))
         summary["trade_day_count"] = int(len(trade_dates))
         effective_end = trade_dates[-1]
         summary["end_date"] = effective_end
@@ -866,7 +1105,7 @@ def run_clean_tushare_snapshot(
         selected_codes = universe["stock_code"].astype(str).str.zfill(6).drop_duplicates().tolist()
         if not selected_codes:
             raise ValueError("selected Tushare universe is empty")
-        _record_stage(stages, "fetch_all_a_stock_universe", "pass", start_time=started, rows=len(universe))
+        emit_record(_record_stage(stages, "fetch_all_a_stock_universe", "pass", start_time=started, rows=len(universe)))
         summary["stock_count"] = int(len(selected_codes))
 
         started = time.monotonic()
@@ -877,8 +1116,19 @@ def run_clean_tushare_snapshot(
             selected_codes,
             effective_end,
             force_refresh=config.force_refresh,
+            progress_callback=progress_callback,
+            job_id=job_id,
         )
-        _record_stage(stages, "fetch_stock_ohlcv_qfq", "pass", start_time=started, rows=int(stock_result["stock_ohlcv_rows"]), warnings=list(stock_result.get("warnings", [])))
+        emit_record(
+            _record_stage(
+                stages,
+                "fetch_stock_ohlcv_qfq",
+                "pass",
+                start_time=started,
+                rows=int(stock_result["stock_ohlcv_rows"]),
+                warnings=list(stock_result.get("warnings", [])),
+            )
+        )
         summary["stock_ohlcv_rows"] = int(stock_result["stock_ohlcv_rows"])
         summary["adj_factor_rows"] = int(stock_result["adj_factor_rows"])
         summary["daily_basic_rows"] = int(stock_result["daily_basic_rows"])
@@ -887,7 +1137,7 @@ def run_clean_tushare_snapshot(
         started = time.monotonic()
         index_result = rebuild_market_indices_and_benchmarks(client, target_storage, config.start, effective_end)
         index_status = "pass" if not index_result.get("failures") else "partial"
-        _record_stage(stages, "fetch_index_and_benchmark_ohlcv", index_status, start_time=started, rows=int(index_result["rows"]), warnings=list(index_result.get("failures", [])))
+        emit_record(_record_stage(stages, "fetch_index_and_benchmark_ohlcv", index_status, start_time=started, rows=int(index_result["rows"]), warnings=list(index_result.get("failures", []))))
         summary["index_rows"] = int(index_result["rows"])
 
         started = time.monotonic()
@@ -895,14 +1145,16 @@ def run_clean_tushare_snapshot(
         sector_status = "pass" if not sector_result.get("failures") else "partial"
         sector_warnings = list(sector_result.get("warnings", []))
         sector_failures = list(sector_result.get("failures", []))
-        _record_stage(
-            stages,
-            "fetch_sector_constituents",
-            sector_status,
-            start_time=started,
-            rows=int(sector_result.get("rows", 0) or 0),
-            warnings=sector_warnings + (sector_failures if sector_status == "partial" else []),
-            failures=sector_failures if sector_status == "failed" else [],
+        emit_record(
+            _record_stage(
+                stages,
+                "fetch_sector_constituents",
+                sector_status,
+                start_time=started,
+                rows=int(sector_result.get("rows", 0) or 0),
+                warnings=sector_warnings + (sector_failures if sector_status == "partial" else []),
+                failures=sector_failures if sector_status == "failed" else [],
+            )
         )
         summary["sector_count"] = int(sector_result.get("sector_count", 0) or 0)
 
@@ -910,14 +1162,16 @@ def run_clean_tushare_snapshot(
         sector_ohlcv_result = rebuild_sector_ohlcv_local_aggregate(target_storage, config.start, effective_end)
         sector_ohlcv_status = str(sector_ohlcv_result.get("status", "pass"))
         sector_ohlcv_failures = list(sector_ohlcv_result.get("failures", []))
-        _record_stage(
-            stages,
-            "rebuild_sector_ohlcv_local_aggregate",
-            sector_ohlcv_status,
-            start_time=started,
-            rows=int(sector_ohlcv_result.get("rows", 0) or 0),
-            failures=sector_ohlcv_failures if sector_ohlcv_status == "failed" else [],
-            warnings=list(sector_ohlcv_result.get("warnings", [])) + (sector_ohlcv_failures if sector_ohlcv_status == "partial" else []),
+        emit_record(
+            _record_stage(
+                stages,
+                "rebuild_sector_ohlcv_local_aggregate",
+                sector_ohlcv_status,
+                start_time=started,
+                rows=int(sector_ohlcv_result.get("rows", 0) or 0),
+                failures=sector_ohlcv_failures if sector_ohlcv_status == "failed" else [],
+                warnings=list(sector_ohlcv_result.get("warnings", [])) + (sector_ohlcv_failures if sector_ohlcv_status == "partial" else []),
+            )
         )
         summary["sector_ohlcv_rows"] = int(sector_ohlcv_result.get("rows", 0) or 0)
         if int(sector_ohlcv_result.get("sector_count", 0) or 0):
@@ -925,19 +1179,19 @@ def run_clean_tushare_snapshot(
 
         started = time.monotonic()
         breadth_summary = update_market_breadth(config.start, effective_end, incremental=False, mode="full_market", storage=target_storage)
-        _record_stage(stages, "rebuild_market_breadth", "pass" if not breadth_summary.failures else "failed", start_time=started, rows=int(breadth_summary.rows), failures=list(breadth_summary.failures))
+        emit_record(_record_stage(stages, "rebuild_market_breadth", "pass" if not breadth_summary.failures else "failed", start_time=started, rows=int(breadth_summary.rows), failures=list(breadth_summary.failures)))
         summary["market_breadth_rows"] = int(breadth_summary.rows)
 
         started = time.monotonic()
         sectors = target_storage.read_df("SELECT DISTINCT sector_id FROM sector_ohlcv ORDER BY sector_id")
         sector_ids = sectors["sector_id"].astype(str).tolist() if not sectors.empty else []
         feature_rows = rebuild_sector_feature_cache(target_storage, sector_ids, config.start, effective_end)
-        _record_stage(stages, "rebuild_sector_features", "pass", start_time=started, rows=int(feature_rows))
+        emit_record(_record_stage(stages, "rebuild_sector_features", "pass", start_time=started, rows=int(feature_rows)))
         summary["sector_feature_rows"] = int(feature_rows)
 
         started = time.monotonic()
         validation = validate_clean_snapshot(target_storage, trade_dates, selected_codes)
-        _record_stage(stages, "validate_clean_snapshot", validation["validation_status"], start_time=started, failures=list(validation.get("failures", [])), warnings=list(validation.get("warnings", [])))
+        emit_record(_record_stage(stages, "validate_clean_snapshot", validation["validation_status"], start_time=started, failures=list(validation.get("failures", [])), warnings=list(validation.get("warnings", []))))
         summary.update(validation)
 
         summary["stale_model_artifacts_plan"] = stale_model_artifacts_plan()
@@ -946,10 +1200,10 @@ def run_clean_tushare_snapshot(
 
         started = time.monotonic()
         write_snapshot_manifest(target_storage, summary)
-        _record_stage(stages, "write_snapshot_manifest", "pass", start_time=started, rows=1)
+        emit_record(_record_stage(stages, "write_snapshot_manifest", "pass", start_time=started, rows=1))
 
         started = time.monotonic()
-        _record_stage(stages, "stale_model_artifacts_plan", "pass", start_time=started, rows=1)
+        emit_record(_record_stage(stages, "stale_model_artifacts_plan", "pass", start_time=started, rows=1))
 
         summary["status"] = "PASS" if summary.get("validation_status") == "pass" else "FAILED"
         if summary["status"] == "PASS":
@@ -963,6 +1217,14 @@ def run_clean_tushare_snapshot(
         _finalize_summary(summary, stages)
         _write_summary_json(config.summary_json, summary)
         _write_report(config.report, summary)
+        _emit_progress(
+            progress_callback,
+            job_id=job_id,
+            status=str(summary["status"]).lower(),
+            stage="stale_model_artifacts_plan",
+            stage_progress=1.0,
+            message="Clean Tushare snapshot build completed",
+        )
         return summary
     except Exception as exc:
         if stages and stages[-1].name != "preflight" and stages[-1].status not in {"failed", "FAILED"}:
@@ -982,6 +1244,16 @@ def run_clean_tushare_snapshot(
         _finalize_summary(summary, stages)
         _write_summary_json(config.summary_json, summary)
         _write_report(config.report, summary)
+        failed_stage = stages[-1].name if stages else "preflight"
+        _emit_progress(
+            progress_callback,
+            job_id=job_id,
+            status="failed",
+            stage=failed_stage,
+            stage_progress=1.0,
+            message=f"{type(exc).__name__}: {exc}",
+            failures=[f"{type(exc).__name__}: {exc}"],
+        )
         raise
 
 
@@ -1001,9 +1273,18 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--force-refresh", action="store_true")
     parser.add_argument("--summary-json", default=str(DEFAULT_SUMMARY_JSON))
     parser.add_argument("--report", default=str(DEFAULT_REPORT))
+    parser.add_argument("--progress-json", default=None)
+    parser.add_argument("--job-id", default=None)
     parser.add_argument("--set-active", action="store_true")
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args(argv)
+    progress_callback: ProgressCallback | None = None
+    if args.progress_json:
+        progress_path = Path(args.progress_json)
+
+        def progress_callback(payload: dict[str, object]) -> None:
+            _write_progress_json(progress_path, payload)
+
     summary = run_clean_tushare_snapshot(
         target_db=args.target_db,
         source_db=args.source_db,
@@ -1018,6 +1299,8 @@ def main(argv: list[str] | None = None) -> int:
         summary_json=args.summary_json,
         report=args.report,
         set_active=args.set_active,
+        progress_callback=progress_callback,
+        job_id=args.job_id,
     )
     print(
         "Clean Tushare snapshot "

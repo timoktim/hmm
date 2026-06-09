@@ -43,6 +43,28 @@ python -m src.data_pipeline.clean_tushare_snapshot \
 
 `.local` reports and smoke DB files are local runtime artifacts and must not be committed.
 
+Background UI builds use the same CLI and pass a job-local progress file:
+
+```bash
+python -m src.data_pipeline.clean_tushare_snapshot \
+  --target-db data/db/a_share_hmm_tushare_v1.duckdb \
+  --source-db data/db/a_share_hmm.duckdb \
+  --start 20140101 \
+  --end today \
+  --mode build \
+  --progress-json data/runtime/clean_snapshot_jobs/<job_id>/progress.json \
+  --job-id <job_id>
+```
+
+The Streamlit UI starts this command as a background process and reads `data/runtime/clean_snapshot_jobs/<job_id>/progress.json`.
+Refreshing or closing the page does not stop the local process, and reopening the page can restore the latest persisted progress.
+The progress file shows two levels:
+
+- overall snapshot build progress
+- stock daily batch progress by `trade_date` and API (`daily`, `adj_factor`, `daily_basic`)
+
+The second level remains a batch-by-`trade_date` view. It does not introduce stock-by-stock full-market fetching.
+
 ## Safety Rules
 
 - `target_db` must be a `.duckdb` file under `data/db`.
@@ -74,6 +96,10 @@ The stock daily build path fetches full-market data by `trade_date`:
 - `daily_basic(trade_date=...)` when available
 
 It does not loop stock-by-stock for full-market daily data. The clean snapshot uses an explicit per-stock reference factor: the latest valid `adj_factor` at or before the snapshot end date. All `stock_ohlcv` rows are then normalized with that fixed reference factor and written as `tushare_qfq_rebased`.
+
+The default Tushare 2000-point pacing is conservative: `ASHARE_HMM_TUSHARE_REQUEST_MIN_INTERVAL_SECONDS=0.31` plus `ASHARE_HMM_TUSHARE_REQUEST_JITTER_SECONDS=0.02`.
+That is roughly 193 requests/minute before jitter and about 187 requests/minute at average jitter, before network, DataFrame, and DuckDB write overhead.
+It is designed to leave margin below the 200/minute boundary rather than fully saturate it.
 
 ## Rebuilt Tables
 

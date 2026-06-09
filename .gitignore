@@ -20,6 +20,7 @@ data/db/*.wal
 data/db/workspace_config.json
 data/logs/
 data/models/
+data/runtime/
 
 reports/**
 !reports/

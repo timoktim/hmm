@@ -62,6 +62,19 @@ def test_create_database_refuses_overwrite(workspace_paths):
         db_workspace.create_database(target)
 
 
+def test_list_database_files_can_exclude_running_snapshot_targets(workspace_paths):
+    included = workspace_paths / "included.duckdb"
+    excluded = workspace_paths / "running_target.duckdb"
+    db_workspace.create_database(included)
+    db_workspace.create_database(excluded)
+
+    infos = db_workspace.list_database_files(exclude_paths=[excluded])
+    display_paths = {info.display_path for info in infos}
+
+    assert "data/db/included.duckdb" in display_paths
+    assert "data/db/running_target.duckdb" not in display_paths
+
+
 def test_open_existing_database_requires_existing_file(workspace_paths):
     missing = workspace_paths / "missing.duckdb"
 
@@ -130,6 +143,19 @@ def test_database_summary_uses_project_relative_paths(workspace_paths):
     assert ".codex_worktrees" not in summary.path_display
 
 
+def test_workspace_metadata_probes_share_runtime_connection_config(workspace_paths):
+    target = workspace_paths / "same_config.duckdb"
+    db_workspace.create_database(target)
+
+    with DuckDBStorage(target).connect():
+        validation = db_workspace.validate_database(target)
+        summary = db_workspace.database_summary(target)
+
+    assert validation.can_connect is True
+    assert summary.validation.can_connect is True
+    assert summary.path_display == "data/db/same_config.duckdb"
+
+
 def test_app_uses_resolved_active_db_path():
     app_source = Path("app.py").read_text(encoding="utf-8")
 
@@ -163,3 +189,15 @@ def test_database_workspace_page_has_friendly_empty_state():
 
     assert "暂未发现 .duckdb 文件" in source
     assert "重置数据库" not in source
+
+
+def test_clean_snapshot_page_has_background_two_level_progress():
+    ui_source = inspect.getsource(database_workspace_page)
+
+    assert "后台 Clean Snapshot Build" in ui_source
+    assert "总进度" in ui_source
+    assert "个股日线批量拉取" in ui_source
+    assert "start_clean_snapshot_job" in ui_source
+    assert "_running_snapshot_target_paths" in ui_source
+    assert "exclude_paths=running_snapshot_targets" in ui_source
+    assert "200/min" in ui_source

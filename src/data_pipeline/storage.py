@@ -1592,6 +1592,22 @@ class DuckDBStorage:
                     """
                 )
 
+    def insert_df(self, table: str, df: pd.DataFrame) -> None:
+        if df.empty:
+            return
+        cols = list(df.columns)
+        quoted_table = _quote_identifier(table)
+        quoted_cols = [_quote_identifier(column) for column in cols]
+        col_sql = ", ".join(quoted_cols)
+        with _DB_WRITE_LOCK, self.connect() as con:
+            con.register("incoming", df)
+            con.execute(
+                f"""
+                INSERT INTO {quoted_table} ({col_sql})
+                SELECT {col_sql} FROM incoming
+                """
+            )
+
     def clear_hsmm_run_cascade(self, run_id: str, include_reports: bool = False) -> dict[str, object]:
         summary: dict[str, object] = {
             "run_id": run_id,
