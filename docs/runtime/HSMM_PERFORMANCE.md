@@ -21,6 +21,8 @@ Performance diagnostics are returned in the walk-forward result and written to p
 - `sector_chunk_size`
 - `snapshot_decode_mode`
 - `hsmm_engine`
+- `engine_used`
+- `engine_fallback_reason`
 
 The DuckDB table `hsmm_run_performance` is not migrated by this package. Runtime returns and CSV/profile outputs may contain the extended diagnostics, while DB persistence keeps the existing table columns.
 
@@ -39,6 +41,7 @@ The script reads these optional environment variables:
 - `HSMM_PROFILE_END_DATE`: defaults to `today`
 - `HSMM_PROFILE_N_JOBS`: defaults to `auto`
 - `HSMM_PROFILE_FIT_N_JOBS`: defaults to `HSMM_PROFILE_N_JOBS`
+- `HSMM_PROFILE_ENGINE`: defaults to `HSMM_ENGINE` or `auto`
 - `HSMM_PROFILE_MAX_DURATION`: defaults to `40`
 - `HSMM_PROFILE_N_ITER`: defaults to `10`
 - `HSMM_PROFILE_RUN_ID`: optional run id
@@ -46,6 +49,34 @@ The script reads these optional environment variables:
 The shorter aliases `HSMM_ENGINE`, `HSMM_N_JOBS`, `HSMM_FIT_N_JOBS`, `HSMM_MAX_DURATION`, and `HSMM_N_ITER` are also accepted for quick local profiling.
 
 If the DB path is missing, the script prints a skipped status and exits successfully.
+
+The script also prints the requested engine and a fallback reminder before it checks the DB path. In `auto` mode, a missing or unusable numba runtime falls back to the Python Viterbi kernel. That fallback is safe, but it means the run should not be interpreted as a numba speedup measurement.
+
+## Numba Operational Checks
+
+The optional numba engine has a no-DB operational check:
+
+```bash
+bash scripts/check_hsmm_numba_engine.sh
+```
+
+The check reports whether numba can be imported, which engine was actually warmed, the fallback reason, and whether compilation was warmed. Missing numba exits successfully as `HSMM_NUMBA_CHECK_STATUS=fallback` unless `HSMM_ENGINE_REQUIRED=1` is set.
+
+For a small benchmark matrix that is safe to run without DuckDB:
+
+```bash
+bash scripts/hsmm_benchmark_matrix.sh
+```
+
+The default mode uses deterministic synthetic sequences and writes a local JSONL sample under `reports/hsmm_diagnostics/benchmark_sample/`. That output path is gitignored and should not be committed.
+
+Local DB profiling through the benchmark wrapper is explicit:
+
+```bash
+HSMM_BENCHMARK_MODE=local HSMM_BENCHMARK_DB=data/db/a_share_hmm.duckdb bash scripts/hsmm_benchmark_matrix.sh
+```
+
+If the DB path is missing, local DB mode prints `HSMM_BENCHMARK_STATUS=skipped reason=missing_db` and exits successfully.
 
 ## Presets
 
