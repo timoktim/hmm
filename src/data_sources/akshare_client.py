@@ -119,6 +119,13 @@ def _akshare_network_env() -> Iterator[None]:
 
 
 class AKShareClient:
+    """Legacy compatibility client for explicit AKShare/THS/EM paths.
+
+    The default confirmed daily data path is Tushare. This client is kept so old
+    notebooks/tests can opt in explicitly; it must not be used by default update
+    flows.
+    """
+
     def __init__(self, cache_dir: Path | None = None, storage: DuckDBStorage | None = None, use_subprocess_for_ths: bool = True):
         self.cache_dir = Path(cache_dir or settings.cache_dir)
         self.cache_dir.mkdir(parents=True, exist_ok=True)

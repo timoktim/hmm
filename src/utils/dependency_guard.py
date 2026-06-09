@@ -54,7 +54,7 @@ CORE_DEPENDENCY_SPECS: tuple[DependencySpec, ...] = (
     DependencySpec("hmmlearn", "0.3.2", "0.4"),
     DependencySpec("duckdb", "0.10", "2.0"),
     DependencySpec("streamlit", "1.57.0", "2.0"),
-    DependencySpec("akshare", "1.13", "2.0"),
+    DependencySpec("tushare", "1.4", "2.0"),
 )
 
 

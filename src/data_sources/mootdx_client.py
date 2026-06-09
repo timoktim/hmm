@@ -12,9 +12,10 @@ from tenacity import retry, stop_after_attempt, wait_exponential
 
 from src.config import BoardType, settings
 from src.data_pipeline.storage import DuckDBStorage
-from src.data_sources.akshare_client import AKShareClient, MARKET_BENCHMARKS, MARKET_INDEXES
+from src.data_sources.akshare_client import AKShareClient
 from src.data_sources.base import DataResult
 from src.data_sources.tdx_pool import TdxServerPool, parse_tdx_servers
+from src.data_sources.tushare_client import MARKET_BENCHMARKS, MARKET_INDEXES
 from src.utils.dates import normalize_yyyymmdd
 
 
@@ -38,7 +39,7 @@ class MootdxClient:
         cache_dir: Path | None = None,
         storage: DuckDBStorage | None = None,
         server_pool: TdxServerPool | None = None,
-        fallback_client: AKShareClient | None = None,
+        fallback_client: object | None = None,
         quotes_factory: QuotesFactory | None = None,
         fallback_to_akshare: bool | None = None,
     ) -> None:
@@ -54,9 +55,11 @@ class MootdxClient:
             failure_threshold=settings.tdx_failure_threshold,
             acquire_timeout_seconds=settings.tdx_request_timeout_seconds,
         )
-        self.fallback_client = fallback_client or AKShareClient(cache_dir=self.cache_dir, storage=self.storage)
         self.quotes_factory = quotes_factory or self._default_quotes_factory
         self.fallback_to_akshare = settings.tdx_fallback_to_akshare if fallback_to_akshare is None else bool(fallback_to_akshare)
+        self.fallback_client = fallback_client or (
+            AKShareClient(cache_dir=self.cache_dir, storage=self.storage) if self.fallback_to_akshare else None
+        )
         self.bar_count = max(1, int(settings.tdx_bar_count))
 
     def _default_quotes_factory(self, server: tuple[str, int]) -> object:
@@ -123,7 +126,7 @@ class MootdxClient:
             raise
 
     def _fallback(self, reason: Exception, func: Callable[[], DataResult]) -> DataResult:
-        if not self.fallback_to_akshare:
+        if not self.fallback_to_akshare or self.fallback_client is None:
             raise reason
         logger.warning("Mootdx/TDX 失败，回退 AKShare: {}", reason)
         result = func()
@@ -163,7 +166,7 @@ class MootdxClient:
         return df[(dates >= start) & (dates <= end)].copy()
 
     def board_names(self, board_type: BoardType, force_refresh: bool = False, ttl_seconds: int | float | None = None) -> DataResult:
-        return self.fallback_client.board_names(board_type, force_refresh=force_refresh, ttl_seconds=ttl_seconds)
+        raise NotImplementedError("mootdx 仅作为股票/指数 provisional source；默认不再代理 AKShare/THS/EM 板块接口。")
 
     def board_hist(
         self,
@@ -174,10 +177,10 @@ class MootdxClient:
         force_refresh: bool = False,
         ttl_seconds: int | float | None = None,
     ) -> DataResult:
-        return self.fallback_client.board_hist(board_type, sector_name, start_date, end_date, force_refresh=force_refresh, ttl_seconds=ttl_seconds)
+        raise NotImplementedError("mootdx 默认不支持板块行情 fallback；请使用 Tushare 本地聚合行业路径或 legacy-akshare 显式路径。")
 
     def board_constituents(self, board_type: BoardType, sector_name: str, force_refresh: bool = False, ttl_seconds: int | float | None = None) -> DataResult:
-        return self.fallback_client.board_constituents(board_type, sector_name, force_refresh=force_refresh, ttl_seconds=ttl_seconds)
+        raise NotImplementedError("mootdx 默认不支持板块成分 fallback；请使用 Tushare 行业成分路径或 legacy-akshare 显式路径。")
 
     def stock_hist(self, stock_code: str, start_date: str, end_date: str, force_refresh: bool = False, ttl_seconds: int | float | None = None) -> DataResult:
         code = str(stock_code).zfill(6)
@@ -212,7 +215,7 @@ class MootdxClient:
             raise ValueError("market benchmark 仅支持 hs300/沪深300 和 csi_all/中证全指")
         meta = MARKET_BENCHMARKS[benchmark_id]
         canonical_id = "hs300" if meta["label"] == "沪深300" else "csi_all"
-        code = str(meta["symbol"])[2:]
+        code = str(meta["index_code"]).zfill(6)
         try:
             result = self._fetch_tdx(
                 "mootdx_market_benchmark_daily",
@@ -239,7 +242,7 @@ class MootdxClient:
     index_hist = market_benchmark_hist
 
     def market_index_list(self) -> pd.DataFrame:
-        return self.fallback_client.market_index_list()
+        return pd.DataFrame([{"index_code": code, "index_name": meta["index_name"], "ts_code": meta["ts_code"]} for code, meta in MARKET_INDEXES.items()])
 
     def market_index_hist(
         self,
@@ -276,4 +279,4 @@ class MootdxClient:
             )
 
     def all_a_stock_universe(self, force_refresh: bool = False, ttl_seconds: int | float | None = None) -> DataResult:
-        return self.fallback_client.all_a_stock_universe(force_refresh=force_refresh, ttl_seconds=ttl_seconds)
+        raise NotImplementedError("mootdx 默认不刷新全 A 股票池；请使用 Tushare 主源或 legacy-akshare 显式路径。")

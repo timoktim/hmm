@@ -7,6 +7,7 @@ from src.data_pipeline.storage import DuckDBStorage
 from src.data_sources.akshare_client import AKShareClient
 from src.data_sources.base import MarketDataClient
 from src.data_sources.mootdx_client import MootdxClient
+from src.data_sources.tushare_client import TushareClient
 
 
 def create_data_client(
@@ -15,8 +16,10 @@ def create_data_client(
     cache_dir: Path | None = None,
 ) -> MarketDataClient:
     selected = (source or settings.market_data_source or settings.default_source).strip().lower()
+    if selected in {"tushare", "ts"}:
+        return TushareClient(cache_dir=cache_dir, storage=storage)
     if selected in {"mootdx", "tdx", "pytdx"}:
         return MootdxClient(cache_dir=cache_dir, storage=storage)
-    if selected in {"akshare", "ak"}:
+    if selected in {"akshare", "ak", "legacy-akshare"}:
         return AKShareClient(cache_dir=cache_dir, storage=storage)
     raise ValueError(f"未知数据源: {source}")

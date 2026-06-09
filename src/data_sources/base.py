@@ -37,6 +37,27 @@ class MarketDataClient(Protocol):
     def stock_hist(self, stock_code: str, start_date: str, end_date: str, force_refresh: bool = False, ttl_seconds: int | float | None = None) -> DataResult:
         ...
 
+    def trade_dates(self, start_date: str, end_date: str, force_refresh: bool = False) -> list[str]:
+        ...
+
+    def stock_daily_by_trade_date(
+        self,
+        trade_date: str,
+        include_basic: bool = True,
+        force_refresh: bool = False,
+        ttl_seconds: int | float | None = None,
+    ) -> DataResult:
+        ...
+
+    def stock_daily_by_trade_dates(
+        self,
+        trade_dates: list[str],
+        *,
+        include_basic: bool = True,
+        force_refresh: bool = False,
+    ) -> DataResult:
+        ...
+
     def market_benchmark_hist(
         self,
         benchmark_id: str,

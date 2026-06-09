@@ -9,7 +9,7 @@ import streamlit as st
 
 from src.data_pipeline.market_updater import DEFAULT_MARKET_INDEX_CODES, update_all_a_stock_universe, update_market_breadth, update_market_indices
 from src.data_pipeline.storage import DuckDBStorage
-from src.data_sources.akshare_client import MARKET_INDEXES
+from src.data_sources.tushare_client import MARKET_INDEXES
 from src.features.market_features import COVERAGE_MODE_FULL_MARKET, COVERAGE_MODE_LOCAL_SAMPLE, build_market_features, latest_market_index_status, normalize_breadth_coverage_columns
 from src.models.market_hmm import latest_market_regime, market_regime_history, train_market_hmm
 from src.ui.components.data_status_bar import render_data_status_bar

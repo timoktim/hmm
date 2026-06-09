@@ -7,7 +7,7 @@ from src.data_pipeline import updater
 from src.data_pipeline.market_updater import update_all_a_stock_ohlcv
 from src.data_pipeline.storage import DuckDBStorage
 from src.data_pipeline.updater import update_boards, update_market_benchmark, update_stock_histories
-from src.data_sources.akshare_client import DataResult
+from src.data_sources.base import DataResult
 from src.features import custom_basket_features
 
 
