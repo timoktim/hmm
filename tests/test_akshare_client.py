@@ -112,6 +112,42 @@ def test_historical_stock_request_uses_permanent_cache(monkeypatch, tmp_path):
     assert second.from_cache
 
 
+def test_920_stock_routes_to_beijing_exchange_and_daily_provider(monkeypatch, tmp_path):
+    calls: dict[str, object] = {}
+
+    def fake_stock_daily(symbol: str, start_date: str, end_date: str, adjust: str) -> pd.DataFrame:
+        calls["symbol"] = symbol
+        calls["start_date"] = start_date
+        calls["end_date"] = end_date
+        calls["adjust"] = adjust
+        return pd.DataFrame(
+            {
+                "date": [pd.Timestamp(start_date).strftime("%Y-%m-%d")],
+                "open": [20.0],
+                "high": [21.0],
+                "low": [19.0],
+                "close": [20.5],
+                "volume": [1000],
+                "amount": [10000],
+            }
+        )
+
+    fake_ak = SimpleNamespace(stock_zh_a_daily=fake_stock_daily)
+    monkeypatch.setattr(ak_client, "_import_akshare", lambda: fake_ak)
+    storage = DuckDBStorage(tmp_path / "test.duckdb")
+    client = AKShareClient(cache_dir=tmp_path / "cache", storage=storage)
+    monkeypatch.setattr(client, "_sleep", lambda: None)
+
+    assert AKShareClient._exchange_for_stock_code("920022") == "BJ"
+    assert AKShareClient._tx_symbol("920022") == "bj920022"
+
+    result = client.stock_hist("920022", "20240101", "20240110")
+
+    assert calls == {"symbol": "bj920022", "start_date": "20240101", "end_date": "20240110", "adjust": "qfq"}
+    assert result.data.loc[0, "stock_code"] == "920022"
+    assert result.data.loc[0, "close"] == 20.5
+
+
 def test_akshare_network_env_temporarily_bypasses_proxy(monkeypatch):
     monkeypatch.setenv("HTTPS_PROXY", "http://127.0.0.1:1082")
     monkeypatch.setenv("ALL_PROXY", "http://127.0.0.1:1082")
