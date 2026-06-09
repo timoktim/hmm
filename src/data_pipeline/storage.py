@@ -246,6 +246,10 @@ class DuckDBStorage:
                   turnover DOUBLE,
                   source VARCHAR,
                   fetched_at TIMESTAMP,
+                  source_priority INTEGER,
+                  is_provisional BOOLEAN,
+                  validation_status TEXT,
+                  vendor_update_time TIMESTAMP,
                   PRIMARY KEY (sector_id, trade_date)
                 );
                 """
@@ -259,6 +263,10 @@ class DuckDBStorage:
                   in_sector_date DATE,
                   source VARCHAR,
                   fetched_at TIMESTAMP,
+                  source_priority INTEGER,
+                  is_provisional BOOLEAN,
+                  validation_status TEXT,
+                  vendor_update_time TIMESTAMP,
                   PRIMARY KEY (sector_id, stock_code)
                 );
                 """
@@ -278,6 +286,10 @@ class DuckDBStorage:
                   turnover DOUBLE,
                   source VARCHAR,
                   fetched_at TIMESTAMP,
+                  source_priority INTEGER,
+                  is_provisional BOOLEAN,
+                  validation_status TEXT,
+                  vendor_update_time TIMESTAMP,
                   PRIMARY KEY (stock_code, trade_date)
                 );
                 """
@@ -297,6 +309,10 @@ class DuckDBStorage:
                   turnover DOUBLE,
                   source VARCHAR,
                   fetched_at TIMESTAMP,
+                  source_priority INTEGER,
+                  is_provisional BOOLEAN,
+                  validation_status TEXT,
+                  vendor_update_time TIMESTAMP,
                   PRIMARY KEY (benchmark_id, trade_date)
                 );
                 """
@@ -316,6 +332,10 @@ class DuckDBStorage:
                   pct_chg DOUBLE,
                   source TEXT,
                   fetched_at TIMESTAMP,
+                  source_priority INTEGER,
+                  is_provisional BOOLEAN,
+                  validation_status TEXT,
+                  vendor_update_time TIMESTAMP,
                   PRIMARY KEY (index_code, trade_date)
                 );
                 """
@@ -345,6 +365,10 @@ class DuckDBStorage:
                   coverage_warning TEXT,
                   source TEXT,
                   fetched_at TIMESTAMP,
+                  source_priority INTEGER,
+                  is_provisional BOOLEAN,
+                  validation_status TEXT,
+                  vendor_update_time TIMESTAMP,
                   PRIMARY KEY (trade_date, breadth_mode)
                 );
                 """
@@ -371,10 +395,30 @@ class DuckDBStorage:
                   list_date DATE,
                   delist_date DATE,
                   source TEXT,
-                  fetched_at TIMESTAMP
+                  fetched_at TIMESTAMP,
+                  source_priority INTEGER,
+                  is_provisional BOOLEAN,
+                  validation_status TEXT,
+                  vendor_update_time TIMESTAMP
                 );
                 """
             )
+            for table in [
+                "sector_ohlcv",
+                "sector_constituents",
+                "stock_ohlcv",
+                "market_benchmark_ohlcv",
+                "market_index_ohlcv",
+                "market_breadth_daily",
+                "all_a_stock_universe",
+            ]:
+                for column_sql in [
+                    f"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS source_priority INTEGER",
+                    f"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS is_provisional BOOLEAN",
+                    f"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS validation_status TEXT",
+                    f"ALTER TABLE {table} ADD COLUMN IF NOT EXISTS vendor_update_time TIMESTAMP",
+                ]:
+                    con.execute(column_sql)
             con.execute(
                 """
                 CREATE TABLE IF NOT EXISTS market_regime_runs (

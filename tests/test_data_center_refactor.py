@@ -7,7 +7,7 @@ import pandas as pd
 
 from src.data_pipeline.market_updater import update_all_a_stock_ohlcv
 from src.data_pipeline.storage import DuckDBStorage
-from src.data_sources.akshare_client import DataResult
+from src.data_sources.base import DataResult
 from src.ui import data_center_page
 from src.ui.components.data_coverage import _width_metric_text, build_data_coverage_snapshot
 from src.ui.help_texts import rename_columns_for_display
@@ -242,16 +242,19 @@ def test_data_center_single_update_action():
     source = inspect.getsource(data_center_page.render_data_update_tasks)
     assert source.count('st.button("开始更新"') == 1
     assert data_center_page.TASK_OPTIONS == [
-        "更新当前板块池数据",
-        "更新全市场板块数据",
-        "更新当前板块池个股行情",
-        "更新全 A 宽度数据链路",
-        "更新大盘指数与市场基准",
+        "更新 Tushare 股票池",
+        "更新 Tushare 全 A 日频行情",
+        "更新 Tushare 指数与市场基准",
+        "更新全 A 市场宽度",
+        "更新 Tushare 行业/本地聚合板块",
         "重试失败任务",
     ]
 
 
 def test_data_center_stock_worker_defaults_are_source_aware(monkeypatch):
+    monkeypatch.setattr(data_center_page.settings, "market_data_source", "tushare")
+    assert data_center_page.stock_worker_defaults_for_source() == (1, 1)
+
     monkeypatch.setattr(data_center_page.settings, "market_data_source", "akshare")
     monkeypatch.setattr(data_center_page.settings, "tdx_global_workers", 8)
     monkeypatch.setattr(data_center_page.settings, "tdx_max_workers", 16)
@@ -276,9 +279,13 @@ def test_retry_failures_does_not_fetch_first_10_when_no_failures(tmp_path, monke
     assert result.failures == []
 
 
-def test_update_task_current_universe_requires_universe():
+def test_data_center_tushare_labels_and_controls():
     source = inspect.getsource(data_center_page.render_data_update_tasks)
-    assert "当前未选择板块池，请先在板块池管理中创建或选择板块池。" in source
+    assert "ASHARE_HMM_TUSHARE_TOKEN" in source
+    assert "按交易日批量" in source
+    assert "stock_ohlcv 写入前复权兼容 OHLCV" in source
+    assert "TDX 批大小" in source
+    assert "if not is_tushare_source" in source
 
 
 def test_sidebar_has_explicit_all_market_scope():
@@ -331,17 +338,17 @@ def test_all_a_width_pipeline_sequence(tmp_path, monkeypatch):
     assert calls == ["update_all_a_stock_universe", "update_all_a_stock_ohlcv", "update_market_breadth:full_market"]
     assert result.updated == 6
     assert result.rows == 24
-    assert progress_events[0]["stage"] == "更新全 A 股票池"
-    assert any(event["stage"] == "更新全 A 个股行情" and event["current"] == 2 for event in progress_events)
-    assert progress_events[-1]["stage"] == "全 A 宽度数据链路完成"
+    assert progress_events[0]["stage"] == "更新 Tushare 股票池"
+    assert any(event["stage"] == "按交易日批量更新 Tushare 全 A 日线" and event["current"] == 2 for event in progress_events)
+    assert progress_events[-1]["stage"] == "Tushare 全 A 日频与宽度更新完成"
     overall = [float(event["overall_progress"]) for event in progress_events]
     assert overall == sorted(overall)
     assert overall[-1] == 1.0
 
 
 def test_all_a_progress_event_weighted_progress():
-    start = data_center_page.all_a_progress_event("universe", "更新全 A 股票池", 1, current=1, total=1)
-    middle = data_center_page.all_a_progress_event("stock", "更新全 A 个股行情", 2, current=50, total=100)
+    start = data_center_page.all_a_progress_event("universe", "更新 Tushare 股票池", 1, current=1, total=1)
+    middle = data_center_page.all_a_progress_event("stock", "按交易日批量更新 Tushare 全 A 日线", 2, current=50, total=100)
     end = data_center_page.all_a_progress_event("breadth", "计算全 A 市场宽度", 3, current=1, total=1)
 
     assert start["overall_progress"] == 0.05

@@ -202,6 +202,7 @@ def _update_boards_impl(
     updated = 0
     total = len(jobs) * (2 if include_constituents else 1)
     completed = 0
+    constituents_prefetched = False
 
     def emit(name: str, stage: str) -> None:
         if progress_callback is not None:
@@ -217,6 +218,18 @@ def _update_boards_impl(
                     stale_reads=stale_reads,
                 )
             )
+
+    if include_constituents and type(client).__name__ == "TushareClient":
+        for job in jobs:
+            emit(str(job["sector_name"]), "board_constituents")
+            stale, cached, error = _update_constituents(board_type, str(job["sector_name"]), client, storage)
+            stale_reads += stale
+            cache_hits += cached
+            if error:
+                failures.append(error)
+            completed += 1
+            emit(str(job["sector_name"]), "board_constituents_done")
+        constituents_prefetched = True
 
     def fetch_hist(job: dict[str, object]) -> tuple[dict[str, object], object]:
         sector_name = str(job["sector_name"])
@@ -264,7 +277,7 @@ def _update_boards_impl(
                 completed += 1
                 emit(str(job["sector_name"]), "board_hist_done")
 
-    if include_constituents:
+    if include_constituents and not constituents_prefetched:
         for job in jobs:
             emit(str(job["sector_name"]), "board_constituents")
             stale, cached, error = _update_constituents(board_type, str(job["sector_name"]), client, storage)

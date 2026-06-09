@@ -11,15 +11,16 @@ from src.config import settings
 from src.data_pipeline.storage import DuckDBStorage
 from src.data_pipeline.updater import _lookback_start
 from src.data_pipeline.validators import validate_ohlcv
-from src.data_sources.akshare_client import AKShareClient, MARKET_INDEXES
 from src.data_sources.base import MarketDataClient
 from src.data_sources.factory import create_data_client
+from src.data_sources.tushare_client import MARKET_INDEXES
 from src.utils.dates import normalize_yyyymmdd
 
 
 DEFAULT_MARKET_INDEX_CODES = ["000001", "399001", "399006", "000300", "000905", "000852", "000985"]
 AKSHARE_STOCK_WORKER_DEFAULT = 3
 AKSHARE_STOCK_WORKER_MAX = 3
+TUSHARE_MARKET_DATA_SOURCES = {"tushare", "ts"}
 TDX_MARKET_DATA_SOURCES = {"mootdx", "tdx", "pytdx"}
 AKSHARE_MARKET_DATA_SOURCES = {"akshare", "ak"}
 
@@ -40,11 +41,13 @@ ProgressCallback = Callable[[dict[str, object]], None]
 
 
 def _selected_market_data_source() -> str:
-    return str(settings.market_data_source or settings.default_source or "akshare").strip().lower()
+    return str(settings.market_data_source or settings.default_source or "tushare").strip().lower()
 
 
 def stock_worker_defaults_for_source(source: str | None = None) -> tuple[int, int]:
     selected = str(source or _selected_market_data_source()).strip().lower()
+    if selected in TUSHARE_MARKET_DATA_SOURCES:
+        return 1, 1
     if selected in TDX_MARKET_DATA_SOURCES:
         default_workers = max(1, int(settings.tdx_global_workers or 1))
         max_workers = max(1, int(settings.tdx_max_workers or 1))
@@ -102,6 +105,81 @@ def _stock_max_dates(storage: DuckDBStorage, stock_codes: list[str]) -> dict[str
         stock_codes,
     )
     return {} if df.empty else dict(zip(df["stock_code"].astype(str), df["max_trade_date"], strict=False))
+
+
+def _stock_global_max_date(storage: DuckDBStorage) -> object:
+    df = storage.read_df("SELECT max(trade_date) AS max_trade_date FROM stock_ohlcv")
+    return pd.NA if df.empty else df.loc[0, "max_trade_date"]
+
+
+def _stock_trade_date_counts(storage: DuckDBStorage, trade_dates: list[str], stock_codes: list[str]) -> dict[str, int]:
+    if not trade_dates or not stock_codes:
+        return {}
+    date_values = [pd.to_datetime(date).date() for date in trade_dates]
+    date_placeholders = ",".join(["?"] * len(date_values))
+    code_placeholders = ",".join(["?"] * len(stock_codes))
+    df = storage.read_df(
+        f"""
+        SELECT trade_date, count(DISTINCT stock_code) AS n
+        FROM stock_ohlcv
+        WHERE trade_date IN ({date_placeholders})
+          AND stock_code IN ({code_placeholders})
+        GROUP BY trade_date
+        """,
+        [*date_values, *stock_codes],
+    )
+    if df.empty:
+        return {}
+    return {pd.to_datetime(row.trade_date).strftime("%Y%m%d"): int(row.n) for row in df.itertuples(index=False)}
+
+
+def _normalize_all_a_universe_frame(df: pd.DataFrame) -> pd.DataFrame:
+    data = df.copy()
+    if "stock_code" not in data.columns:
+        raise ValueError("全 A 股票池缺少 stock_code")
+    if "stock_name" not in data.columns:
+        data["stock_name"] = data["stock_code"].astype(str)
+    data["stock_code"] = data["stock_code"].astype(str).str.extract(r"(\d{6})", expand=False).fillna(data["stock_code"].astype(str)).str.zfill(6)
+    data["stock_name"] = data["stock_name"].astype(str)
+    if "exchange" not in data.columns:
+        data["exchange"] = data["stock_code"].map(
+            lambda code: "BJ" if str(code).startswith(("4", "8", "920")) else ("SH" if str(code).startswith(("5", "6", "9")) else "SZ")
+        )
+    if "list_status" not in data.columns:
+        data["list_status"] = "active"
+    if "is_st" not in data.columns:
+        data["is_st"] = data["stock_name"].str.contains("ST", case=False, na=False)
+    for col in ["list_date", "delist_date"]:
+        if col not in data.columns:
+            data[col] = pd.NaT
+    now = pd.Timestamp.now()
+    defaults = {
+        "source": settings.default_source,
+        "fetched_at": now,
+        "source_priority": 0,
+        "is_provisional": False,
+        "validation_status": "validated",
+        "vendor_update_time": pd.NaT,
+    }
+    for col, value in defaults.items():
+        if col not in data.columns:
+            data[col] = value
+    cols = [
+        "stock_code",
+        "stock_name",
+        "exchange",
+        "list_status",
+        "is_st",
+        "list_date",
+        "delist_date",
+        "source",
+        "fetched_at",
+        "source_priority",
+        "is_provisional",
+        "validation_status",
+        "vendor_update_time",
+    ]
+    return data[cols].drop_duplicates("stock_code")
 
 
 def _infer_latest_source_trade_date(
@@ -179,7 +257,7 @@ def update_all_a_stock_universe(
     client = client or create_data_client(storage=storage)
     try:
         res = client.all_a_stock_universe(force_refresh=force_refresh)
-        data = AKShareClient._normalize_all_a_stock_universe(res.data)
+        data = _normalize_all_a_universe_frame(res.data)
         storage.upsert_df("all_a_stock_universe", data, ["stock_code"])
         return MarketUpdateSummary(
             seen=len(data),
@@ -193,6 +271,128 @@ def update_all_a_stock_universe(
         return MarketUpdateSummary(seen=0, updated=0, rows=0, failures=[f"全 A 股票池更新失败: {exc}"])
 
 
+def _update_all_a_stock_ohlcv_tushare_bulk(
+    client: MarketDataClient,
+    storage: DuckDBStorage,
+    codes: list[str],
+    start: str,
+    end: str,
+    *,
+    incremental: bool,
+    lookback_days: int,
+    max_stocks: int | None,
+    skip_completed: bool,
+    force_refresh: bool = False,
+    progress_callback: ProgressCallback | None = None,
+) -> MarketUpdateSummary:
+    selected_codes = codes[: int(max_stocks)] if max_stocks else codes
+    actual_start = _lookback_start(_stock_global_max_date(storage), start, end, lookback_days) if incremental else start
+    trade_dates_fn = getattr(client, "trade_dates")
+    trade_dates = [str(date) for date in trade_dates_fn(actual_start, end, force_refresh=force_refresh)]
+    latest_source_trade_date = pd.to_datetime(trade_dates[-1]).date() if trade_dates else pd.to_datetime(end).date()
+    if not trade_dates:
+        return MarketUpdateSummary(seen=0, updated=0, rows=0, failures=["Tushare trade_cal 未返回目标区间交易日。"], latest_source_trade_date=latest_source_trade_date)
+
+    skipped = 0
+    dates_to_fetch = trade_dates
+    if incremental and skip_completed:
+        counts = _stock_trade_date_counts(storage, trade_dates, selected_codes)
+        coverage_target = len(selected_codes)
+        dates_to_fetch = []
+        for date in trade_dates:
+            count = counts.get(date, 0)
+            if count >= coverage_target:
+                skipped += 1
+            else:
+                dates_to_fetch.append(date)
+
+    failures: list[str] = []
+    rows = 0
+    updated = 0
+    stale_reads = 0
+    cache_hits = 0
+
+    def emit(current: int, total: int, name: str, api: str = "daily") -> None:
+        if progress_callback is not None:
+            progress_callback(
+                {
+                    "phase": "trade_date_bulk",
+                    "api": api,
+                    "current": current,
+                    "total": max(total, 1),
+                    "name": name,
+                    "worker_count": 1,
+                    "batch_size": 1,
+                    "successes": updated,
+                    "failures": len(failures),
+                    "cache_hits": cache_hits,
+                    "stale_reads": stale_reads,
+                    "skipped": skipped,
+                    "latest_source_trade_date": latest_source_trade_date,
+                }
+            )
+
+    if not dates_to_fetch:
+        emit(len(trade_dates), len(trade_dates), str(latest_source_trade_date), "skip_completed")
+        return MarketUpdateSummary(
+            seen=len(trade_dates),
+            updated=0,
+            rows=0,
+            failures=[],
+            skipped=skipped,
+            latest_source_trade_date=latest_source_trade_date,
+        )
+
+    def on_client_progress(payload: dict[str, object]) -> None:
+        current = int(payload.get("current", 0) or 0)
+        total = int(payload.get("total", len(dates_to_fetch)) or len(dates_to_fetch))
+        name = str(payload.get("name", "") or "")
+        api = str(payload.get("api", "daily") or "daily")
+        emit(current, total, name, api)
+
+    bulk_fn = getattr(client, "stock_daily_by_trade_dates")
+    try:
+        res = bulk_fn(
+            dates_to_fetch,
+            include_basic=bool(settings.tushare_daily_include_basic),
+            force_refresh=force_refresh,
+            progress_callback=on_client_progress,
+        )
+        data = res.data.copy()
+        if max_stocks:
+            data = data[data["stock_code"].astype(str).str.zfill(6).isin(set(selected_codes))].copy()
+        validate_ohlcv(data, "Tushare 全 A 日频", entity_key="stock_code")
+        expected_count = len(selected_codes)
+        coverage = data.groupby("trade_date")["stock_code"].nunique() / max(expected_count, 1)
+        low_coverage_dates = [pd.to_datetime(date).strftime("%Y%m%d") for date, ratio in coverage.items() if float(ratio) < 0.8]
+        if low_coverage_dates and "validation_status" in data.columns:
+            data.loc[pd.to_datetime(data["trade_date"]).dt.strftime("%Y%m%d").isin(low_coverage_dates), "validation_status"] = "low_universe_coverage"
+        storage.upsert_df("stock_ohlcv", data, ["stock_code", "trade_date"])
+        rows += len(data)
+        updated += int(data["trade_date"].nunique()) if not data.empty else 0
+        stale_reads += int(res.stale)
+        cache_hits += int(res.from_cache)
+        if res.error:
+            failures.append(f"Tushare 可选接口降级: {res.error}")
+        severe_low = [date for date, ratio in coverage.items() if float(ratio) < 0.4]
+        if severe_low:
+            failures.append("Tushare 全 A 日频覆盖率严重不足: " + ",".join(pd.to_datetime(date).strftime("%Y%m%d") for date in severe_low))
+    except Exception as exc:
+        failures.append(f"Tushare 全 A 日频批量更新失败: {exc}")
+
+    emit(len(dates_to_fetch), len(dates_to_fetch), str(latest_source_trade_date), "done")
+    return MarketUpdateSummary(
+        seen=len(trade_dates),
+        updated=updated,
+        rows=rows,
+        failures=failures,
+        stale_reads=stale_reads,
+        cache_hits=cache_hits,
+        skipped=skipped,
+        latest_source_trade_date=latest_source_trade_date,
+    )
+
+
 def update_all_a_stock_ohlcv(
     start_date: str,
     end_date: str,
@@ -204,6 +404,7 @@ def update_all_a_stock_ohlcv(
     batch_sleep_seconds: float | None = None,
     skip_completed: bool = False,
     probe_latest: bool = True,
+    force_refresh: bool = False,
     client: MarketDataClient | None = None,
     storage: DuckDBStorage | None = None,
     progress_callback: ProgressCallback | None = None,
@@ -217,6 +418,20 @@ def update_all_a_stock_ohlcv(
     codes = universe["stock_code"].astype(str).str.zfill(6).drop_duplicates().tolist()
     start = normalize_yyyymmdd(start_date)
     end = normalize_yyyymmdd(end_date)
+    if callable(getattr(client, "stock_daily_by_trade_dates", None)) and callable(getattr(client, "trade_dates", None)):
+        return _update_all_a_stock_ohlcv_tushare_bulk(
+            client,
+            storage,
+            codes,
+            start,
+            end,
+            incremental=incremental,
+            lookback_days=lookback_days,
+            max_stocks=max_stocks,
+            skip_completed=skip_completed,
+            force_refresh=force_refresh,
+            progress_callback=progress_callback,
+        )
     max_dates = _stock_max_dates(storage, codes) if incremental else {}
     latest_source_trade_date = None
     if incremental and skip_completed and probe_latest and codes:
@@ -459,8 +674,12 @@ def update_market_breadth(
     daily = daily[(daily.index >= pd.to_datetime(actual_start)) & (daily.index <= pd.to_datetime(end))].copy()
     out = daily.reset_index()
     out["trade_date"] = out["trade_date"].dt.date
-    out["source"] = "all_a_stock_universe" if mode == "full_market" else "local_stock_sample"
+    out["source"] = "tushare_stock_ohlcv_width" if mode == "full_market" else "local_stock_sample"
     out["fetched_at"] = pd.Timestamp.now()
+    out["source_priority"] = 0 if mode == "full_market" else 50
+    out["is_provisional"] = mode != "full_market"
+    out["validation_status"] = out["coverage_level"].map(lambda level: "validated" if level == "full_market" else f"coverage_{level}")
+    out["vendor_update_time"] = pd.NaT
     out = out[
         [
             "trade_date",
@@ -488,6 +707,10 @@ def update_market_breadth(
             "coverage_warning",
             "source",
             "fetched_at",
+            "source_priority",
+            "is_provisional",
+            "validation_status",
+            "vendor_update_time",
         ]
     ]
     storage.upsert_df("market_breadth_daily", out, ["trade_date", "breadth_mode"])

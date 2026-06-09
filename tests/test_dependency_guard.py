@@ -21,6 +21,13 @@ def test_dependency_guard_accepts_supported_core_versions() -> None:
     assert {status.package for status in report.statuses} == {spec.package for spec in CORE_DEPENDENCY_SPECS}
 
 
+def test_akshare_not_core_dependency() -> None:
+    packages = {spec.package for spec in CORE_DEPENDENCY_SPECS}
+
+    assert "tushare" in packages
+    assert "akshare" not in packages
+
+
 def test_dependency_version_outside_allowed_range_fails_guard() -> None:
     versions = _supported_versions()
     versions["numpy"] = "3.0.0"

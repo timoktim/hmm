@@ -7,7 +7,7 @@ import streamlit as st
 
 from src.data_pipeline.storage import DuckDBStorage, json_dumps
 from src.data_pipeline.universe import parse_stock_lines
-from src.data_sources.akshare_client import AKShareClient
+from src.data_sources.factory import create_data_client
 from src.features.custom_basket_features import POLICY_DYNAMIC_AVAILABLE, POLICY_FIXED_ZERO_RETURN, custom_basket_quality_frame
 from src.ui.components.data_status_bar import render_data_status_bar
 from src.ui.help_texts import rename_columns_for_display
@@ -43,7 +43,7 @@ def _add_sector_items(storage: DuckDBStorage, universe_id: str, sector_type: str
 
 
 def _refresh_board_names(storage: DuckDBStorage, sector_type: str) -> int:
-    client = AKShareClient(storage=storage)
+    client = create_data_client(storage=storage)
     res = client.board_names(sector_type, force_refresh=True)  # type: ignore[arg-type]
     storage.upsert_df("sector_meta", res.data, ["sector_id"])
     return len(res.data)

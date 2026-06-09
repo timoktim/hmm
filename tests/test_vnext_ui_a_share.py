@@ -7,7 +7,7 @@ import pandas as pd
 
 from src.data_pipeline.market_updater import update_all_a_stock_universe, update_market_breadth
 from src.data_pipeline.storage import DuckDBStorage
-from src.data_sources.akshare_client import DataResult
+from src.data_sources.base import DataResult
 from src.features.stock_features import add_a_share_limit_flags
 from src.models.hmm_model import train_hmm
 from src.models.market_hmm import train_market_hmm

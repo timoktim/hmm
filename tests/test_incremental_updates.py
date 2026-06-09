@@ -4,7 +4,7 @@ import pandas as pd
 
 from src.data_pipeline.storage import DuckDBStorage
 from src.data_pipeline.updater import incremental_update_boards, update_stock_histories
-from src.data_sources.akshare_client import DataResult
+from src.data_sources.base import DataResult
 
 
 def _sector_row(sector_id: str, trade_date: str) -> dict[str, object]:

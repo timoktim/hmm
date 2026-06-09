@@ -15,25 +15,35 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
-当前主路径使用 AKShare 封装的同花顺和腾讯接口。
+当前主路径使用 Tushare Pro 确认版日频数据。AKShare、同花顺和东方财富网页接口仅保留为 legacy 兼容代码，不在默认更新链路中调用。
 
 ## 数据源
 
-主数据源为 AKShare 封装的同花顺和腾讯接口，不再优先使用东方财富：
+主数据源为 Tushare Pro：
 
-- 同花顺：行业/概念板块名称、板块指数行情、板块成分股
-- 腾讯：A 股个股日线行情、沪深300和中证全指市场基准
+- `stock_basic`：全 A 股票池
+- `trade_cal`：交易日列表
+- `daily(trade_date=...)`：按交易日批量拉取全市场日线
+- `adj_factor(trade_date=...)`：生成前复权兼容 `stock_ohlcv`
+- `daily_basic(trade_date=...)`：可选补充换手率等每日指标
+- `index_daily`：主要市场指数和基准
 
-接口可能因上游变化失效。应用内 `Data Health` 页面会展示最近成功时间、失败原因、缓存命中和过期缓存读取情况。
+Tushare token 只能通过环境变量配置：
+
+```bash
+export ASHARE_HMM_TUSHARE_TOKEN=<your-tushare-token>
+export ASHARE_HMM_MARKET_DATA_SOURCE=tushare
+```
+
+默认按 2000 积分档每分钟 200 次设计，配置保留安全余量。分钟线、实时行情、新闻舆情和额外权限特色接口不作为默认依赖。应用内 `Data Health` 页面会展示最近成功时间、失败原因、缓存命中和过期缓存读取情况。
 
 ## 更新数据
 
 ```bash
 python -m src.data_pipeline.updater --board-type industry --start 20200101 --end today --incremental --lookback-days 10 --workers 1
-python -m src.data_pipeline.updater --board-type concept --start 20200101 --end today --incremental --lookback-days 10 --workers 1
 ```
 
-默认建议使用增量更新：已有板块会从本地最大交易日往前回补 10 个自然日，只有缺失板块才从输入起点开始。调试时可以加 `--limit 10`，先抓取少量板块；`--workers` 只并发板块行情，建议不超过 3。
+默认建议在 UI 数据中心使用增量更新：全 A 日频按交易日批量拉取并从本地最大交易日向前回补；行业板块默认使用 Tushare 成分股加本地个股 OHLCV 聚合。概念板块如需历史 legacy 数据，需要显式选择 legacy 路径，默认不会静默回退到 AKShare/同花顺/东方财富。
 
 ## 系统工作原理
 

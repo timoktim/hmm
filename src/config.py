@@ -25,8 +25,21 @@ class Settings(BaseSettings):
     request_max_sleep: float = 1.5
     cache_ttl_seconds: int = 24 * 60 * 60
     default_feature_version: str = "v1"
-    default_source: str = "akshare"
-    market_data_source: str = "akshare"
+    default_source: str = "tushare"
+    market_data_source: str = "tushare"
+    tushare_token: str | None = None
+    tushare_points: int = 2000
+    tushare_rate_limit_per_minute: int = 200
+    tushare_request_min_interval_seconds: float = 0.31
+    tushare_request_jitter_seconds: float = 0.02
+    tushare_max_retries: int = 3
+    tushare_timeout_seconds: float = 20.0
+    tushare_daily_include_basic: bool = True
+    tushare_qfq_adjustment_enabled: bool = True
+    tushare_use_official_sw_daily: bool = False
+    tushare_sw_level: str = "L1"
+    tushare_sw_source: str = "SW2021"
+    tushare_concept_source: str = "ts"
     bypass_proxy_for_akshare: bool = True
     tdx_servers: str = (
         "119.147.212.81:7709,"
@@ -45,7 +58,7 @@ class Settings(BaseSettings):
     tdx_server_cooldown_seconds: float = 120.0
     tdx_failure_threshold: int = 3
     tdx_bar_count: int = 800
-    tdx_fallback_to_akshare: bool = True
+    tdx_fallback_to_akshare: bool = False
 
     def ensure_dirs(self) -> None:
         self.db_path.parent.mkdir(parents=True, exist_ok=True)

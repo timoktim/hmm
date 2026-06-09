@@ -34,11 +34,11 @@ from src.utils.dates import today_yyyymmdd
 
 
 TASK_OPTIONS = [
-    "更新当前板块池数据",
-    "更新全市场板块数据",
-    "更新当前板块池个股行情",
-    "更新全 A 宽度数据链路",
-    "更新大盘指数与市场基准",
+    "更新 Tushare 股票池",
+    "更新 Tushare 全 A 日频行情",
+    "更新 Tushare 指数与市场基准",
+    "更新全 A 市场宽度",
+    "更新 Tushare 行业/本地聚合板块",
     "重试失败任务",
 ]
 
@@ -147,7 +147,7 @@ def _progress_widgets():
 
 
 def _all_a_progress_widgets() -> ProgressDictCallback:
-    st.markdown("**全 A 宽度数据链路进度**")
+    st.markdown("**Tushare 全 A 日频数据进度**")
     overall_label = st.empty()
     overall_bar = st.progress(0)
     stage_label = st.empty()
@@ -268,14 +268,14 @@ def run_all_a_width_pipeline(
 ) -> CombinedUpdateResult:
     summaries: list[Any] = []
     if progress_callback:
-        progress_callback(all_a_progress_event("universe", "更新全 A 股票池", 1, current=0, total=1))
+        progress_callback(all_a_progress_event("universe", "更新 Tushare 股票池", 1, current=0, total=1))
     universe_summary = update_all_a_stock_universe(storage=storage, force_refresh=force_refresh)
     summaries.append(universe_summary)
     if progress_callback:
         progress_callback(
             all_a_progress_event(
                 "universe",
-                "更新全 A 股票池",
+                "更新 Tushare 股票池",
                 1,
                 current=1,
                 total=1,
@@ -285,14 +285,14 @@ def run_all_a_width_pipeline(
                 stale_reads=int(getattr(universe_summary, "stale_reads", 0) or 0),
             )
         )
-        progress_callback(all_a_progress_event("stock", "更新全 A 个股行情", 2, current=0, total=max_stocks or 1))
+        progress_callback(all_a_progress_event("stock", "按交易日批量更新 Tushare 全 A 日线", 2, current=0, total=max_stocks or 1))
 
     def on_stock_progress(payload: dict[str, object]) -> None:
         if progress_callback:
             progress_callback(
                 all_a_progress_event(
                     "stock",
-                    "更新全 A 个股行情",
+                    "按交易日批量更新 Tushare 全 A 日线",
                     2,
                     current=int(payload.get("current", 0) or 0),
                     total=int(payload.get("total", 1) or 1),
@@ -316,6 +316,7 @@ def run_all_a_width_pipeline(
         batch_size=batch_size,
         batch_sleep_seconds=batch_sleep_seconds,
         skip_completed=skip_completed,
+        force_refresh=force_refresh,
         progress_callback=on_stock_progress,
         storage=storage,
     )
@@ -325,7 +326,7 @@ def run_all_a_width_pipeline(
         progress_callback(
             all_a_progress_event(
                 "stock",
-                "更新全 A 个股行情",
+                "按交易日批量更新 Tushare 全 A 日线",
                 2,
                 current=int(getattr(stock_summary, "seen", 0) or 1),
                 total=int(getattr(stock_summary, "seen", 0) or 1),
@@ -361,8 +362,8 @@ def run_all_a_width_pipeline(
                 stale_reads=int(getattr(breadth_summary, "stale_reads", 0) or 0),
             )
         )
-        progress_callback(all_a_progress_event("done", "全 A 宽度数据链路完成", 3, current=1, total=1))
-    return _combine("更新全 A 宽度数据链路", summaries)
+        progress_callback(all_a_progress_event("done", "Tushare 全 A 日频与宽度更新完成", 3, current=1, total=1))
+    return _combine("更新 Tushare 全 A 日频与宽度", summaries)
 
 
 def retry_failed_tasks(
@@ -452,54 +453,68 @@ def render_data_update_tasks(storage: DuckDBStorage, universe_id: str | None = N
     end = c2.text_input("结束日期", value=today_yyyymmdd())
     update_mode = c3.selectbox("更新模式", ["incremental", "full"], index=0, format_func=lambda x: "增量更新" if x == "incremental" else "全量回填")
     lookback_days = c4.number_input("回补天数", min_value=0, max_value=120, value=10, help="增量更新时向前回补的自然日数，用于覆盖最近几天可能修订的数据。")
+    selected_source = str(settings.market_data_source or settings.default_source or "tushare").strip().lower()
+    is_tushare_source = selected_source in {"tushare", "ts"}
 
     with st.expander("高级参数", expanded=False):
         a1, a2, a3 = st.columns(3)
         board_workers = a1.number_input("板块并发数", min_value=1, max_value=3, value=1, help="只用于板块行情抓取。并发过高可能导致接口失败。")
-        stock_worker_default, stock_worker_max = stock_worker_defaults_for_source()
-        stock_workers = a2.number_input(
-            "个股并发数",
-            min_value=1,
-            max_value=int(stock_worker_max),
-            value=int(stock_worker_default),
-            help="只用于个股行情。AKShare 默认限制为低并发；启用 mootdx/TDX 后使用 TDX 连接池并发设置。",
-        )
-        include_constituents = a3.checkbox("同时更新成分股", value=False, help="成分股接口较慢，开启后总耗时会明显增加。")
+        stock_workers = 1
+        if is_tushare_source:
+            token_configured = bool(str(settings.tushare_token or "").strip())
+            a2.metric("Tushare token", "已配置" if token_configured else "未配置")
+            a3.metric("主数据源", "Tushare")
+            st.caption(
+                f"2000 积分默认按 {int(settings.tushare_rate_limit_per_minute)} 次/分钟设计，"
+                f"当前最小请求间隔 {float(settings.tushare_request_min_interval_seconds):.2f}s；"
+                f"全 A 日频按交易日批量拉取，stock_ohlcv 写入前复权兼容 OHLCV。"
+            )
+            if not token_configured:
+                st.warning("未配置 Tushare token。请设置环境变量 ASHARE_HMM_TUSHARE_TOKEN；页面不会显示 token 值。")
+        else:
+            stock_worker_default, stock_worker_max = stock_worker_defaults_for_source()
+            stock_workers = a2.number_input(
+                "个股并发数",
+                min_value=1,
+                max_value=int(stock_worker_max),
+                value=int(stock_worker_default),
+                help="仅用于 legacy/mootdx 兼容路径。Tushare 主链路按交易日串行限速，不使用个股并发。",
+            )
+            a3.metric("主数据源", selected_source)
+        include_constituents = a3.checkbox("同时更新成分股", value=is_tushare_source, help="Tushare 行业本地聚合需要先写入行业成分股；legacy 源开启后总耗时会明显增加。")
         b1, b2, b3 = st.columns(3)
         test_limit_enabled = b1.checkbox("启用测试数量限制", value=False, help="仅用于小范围试跑。关闭后更新全部目标。")
         test_limit = b2.number_input("测试限制数量", min_value=1, max_value=6000, value=30, disabled=not test_limit_enabled)
         force_refresh = b3.checkbox("强制刷新", value=False, help="尽量绕过缓存重新请求。日常增量更新通常不需要开启。")
-        d1, d2 = st.columns(2)
-        tdx_batch_size = d1.number_input("TDX 批大小", min_value=10, max_value=300, value=int(settings.tdx_batch_size), step=10, help="全 A 个股行情按批切片，避免瞬时请求过密。")
-        tdx_batch_sleep = d2.number_input("批次休眠秒数", min_value=0.0, max_value=30.0, value=float(settings.tdx_batch_sleep_seconds), step=0.5, help="每批之间暂停，降低被临时限流的概率。")
+        tdx_batch_size: int | None = None
+        tdx_batch_sleep: float | None = None
+        if not is_tushare_source:
+            d1, d2 = st.columns(2)
+            tdx_batch_size = int(d1.number_input("TDX 批大小", min_value=10, max_value=300, value=int(settings.tdx_batch_size), step=10, help="仅用于 legacy/mootdx 全 A 兼容路径。"))
+            tdx_batch_sleep = float(d2.number_input("批次休眠秒数", min_value=0.0, max_value=30.0, value=float(settings.tdx_batch_sleep_seconds), step=0.5, help="仅用于 legacy/mootdx 批次之间暂停。"))
 
     task = st.radio("选择更新任务", TASK_OPTIONS, horizontal=False)
-    board_types: list[str] = ["industry", "concept"]
+    board_types: list[str] = ["industry"]
     all_a_lookback = 60
     all_a_skip_completed = True
-    if task == "更新当前板块池数据":
-        st.info("只更新当前板块池中的行业、概念和自定义股票池。若勾选成分股，会同步更新板块成分股。")
-        if not universe_id:
-            st.warning("当前未选择板块池，请先在板块池管理中创建或选择板块池。")
-    elif task == "更新全市场板块数据":
-        board_types = _board_type_selection()
-        st.info("按所选板块类型更新全市场板块行情。测试数量限制只在高级参数中启用时生效。")
-    elif task == "更新当前板块池个股行情":
-        codes = collect_universe_stock_codes(storage, universe_id)
-        st.info(f"将从当前板块池成分股和自定义股票池成员中去重更新个股行情。当前可更新股票数：{len(codes)}。")
-        if universe_id and not codes:
-            st.warning("当前板块池缺少成分股，请先更新板块池数据并包含成分股。")
-    elif task == "更新全 A 宽度数据链路":
-        st.info("组合任务：先更新全 A 股票池，再增量更新全 A 个股行情，最后计算全 A 市场宽度。")
+    if task == "更新 Tushare 股票池":
+        st.info("从 Tushare stock_basic 更新全 A 股票基础列表；不触发 AKShare、同花顺或东方财富。")
+    elif task == "更新 Tushare 全 A 日频行情":
+        st.info("按交易日批量调用 Tushare daily、adj_factor 和可选 daily_basic，写入前复权兼容 stock_ohlcv。")
         c5, c6 = st.columns(2)
-        all_a_lookback = c5.number_input("全 A 行情回补天数", min_value=10, max_value=180, value=60)
+        all_a_lookback = c5.number_input("Tushare 日频回补天数", min_value=10, max_value=180, value=60)
         all_a_skip_completed = c6.checkbox(
-            "跳过已完成股票",
+            "跳过已完成交易日",
             value=True,
-            help="开启后会先探测数据源最新交易日，并跳过本地已更新到该交易日的股票。日常增量更新会快很多；如需强制重抓最近回补区间，可关闭。",
+            help="按本地 trade_date 覆盖情况跳过已完整写入的交易日，不再逐股探测最新日期。",
         )
-    elif task == "更新大盘指数与市场基准":
-        st.info("将更新主要大盘指数，并同步更新沪深300与中证全指市场基准。")
+    elif task == "更新 Tushare 指数与市场基准":
+        st.info("使用 Tushare index_daily 更新主要大盘指数，并同步沪深300与中证全指市场基准。")
+    elif task == "更新全 A 市场宽度":
+        st.info("基于本地 Tushare 确认日频 stock_ohlcv 计算全 A 市场宽度；不联网抓取旧网页源。")
+    elif task == "更新 Tushare 行业/本地聚合板块":
+        board_types = ["industry"]
+        st.info("默认只更新 Tushare 申万行业：先取行业成分，再用本地 Tushare 个股 OHLCV 聚合行业行情。概念板块为 legacy/unsupported，不静默回退网页源。")
     else:
         failures_count = storage.read_df("SELECT count(*) AS n FROM fetch_failures")
         n = 0 if failures_count.empty else int(failures_count.loc[0, "n"] or 0)
@@ -510,7 +525,7 @@ def render_data_update_tasks(storage: DuckDBStorage, universe_id: str | None = N
 
     progress_area = st.container()
     if st.button("开始更新", type="primary"):
-        if task == "更新全 A 宽度数据链路":
+        if task in {"更新 Tushare 全 A 日频行情"}:
             progress_bar = progress_text = stats_text = None
             on_progress = None
         else:
@@ -520,22 +535,9 @@ def render_data_update_tasks(storage: DuckDBStorage, universe_id: str | None = N
         result: Any
         with progress_area:
             try:
-                if task == "更新当前板块池数据":
-                    if not universe_id:
-                        result = CombinedUpdateResult(task=task, failures=["当前未选择板块池，请先在板块池管理中创建或选择板块池。"])
-                    else:
-                        result = update_universe_data(
-                            universe_id,
-                            start,
-                            end,
-                            include_constituents=include_constituents,
-                            incremental=incremental,
-                            lookback_days=int(lookback_days),
-                            workers=int(board_workers),
-                            progress_callback=on_progress,
-                            storage=storage,
-                        )
-                elif task == "更新全市场板块数据":
+                if task == "更新 Tushare 股票池":
+                    result = update_all_a_stock_universe(storage=storage, force_refresh=force_refresh)
+                elif task == "更新 Tushare 行业/本地聚合板块":
                     updater = incremental_update_boards if incremental else update_boards
                     summaries = []
                     for board_type in board_types:
@@ -550,50 +552,30 @@ def render_data_update_tasks(storage: DuckDBStorage, universe_id: str | None = N
                             kwargs["lookback_days"] = int(lookback_days)
                         summaries.append(updater(board_type, start, end, **kwargs))
                     result = _combine(task, summaries)
-                elif task == "更新当前板块池个股行情":
-                    codes = collect_universe_stock_codes(storage, universe_id)
-                    if not universe_id:
-                        result = CombinedUpdateResult(task=task, failures=["当前未选择板块池，请先选择板块池。"])
-                    elif not codes:
-                        result = CombinedUpdateResult(task=task, failures=["当前板块池缺少成分股，请先更新板块池数据并包含成分股。"])
-                    else:
-                        result = update_stock_histories(
-                            codes,
-                            start,
-                            end,
-                            incremental=True,
-                            lookback_days=int(lookback_days),
-                            missing_only=False,
-                            limit=limit,
-                            workers=int(stock_workers),
-                            batch_size=int(tdx_batch_size),
-                            batch_sleep_seconds=float(tdx_batch_sleep),
-                            progress_callback=on_progress,
-                            storage=storage,
-                        )
-                elif task == "更新全 A 宽度数据链路":
-                    result = run_all_a_width_pipeline(
+                elif task == "更新 Tushare 全 A 日频行情":
+                    result = update_all_a_stock_ohlcv(
                         start,
                         end,
                         incremental=incremental,
-                        skip_completed=bool(all_a_skip_completed),
-                        lookback_days=int(lookback_days),
-                        all_a_lookback_days=int(all_a_lookback),
+                        lookback_days=int(all_a_lookback),
                         max_stocks=limit,
                         workers=int(stock_workers),
-                        batch_size=int(tdx_batch_size),
-                        batch_sleep_seconds=float(tdx_batch_sleep),
+                        batch_size=tdx_batch_size,
+                        batch_sleep_seconds=tdx_batch_sleep,
+                        skip_completed=bool(all_a_skip_completed),
                         force_refresh=force_refresh,
                         progress_callback=_all_a_progress_widgets(),
                         storage=storage,
                     )
-                elif task == "更新大盘指数与市场基准":
+                elif task == "更新 Tushare 指数与市场基准":
                     summaries = [
                         update_market_indices(start, end, index_codes=DEFAULT_MARKET_INDEX_CODES, incremental=incremental, lookback_days=int(lookback_days), storage=storage),
                         update_market_benchmark("hs300", start, end, incremental=incremental, lookback_days=int(lookback_days), storage=storage),
                         update_market_benchmark("csi_all", start, end, incremental=incremental, lookback_days=int(lookback_days), storage=storage),
                     ]
                     result = _combine(task, summaries)
+                elif task == "更新全 A 市场宽度":
+                    result = update_market_breadth(start, end, incremental=incremental, lookback_days=int(lookback_days), mode="full_market", storage=storage)
                 else:
                     result = retry_failed_tasks(
                         storage,
