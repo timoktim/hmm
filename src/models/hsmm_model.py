@@ -11,7 +11,7 @@ import pandas as pd
 from sklearn.cluster import KMeans
 from sklearn.preprocessing import StandardScaler
 
-from src.models.hsmm_core import hsmm_viterbi_dp, resolve_hsmm_engine
+from src.models.hsmm_core import hsmm_viterbi_dp, last_hsmm_engine_diagnostic, resolve_hsmm_engine
 from src.models.hsmm_labeler import label_hsmm_states
 
 
@@ -110,7 +110,9 @@ class DiscreteDurationGaussianHSMM:
         self.variance_floor = float(variance_floor)
         self.random_state = random_state
         self.engine = str(engine or "python")
-        resolve_hsmm_engine(self.engine)
+        self.engine_used_ = resolve_hsmm_engine(self.engine)
+        engine_diagnostic = last_hsmm_engine_diagnostic()
+        self.engine_fallback_reason_ = engine_diagnostic.get("fallback_reason")
         self.n_jobs = n_jobs
         self.sequence_chunk_size = max(1, int(sequence_chunk_size or 1))
 
@@ -643,13 +645,15 @@ class DiscreteDurationGaussianHSMM:
         self._check_fitted()
         x = np.asarray(x, dtype=float)
         if len(x) == 0:
+            self.engine_used_ = resolve_hsmm_engine(self.engine)
+            self.engine_fallback_reason_ = last_hsmm_engine_diagnostic().get("fallback_reason")
             return _ViterbiDPResult(
                 np.full((1, self.n_states), -np.inf, dtype=float),
                 np.full((1, self.n_states), -1, dtype=int),
                 np.full((1, self.n_states), 0, dtype=int),
                 np.array([], dtype=float),
                 np.empty((0, self.n_states), dtype=float),
-                resolve_hsmm_engine(self.engine),
+                self.engine_used_,
             )
         emission = self._emission_logprob(x)
         log_start = np.log(np.clip(self.startprob_, EPS, None))
@@ -666,13 +670,16 @@ class DiscreteDurationGaussianHSMM:
             log_duration,
             engine=self.engine,
         )
+        engine_diagnostic = last_hsmm_engine_diagnostic()
+        self.engine_used_ = str(engine_diagnostic.get("resolved_engine") or resolve_hsmm_engine(self.engine))
+        self.engine_fallback_reason_ = engine_diagnostic.get("fallback_reason")
         return _ViterbiDPResult(
             dp=dp,
             back_state=back_state,
             back_duration=back_duration,
             score_by_t=score_by_t,
             emission=emission,
-            engine=resolve_hsmm_engine(self.engine),
+            engine=self.engine_used_,
         )
 
     def _viterbi_array(self, x: np.ndarray) -> _DecodeResult:

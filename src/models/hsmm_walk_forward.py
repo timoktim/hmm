@@ -23,6 +23,7 @@ from src.data_pipeline.universe import (
 )
 from src.features.hsmm_features import HSMM_FEATURE_COLUMNS, build_hsmm_features
 from src.features.sector_features import feature_scope_for_universe
+from src.models.hsmm_core import last_hsmm_engine_diagnostic, resolve_hsmm_engine
 from src.models.hsmm_model import DiscreteDurationGaussianHSMM
 
 
@@ -103,6 +104,25 @@ def _hsmm_performance_storage_frame(rows: list[dict[str, object]] | pd.DataFrame
         return df
     cols = [column for column in HSMM_RUN_PERFORMANCE_STORAGE_COLUMNS if column in df.columns]
     return df[cols].copy()
+
+
+def _hsmm_engine_profile_diagnostic(engine: str) -> dict[str, object]:
+    try:
+        resolved = resolve_hsmm_engine(engine)
+        diagnostic = last_hsmm_engine_diagnostic()
+        return {
+            "engine_used": resolved,
+            "engine_fallback_reason": diagnostic.get("fallback_reason"),
+            "numba_available": diagnostic.get("numba_available"),
+            "numba_compile_warmed": diagnostic.get("compile_warmed"),
+        }
+    except RuntimeError as exc:
+        return {
+            "engine_used": "unavailable",
+            "engine_fallback_reason": str(exc),
+            "numba_available": False,
+            "numba_compile_warmed": False,
+        }
 
 
 def _config_hash_payload(
@@ -406,6 +426,7 @@ def build_hsmm_performance_profile(
 
     optimized_prefix_day_units = max(optimized_prefix_day_units, 1)
     rough_ratio = float(legacy_prefix_day_units / optimized_prefix_day_units)
+    engine_diagnostic = _hsmm_engine_profile_diagnostic(config.hsmm_engine)
     return {
         "run_id": run_id,
         "start_date": start_date.date().isoformat(),
@@ -423,6 +444,7 @@ def build_hsmm_performance_profile(
         "train_window_days": config.train_window_days,
         "snapshot_decode_mode": config.snapshot_decode_mode,
         "hsmm_engine": config.hsmm_engine,
+        **engine_diagnostic,
         "n_jobs": config.n_jobs,
         "fit_n_jobs": _fit_n_jobs_for_config(config),
         "fit_sequence_chunk_size": config.fit_sequence_chunk_size,
@@ -464,6 +486,8 @@ def write_hsmm_performance_profile(profile: dict[str, object], output_dir: Path)
         f"- sector chunk size: {profile.get('sector_chunk_size')}",
         f"- snapshot decode mode: {profile.get('snapshot_decode_mode')}",
         f"- HSMM engine: {profile.get('hsmm_engine')}",
+        f"- engine used: {profile.get('engine_used')}",
+        f"- engine fallback reason: {profile.get('engine_fallback_reason')}",
         "",
         "This is a scale estimate only. It does not train or write HSMM model rows.",
     ]
@@ -969,6 +993,8 @@ def run_hsmm_walk_forward(
                     "sector_chunk_size": config.sector_chunk_size,
                     "snapshot_decode_mode": config.snapshot_decode_mode,
                     "hsmm_engine": config.hsmm_engine,
+                    "engine_used": model.engine_used_,
+                    "engine_fallback_reason": model.engine_fallback_reason_,
                     "created_at": pd.Timestamp.now(),
                 }
             )
