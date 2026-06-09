@@ -296,6 +296,55 @@ class DuckDBStorage:
             )
             con.execute(
                 """
+                CREATE TABLE IF NOT EXISTS tushare_adj_factor_snapshot (
+                  ts_code TEXT,
+                  stock_code TEXT,
+                  trade_date DATE,
+                  adj_factor DOUBLE,
+                  source TEXT,
+                  fetched_at TIMESTAMP,
+                  source_priority INTEGER,
+                  validation_status TEXT,
+                  PRIMARY KEY (stock_code, trade_date)
+                );
+                """
+            )
+            con.execute(
+                """
+                CREATE TABLE IF NOT EXISTS qfq_rebuild_runs (
+                  rebuild_run_id TEXT PRIMARY KEY,
+                  trigger_reason TEXT,
+                  start_date DATE,
+                  end_date DATE,
+                  affected_stock_count INTEGER,
+                  affected_row_count INTEGER,
+                  status TEXT,
+                  created_at TIMESTAMP,
+                  completed_at TIMESTAMP,
+                  summary_json TEXT
+                );
+                """
+            )
+            con.execute(
+                """
+                CREATE TABLE IF NOT EXISTS qfq_rebuild_affected_stocks (
+                  rebuild_run_id TEXT,
+                  stock_code TEXT,
+                  earliest_affected_date DATE,
+                  latest_checked_date DATE,
+                  old_factor DOUBLE,
+                  new_factor DOUBLE,
+                  factor_change_count INTEGER,
+                  rebuild_start_date DATE,
+                  rebuild_end_date DATE,
+                  status TEXT,
+                  note TEXT,
+                  PRIMARY KEY (rebuild_run_id, stock_code)
+                );
+                """
+            )
+            con.execute(
+                """
                 CREATE TABLE IF NOT EXISTS market_benchmark_ohlcv (
                   benchmark_id VARCHAR,
                   trade_date DATE,

@@ -397,6 +397,210 @@ class TushareClient:
         ]
         return out[cols].drop_duplicates(["stock_code", "trade_date"]).sort_values(["stock_code", "trade_date"])
 
+    @staticmethod
+    def normalize_qfq_stock_daily_with_reference(
+        daily: pd.DataFrame,
+        adj: pd.DataFrame,
+        reference_factors: dict[str, float],
+        basic: pd.DataFrame | None = None,
+        *,
+        validation_status: str = "validated_rebased",
+        source: str = "tushare_qfq_rebased",
+    ) -> pd.DataFrame:
+        if daily.empty:
+            return pd.DataFrame(
+                columns=[
+                    "stock_code",
+                    "trade_date",
+                    "open",
+                    "high",
+                    "low",
+                    "close",
+                    "volume",
+                    "amount",
+                    "pct_chg",
+                    "turnover",
+                    "source",
+                    "fetched_at",
+                    "source_priority",
+                    "is_provisional",
+                    "validation_status",
+                    "vendor_update_time",
+                ]
+            )
+        out = daily.rename(columns={"vol": "volume"}).copy()
+        if "ts_code" not in out.columns or "trade_date" not in out.columns:
+            raise ValueError("Tushare daily 缺少 ts_code/trade_date")
+        out["stock_code"] = out["ts_code"].map(_stock_code_from_ts_code)
+        out["trade_date"] = to_trade_date(out["trade_date"])
+        _safe_numeric(out, ["open", "high", "low", "close", "volume", "amount", "pct_chg"])
+
+        adj_work = adj.copy()
+        if adj_work.empty or not {"ts_code", "trade_date", "adj_factor"}.issubset(adj_work.columns):
+            raise ValueError("Tushare adj_factor 缺少 ts_code/trade_date/adj_factor")
+        adj_work["trade_date"] = to_trade_date(adj_work["trade_date"])
+        adj_work["adj_factor"] = pd.to_numeric(adj_work["adj_factor"], errors="coerce")
+        out = out.merge(adj_work[["ts_code", "trade_date", "adj_factor"]], on=["ts_code", "trade_date"], how="left")
+
+        normalized_reference = {str(code).zfill(6): float(value) for code, value in reference_factors.items()}
+        out["reference_adj_factor"] = out["stock_code"].map(normalized_reference)
+        factor = pd.to_numeric(out["adj_factor"], errors="coerce")
+        reference = pd.to_numeric(out["reference_adj_factor"], errors="coerce")
+        invalid = factor.isna() | reference.isna() | factor.le(0) | reference.le(0)
+        if bool(invalid.any()):
+            missing_codes = sorted(out.loc[invalid, "stock_code"].dropna().astype(str).unique().tolist())
+            raise ValueError("Tushare QFQ rebuild 缺少有效 adj_factor/reference_factor: " + ",".join(missing_codes[:10]))
+
+        scale = factor / reference
+        for col in ["open", "high", "low", "close"]:
+            out[col] = pd.to_numeric(out[col], errors="coerce") * scale
+
+        if basic is not None and not basic.empty:
+            basic_work = basic.rename(columns={"turnover_rate": "turnover"}).copy()
+            if "trade_date" in basic_work.columns:
+                basic_work["trade_date"] = to_trade_date(basic_work["trade_date"])
+                keep = [col for col in ["ts_code", "trade_date", "turnover", "volume_ratio", "total_mv", "circ_mv"] if col in basic_work.columns]
+                out = out.merge(basic_work[keep], on=["ts_code", "trade_date"], how="left")
+        if "turnover" not in out.columns:
+            out["turnover"] = pd.NA
+        _safe_numeric(out, ["turnover"])
+        out = _audit_columns(
+            out,
+            source=source,
+            source_priority=SOURCE_PRIORITY_PRIMARY,
+            is_provisional=False,
+            validation_status=validation_status,
+        )
+        cols = [
+            "stock_code",
+            "trade_date",
+            "open",
+            "high",
+            "low",
+            "close",
+            "volume",
+            "amount",
+            "pct_chg",
+            "turnover",
+            "source",
+            "fetched_at",
+            "source_priority",
+            "is_provisional",
+            "validation_status",
+            "vendor_update_time",
+        ]
+        return out[cols].drop_duplicates(["stock_code", "trade_date"]).sort_values(["stock_code", "trade_date"])
+
+    def _daily_raw_by_stock(self, stock_code: str, start_date: str, end_date: str, force_refresh: bool = False) -> DataResult:
+        code = str(stock_code).zfill(6)
+        ts_code = _ts_code_from_stock_code(code)
+        start = normalize_yyyymmdd(start_date)
+        end = normalize_yyyymmdd(end_date)
+        fields = "ts_code,trade_date,open,high,low,close,pre_close,change,pct_chg,vol,amount"
+
+        def func() -> pd.DataFrame:
+            return self._call_with_retry("daily", ts_code=ts_code, start_date=start, end_date=end, fields=fields)
+
+        return self._fetch(
+            "tushare_daily_by_stock",
+            func,
+            ts_code=ts_code,
+            start_date=start,
+            end_date=end,
+            fields=fields,
+            force_refresh=force_refresh,
+            ttl_seconds=self._history_ttl(end, None),
+        )
+
+    def _adj_factor_by_stock(self, stock_code: str, start_date: str, end_date: str, force_refresh: bool = False) -> DataResult:
+        code = str(stock_code).zfill(6)
+        ts_code = _ts_code_from_stock_code(code)
+        start = normalize_yyyymmdd(start_date)
+        end = normalize_yyyymmdd(end_date)
+
+        def func() -> pd.DataFrame:
+            return self._call_with_retry("adj_factor", ts_code=ts_code, start_date=start, end_date=end)
+
+        return self._fetch(
+            "tushare_adj_factor_by_stock",
+            func,
+            ts_code=ts_code,
+            start_date=start,
+            end_date=end,
+            force_refresh=force_refresh,
+            ttl_seconds=self._history_ttl(end, None),
+        )
+
+    def _daily_basic_by_stock(self, stock_code: str, start_date: str, end_date: str, force_refresh: bool = False) -> DataResult:
+        code = str(stock_code).zfill(6)
+        ts_code = _ts_code_from_stock_code(code)
+        start = normalize_yyyymmdd(start_date)
+        end = normalize_yyyymmdd(end_date)
+        fields = "ts_code,trade_date,turnover_rate,volume_ratio,total_mv,circ_mv"
+
+        def func() -> pd.DataFrame:
+            return self._call_with_retry("daily_basic", ts_code=ts_code, start_date=start, end_date=end, fields=fields)
+
+        return self._fetch(
+            "tushare_daily_basic_by_stock",
+            func,
+            ts_code=ts_code,
+            start_date=start,
+            end_date=end,
+            fields=fields,
+            force_refresh=force_refresh,
+            ttl_seconds=self._history_ttl(end, None),
+        )
+
+    def stock_qfq_hist_with_reference(
+        self,
+        stock_code: str,
+        start_date: str,
+        end_date: str,
+        reference_factor: float | None = None,
+        force_refresh: bool = False,
+    ) -> DataResult:
+        code = str(stock_code).zfill(6)
+        daily_res = self._daily_raw_by_stock(code, start_date, end_date, force_refresh=force_refresh)
+        adj_res = self._adj_factor_by_stock(code, start_date, end_date, force_refresh=force_refresh)
+        adj_work = adj_res.data.copy()
+        if adj_work.empty or "adj_factor" not in adj_work.columns:
+            raise ValueError(f"{code} 缺少 adj_factor，不能执行前复权重基准。")
+        adj_work["trade_date"] = pd.to_datetime(adj_work["trade_date"], errors="coerce")
+        adj_work["adj_factor"] = pd.to_numeric(adj_work["adj_factor"], errors="coerce")
+        valid_adj = adj_work.dropna(subset=["trade_date", "adj_factor"]).sort_values("trade_date")
+        if valid_adj.empty:
+            raise ValueError(f"{code} 缺少有效 adj_factor，不能执行前复权重基准。")
+        if reference_factor is None:
+            end_ts = pd.to_datetime(normalize_yyyymmdd(end_date))
+            eligible = valid_adj[valid_adj["trade_date"] <= end_ts]
+            if eligible.empty:
+                eligible = valid_adj
+            reference_factor = float(eligible.iloc[-1]["adj_factor"])
+        basic: pd.DataFrame | None = None
+        status = "validated_rebased"
+        stale = daily_res.stale or adj_res.stale
+        from_cache = daily_res.from_cache and adj_res.from_cache
+        error = daily_res.error or adj_res.error
+        if settings.tushare_daily_include_basic:
+            try:
+                basic_res = self._daily_basic_by_stock(code, start_date, end_date, force_refresh=force_refresh)
+                basic = basic_res.data
+                stale = stale or basic_res.stale
+                from_cache = from_cache and basic_res.from_cache
+            except Exception as exc:
+                status = "qfq_rebased_daily_basic_unavailable"
+                error = _safe_error(exc)
+                logger.warning("Tushare daily_basic 不可用，继续执行 QFQ rebuild: {}", type(exc).__name__)
+        data = self.normalize_qfq_stock_daily_with_reference(
+            daily_res.data,
+            adj_res.data,
+            {code: float(reference_factor)},
+            basic,
+            validation_status=status,
+        )
+        return DataResult(data, stale=stale, from_cache=from_cache, error=error)
+
     def stock_daily_by_trade_date(
         self,
         trade_date: str,
