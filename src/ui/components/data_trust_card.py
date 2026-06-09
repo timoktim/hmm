@@ -102,7 +102,7 @@ def build_data_trust_summary(
         items = storage.list_universe_items(universe_id)
         sector_count = int(len(items))
     else:
-        counts = storage.read_df("SELECT count(DISTINCT sector_id) AS n FROM sector_meta")
+        counts = storage.read_df("SELECT count(DISTINCT sector_id) AS n FROM sector_meta WHERE COALESCE(is_active, TRUE)")
         sector_count = 0 if counts.empty else int(counts.loc[0, "n"] or 0)
 
     market_run = storage.read_df("SELECT metrics_json FROM market_regime_runs ORDER BY created_at DESC LIMIT 1")
