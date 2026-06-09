@@ -452,6 +452,15 @@ class DuckDBStorage:
                 );
                 """
             )
+            con.execute(
+                """
+                CREATE TABLE IF NOT EXISTS database_workspace_metadata (
+                  key TEXT PRIMARY KEY,
+                  value TEXT,
+                  updated_at TIMESTAMP
+                );
+                """
+            )
             for table in [
                 "sector_ohlcv",
                 "sector_constituents",

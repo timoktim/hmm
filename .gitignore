@@ -17,6 +17,7 @@ data/cache/
 data/local_annotations/
 data/db/*.duckdb
 data/db/*.wal
+data/db/workspace_config.json
 data/logs/
 data/models/
 
