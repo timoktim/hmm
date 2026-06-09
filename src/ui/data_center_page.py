@@ -657,6 +657,22 @@ def render_update_logs(storage: DuckDBStorage) -> None:
         else:
             st.dataframe(rename_columns_for_display(health), width="stretch")
 
+    with st.expander("Tushare 前复权重基准记录", expanded=False):
+        st.caption("当 Tushare adj_factor 历史修订或除权除息后需要统一前复权基准时，先通过 CLI 执行 detect-only 或 dry-run，再按 affected stocks 定向重建。")
+        qfq_runs = storage.read_df(
+            """
+            SELECT rebuild_run_id, trigger_reason, start_date, end_date,
+                   affected_stock_count, affected_row_count, status, created_at, completed_at
+            FROM qfq_rebuild_runs
+            ORDER BY created_at DESC
+            LIMIT 20
+            """
+        )
+        if qfq_runs.empty:
+            st.info("暂无前复权重基准任务记录。")
+        else:
+            st.dataframe(rename_columns_for_display(qfq_runs), width="stretch")
+
 
 def render_data_center(storage: DuckDBStorage, universe_id: str | None = None) -> None:
     st.title("数据中心")
