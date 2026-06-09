@@ -6,6 +6,8 @@ from pathlib import Path
 import pandas as pd
 import streamlit as st
 
+from src.config import project_relative_path
+from src.data_pipeline.clean_tushare_snapshot import DEFAULT_REPORT, DEFAULT_SUMMARY_JSON, SNAPSHOT_PROFILE, STAGE_NAMES
 from src.data_pipeline.storage import DuckDBStorage
 from src.runtime.db_workspace import (
     DEFAULT_DB_DIR,
@@ -217,14 +219,92 @@ def _render_validate_current(active_path: Path, summary: DatabaseSummary) -> Non
             st.json(summary.latest_qfq_rebuild)
 
 
+def _recent_clean_snapshot_manifests(items: list[DatabaseInfo]) -> pd.DataFrame:
+    rows: list[dict[str, object]] = []
+    for item in items:
+        if not item.exists or item.schema_status == "unreadable":
+            continue
+        try:
+            storage = DuckDBStorage(item.path)
+            if not validate_database(item.path).can_connect:
+                continue
+            meta = storage.read_df("SELECT key, value FROM database_workspace_metadata")
+        except Exception:
+            continue
+        if meta.empty:
+            continue
+        values = dict(zip(meta["key"].astype(str), meta["value"].astype(str), strict=False))
+        if values.get("db_profile") != SNAPSHOT_PROFILE:
+            continue
+        rows.append(
+            {
+                "数据库": item.display_path,
+                "状态": values.get("build_status", "unknown"),
+                "起始": values.get("snapshot_start_date", ""),
+                "结束": values.get("snapshot_end_date", ""),
+                "QFQ": values.get("qfq_policy", ""),
+            }
+        )
+    return pd.DataFrame(rows)
+
+
+def _render_clean_snapshot_plan(active_path: Path) -> None:
+    st.subheader("Clean Tushare Snapshot Plan")
+    target_name = st.text_input("目标 DB", value="a_share_hmm_tushare_v1.duckdb", help="必须位于 data/db 下，build 模式不会覆盖当前 active DB。")
+    start_date = st.text_input("起始日期", value="20140101")
+    end_date = st.text_input("结束日期", value="today")
+    copy_assets = st.checkbox("复制用户资产 allowlist", value=True)
+    max_trade_dates = st.number_input("max trade dates", min_value=0, value=0, step=1, help="0 表示不限制，仅用于测试或 smoke。")
+    max_stocks = st.number_input("max stocks", min_value=0, value=0, step=1, help="0 表示不限制，仅用于测试或 smoke。")
+
+    try:
+        target_path = project_safe_db_path(target_name)
+        target_display = f"data/db/{target_path.relative_to(DEFAULT_DB_DIR).as_posix()}"
+        st.caption(f"目标：{target_display}")
+        if target_path == active_path:
+            st.warning("目标 DB 不能等于当前 active DB。")
+        elif target_path.exists():
+            st.warning("目标 DB 已存在。正式 build 需要显式 --allow-existing，且只能用于空库或 clean snapshot profile。")
+    except Exception as exc:
+        target_display = ""
+        st.warning(str(exc))
+
+    command = [
+        "python -m src.data_pipeline.clean_tushare_snapshot",
+        f"--target-db {target_display or 'data/db/a_share_hmm_tushare_v1.duckdb'}",
+        f"--source-db {project_relative_path(active_path)}",
+        f"--start {start_date}",
+        f"--end {end_date}",
+        "--mode plan-only",
+    ]
+    if not copy_assets:
+        command.append("--skip-user-assets")
+    if int(max_trade_dates or 0) > 0:
+        command.append(f"--max-trade-dates {int(max_trade_dates)}")
+    if int(max_stocks or 0) > 0:
+        command.append(f"--max-stocks {int(max_stocks)}")
+    command.append(f"--summary-json {project_relative_path(DEFAULT_SUMMARY_JSON)}")
+    command.append(f"--report {project_relative_path(DEFAULT_REPORT)}")
+    st.code(" \\\n  ".join(command), language="bash")
+
+    st.caption("计划阶段")
+    st.dataframe(pd.DataFrame({"stage": STAGE_NAMES}), width="stretch", hide_index=True)
+    manifests = _recent_clean_snapshot_manifests(list_database_files())
+    st.caption("最近 clean snapshot manifest")
+    if manifests.empty:
+        st.info("暂无 clean Tushare snapshot manifest。")
+    else:
+        st.dataframe(manifests, width="stretch", hide_index=True)
+
+
 def render_database_workspace(storage: DuckDBStorage | None = None, active_db_path: Path | None = None) -> None:
     del storage
     active_path = active_db_path or resolve_active_db_path()
     summary = database_summary(active_path)
     st.title("数据库工作区")
-    st.caption("查看、创建、打开、归档和校验本地 DuckDB 工作区。Clean Tushare DB snapshot rebuild 留到 WP3B。")
+    st.caption("查看、创建、打开、归档和校验本地 DuckDB 工作区，并生成 clean Tushare snapshot 的 plan-only CLI 命令。")
 
-    current_tab, open_tab, create_tab, archive_tab, validate_tab = st.tabs(["当前数据库", "打开已有数据库", "新建数据库", "归档当前数据库", "校验当前数据库"])
+    current_tab, open_tab, create_tab, archive_tab, validate_tab, snapshot_tab = st.tabs(["当前数据库", "打开已有数据库", "新建数据库", "归档当前数据库", "校验当前数据库", "Clean Snapshot Plan"])
     with current_tab:
         _render_current_database(summary)
     with open_tab:
@@ -235,3 +315,5 @@ def render_database_workspace(storage: DuckDBStorage | None = None, active_db_pa
         _render_archive_current(active_path, summary)
     with validate_tab:
         _render_validate_current(active_path, summary)
+    with snapshot_tab:
+        _render_clean_snapshot_plan(active_path)
