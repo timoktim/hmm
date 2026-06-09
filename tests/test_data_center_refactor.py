@@ -264,6 +264,13 @@ def test_data_center_stock_worker_defaults_are_source_aware(monkeypatch):
     assert data_center_page.stock_worker_defaults_for_source() == (8, 16)
 
 
+def test_data_center_progress_source_display_names():
+    assert data_center_page._data_source_display_name("tushare") == "Tushare"
+    assert data_center_page._data_source_display_name("ts") == "Tushare"
+    assert data_center_page._data_source_display_name("mootdx") == "mootdx/TDX"
+    assert data_center_page._data_source_display_name("legacy-akshare") == "AKShare legacy"
+
+
 def test_retry_failures_does_not_fetch_first_10_when_no_failures(tmp_path, monkeypatch):
     storage = DuckDBStorage(tmp_path / "test.duckdb")
     storage.init_schema()
@@ -348,13 +355,14 @@ def test_all_a_width_pipeline_sequence(tmp_path, monkeypatch):
 
 def test_all_a_progress_event_weighted_progress():
     start = data_center_page.all_a_progress_event("universe", "更新 Tushare 股票池", 1, current=1, total=1)
-    middle = data_center_page.all_a_progress_event("stock", "按交易日批量更新 Tushare 全 A 日线", 2, current=50, total=100)
+    middle = data_center_page.all_a_progress_event("stock", "按交易日批量更新 Tushare 全 A 日线", 2, current=50, total=100, data_source="mootdx")
     end = data_center_page.all_a_progress_event("breadth", "计算全 A 市场宽度", 3, current=1, total=1)
 
     assert start["overall_progress"] == 0.05
     assert 0.05 < float(middle["overall_progress"]) < 0.93
     assert end["overall_progress"] == 1.0
     assert middle["stage_progress"] == 0.5
+    assert middle["data_source"] == "mootdx/TDX"
 
 
 def test_all_a_stock_ohlcv_skip_completed_stocks(tmp_path):

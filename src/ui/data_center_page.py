@@ -65,6 +65,18 @@ ALL_A_STAGE_SPANS = {
 }
 
 
+def _data_source_display_name(source: str | None = None) -> str:
+    raw = str(source if source is not None else (settings.market_data_source or settings.default_source or "tushare")).strip()
+    normalized = raw.lower()
+    if normalized in {"tushare", "ts"}:
+        return "Tushare"
+    if normalized in {"mootdx", "tdx"}:
+        return "mootdx/TDX"
+    if normalized in {"akshare", "legacy-akshare"}:
+        return "AKShare legacy"
+    return raw or "unknown"
+
+
 def _bounded_ratio(current: object, total: object) -> float:
     try:
         denominator = max(float(total or 0), 1.0)
@@ -86,6 +98,7 @@ def all_a_progress_event(
     stale_reads: int = 0,
     skipped: int = 0,
     latest_source_trade_date: object | None = None,
+    data_source: str | None = None,
 ) -> dict[str, object]:
     stage_progress = _bounded_ratio(current, total)
     span_start, span_width = ALL_A_STAGE_SPANS.get(phase, (0.0, 0.0))
@@ -106,6 +119,7 @@ def all_a_progress_event(
         "stale_reads": int(stale_reads or 0),
         "skipped": int(skipped or 0),
         "latest_source_trade_date": latest_source_trade_date,
+        "data_source": _data_source_display_name(data_source),
     }
 
 
@@ -122,10 +136,11 @@ def _format_duration(seconds: float | None) -> str:
     return f"{sec}秒"
 
 
-def _progress_widgets():
+def _progress_widgets(data_source_label: str | None = None):
     progress_bar = st.progress(0)
     progress_text = st.empty()
     stats_text = st.empty()
+    source_text = _data_source_display_name(data_source_label)
     stage_labels = {
         "board_hist": "板块行情",
         "board_hist_done": "板块行情完成",
@@ -140,13 +155,13 @@ def _progress_widgets():
     def on_progress(progress: UpdateProgress) -> None:
         progress_bar.progress(min(progress.current / max(progress.total, 1), 1.0))
         stage = stage_labels.get(progress.stage, progress.stage)
-        progress_text.caption(f"{stage}：{progress.name}（{progress.current}/{progress.total}）")
+        progress_text.caption(f"数据源：{source_text}；{stage}：{progress.name}（{progress.current}/{progress.total}）")
         stats_text.caption(f"成功 {progress.successes}，失败 {progress.failures}，缓存命中 {progress.cache_hits}，过期缓存 {progress.stale_reads}")
 
     return progress_bar, progress_text, stats_text, on_progress
 
 
-def _all_a_progress_widgets() -> ProgressDictCallback:
+def _all_a_progress_widgets(data_source_label: str | None = None) -> ProgressDictCallback:
     st.markdown("**Tushare 全 A 日频数据进度**")
     overall_label = st.empty()
     overall_bar = st.progress(0)
@@ -154,6 +169,7 @@ def _all_a_progress_widgets() -> ProgressDictCallback:
     stage_bar = st.progress(0)
     stats_label = st.empty()
     started_at = time.monotonic()
+    widget_source_text = _data_source_display_name(data_source_label)
 
     def on_progress(payload: dict[str, object]) -> None:
         overall = max(0.0, min(float(payload.get("overall_progress", 0.0) or 0.0), 1.0))
@@ -166,9 +182,10 @@ def _all_a_progress_widgets() -> ProgressDictCallback:
         total = int(payload.get("total", 1) or 1)
         stage_index = int(payload.get("stage_index", 1) or 1)
         stage_total = int(payload.get("stage_total", 3) or 3)
+        source_text = str(payload.get("data_source") or widget_source_text)
         overall_bar.progress(overall)
         stage_bar.progress(stage_progress)
-        overall_label.caption(f"总进度：{overall:.1%}；已耗时：{_format_duration(elapsed)}；预计剩余：{_format_duration(eta)}")
+        overall_label.caption(f"总进度：{overall:.1%}；数据源：{source_text}；已耗时：{_format_duration(elapsed)}；预计剩余：{_format_duration(eta)}")
         current_text = f"；当前：{name}" if name else ""
         stage_label.caption(f"阶段 {stage_index}/{stage_total}：{stage}；阶段进度：{current}/{total}{current_text}")
         stats_label.caption(
@@ -460,10 +477,11 @@ def render_data_update_tasks(storage: DuckDBStorage, universe_id: str | None = N
         a1, a2, a3 = st.columns(3)
         board_workers = a1.number_input("板块并发数", min_value=1, max_value=3, value=1, help="只用于板块行情抓取。并发过高可能导致接口失败。")
         stock_workers = 1
+        source_display = _data_source_display_name(selected_source)
         if is_tushare_source:
             token_configured = bool(str(settings.tushare_token or "").strip())
             a2.metric("Tushare token", "已配置" if token_configured else "未配置")
-            a3.metric("主数据源", "Tushare")
+            a3.metric("主数据源", source_display)
             st.caption(
                 f"2000 积分默认按 {int(settings.tushare_rate_limit_per_minute)} 次/分钟设计，"
                 f"当前最小请求间隔 {float(settings.tushare_request_min_interval_seconds):.2f}s；"
@@ -480,7 +498,7 @@ def render_data_update_tasks(storage: DuckDBStorage, universe_id: str | None = N
                 value=int(stock_worker_default),
                 help="仅用于 legacy/mootdx 兼容路径。Tushare 主链路按交易日串行限速，不使用个股并发。",
             )
-            a3.metric("主数据源", selected_source)
+            a3.metric("主数据源", source_display)
         include_constituents = a3.checkbox("同时更新成分股", value=is_tushare_source, help="Tushare 行业本地聚合需要先写入行业成分股；legacy 源开启后总耗时会明显增加。")
         b1, b2, b3 = st.columns(3)
         test_limit_enabled = b1.checkbox("启用测试数量限制", value=False, help="仅用于小范围试跑。关闭后更新全部目标。")
@@ -529,7 +547,7 @@ def render_data_update_tasks(storage: DuckDBStorage, universe_id: str | None = N
             progress_bar = progress_text = stats_text = None
             on_progress = None
         else:
-            progress_bar, progress_text, stats_text, on_progress = _progress_widgets()
+            progress_bar, progress_text, stats_text, on_progress = _progress_widgets(source_display)
         limit = int(test_limit) if test_limit_enabled else None
         incremental = update_mode == "incremental"
         result: Any
@@ -564,7 +582,7 @@ def render_data_update_tasks(storage: DuckDBStorage, universe_id: str | None = N
                         batch_sleep_seconds=tdx_batch_sleep,
                         skip_completed=bool(all_a_skip_completed),
                         force_refresh=force_refresh,
-                        progress_callback=_all_a_progress_widgets(),
+                        progress_callback=_all_a_progress_widgets(source_display),
                         storage=storage,
                     )
                 elif task == "更新 Tushare 指数与市场基准":
@@ -588,7 +606,7 @@ def render_data_update_tasks(storage: DuckDBStorage, universe_id: str | None = N
                     )
                 if progress_bar is not None and progress_text is not None:
                     progress_bar.progress(1.0)
-                    progress_text.caption("更新任务完成")
+                    progress_text.caption(f"数据源：{source_display}；更新任务完成")
                 if stats_text is not None and hasattr(result, "failures"):
                     failures = getattr(result, "failures") or []
                     stats_text.caption(f"失败 {len(failures)}")
