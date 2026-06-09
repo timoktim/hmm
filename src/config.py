@@ -37,7 +37,7 @@ class Settings(BaseSettings):
     tushare_daily_include_basic: bool = True
     tushare_qfq_adjustment_enabled: bool = True
     tushare_use_official_sw_daily: bool = False
-    tushare_sw_level: str = "L1"
+    tushare_sw_level: str = "L2"
     tushare_sw_source: str = "SW2021"
     tushare_concept_source: str = "ts"
     bypass_proxy_for_akshare: bool = True

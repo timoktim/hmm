@@ -376,12 +376,31 @@ def build_stock_ohlcv_from_staging_sql(
         con.execute(
             """
             CREATE TEMP TABLE clean_snapshot_stock_ohlcv_final AS
+            WITH normalized_daily AS (
+              SELECT
+                d.*,
+                CASE
+                  WHEN d.open IS NULL OR d.high IS NULL OR d.low IS NULL OR d.close IS NULL THEN NULL
+                  ELSE GREATEST(d.open, d.high, d.low, d.close)
+                END AS canonical_high,
+                CASE
+                  WHEN d.open IS NULL OR d.high IS NULL OR d.low IS NULL OR d.close IS NULL THEN NULL
+                  ELSE LEAST(d.open, d.high, d.low, d.close)
+                END AS canonical_low,
+                CASE
+                  WHEN d.open IS NULL OR d.high IS NULL OR d.low IS NULL OR d.close IS NULL THEN FALSE
+                  ELSE d.high < GREATEST(d.open, d.low, d.close)
+                    OR d.low > LEAST(d.open, d.high, d.close)
+                END AS ohlc_bound_repaired
+              FROM clean_snapshot_daily_raw_stage d
+              WHERE d.snapshot_build_id = ?
+            )
             SELECT
               d.stock_code,
               d.trade_date,
               d.open * a.adj_factor / r.reference_adj_factor AS open,
-              d.high * a.adj_factor / r.reference_adj_factor AS high,
-              d.low * a.adj_factor / r.reference_adj_factor AS low,
+              d.canonical_high * a.adj_factor / r.reference_adj_factor AS high,
+              d.canonical_low * a.adj_factor / r.reference_adj_factor AS low,
               d.close * a.adj_factor / r.reference_adj_factor AS close,
               d.volume,
               d.amount,
@@ -392,8 +411,9 @@ def build_stock_ohlcv_from_staging_sql(
               ?::INTEGER AS source_priority,
               FALSE AS is_provisional,
               'validated_rebased' AS validation_status,
-              NULL::TIMESTAMP AS vendor_update_time
-            FROM clean_snapshot_daily_raw_stage d
+              NULL::TIMESTAMP AS vendor_update_time,
+              d.ohlc_bound_repaired
+            FROM normalized_daily d
             JOIN clean_snapshot_selected_stock_stage s
               ON s.snapshot_build_id = d.snapshot_build_id
              AND s.stock_code = d.stock_code
@@ -408,11 +428,17 @@ def build_stock_ohlcv_from_staging_sql(
               ON b.snapshot_build_id = d.snapshot_build_id
              AND b.stock_code = d.stock_code
              AND b.trade_date = d.trade_date
-            WHERE d.snapshot_build_id = ?
             """,
-            [SOURCE_PRIORITY_PRIMARY, snapshot_build_id],
+            [snapshot_build_id, SOURCE_PRIORITY_PRIMARY],
         )
         final_count = con.execute("SELECT count(*) AS n FROM clean_snapshot_stock_ohlcv_final").fetchone()[0]
+        ohlc_bound_repaired_count = con.execute(
+            """
+            SELECT count(*) AS n
+            FROM clean_snapshot_stock_ohlcv_final
+            WHERE ohlc_bound_repaired
+            """
+        ).fetchone()[0]
         if int(final_count) != int(daily_count):
             raise ValueError(f"missing adj_factor/reference rows: daily_rows={int(daily_count)}, final_rows={int(final_count)}")
         invalid_count = con.execute(
@@ -462,6 +488,7 @@ def build_stock_ohlcv_from_staging_sql(
     return {
         "rows": int(final_count),
         "write_mode": write_mode,
+        "ohlc_bound_repaired_rows": int(ohlc_bound_repaired_count),
         "qfq_sql_transform_duration_seconds": round(qfq_sql_transform_duration, 3),
         "stock_write_duration_seconds": round(stock_write_duration, 3),
         "duration_seconds": _elapsed(started),
@@ -584,28 +611,49 @@ def validate_clean_snapshot_sql(
         ).fetchdf()
         source_df = con.execute("SELECT source, count(*) AS rows FROM stock_ohlcv GROUP BY source ORDER BY source").fetchdf()
         low_coverage_dates: list[str] = []
+        severe_low_coverage_dates: list[str] = []
         if expected_dates and expected_codes:
             con.register("expected_dates", pd.DataFrame({"trade_date": expected_dates}))
             con.register("expected_codes", pd.DataFrame({"stock_code": expected_codes}))
+            universe_rows = int(con.execute("SELECT count(*) AS n FROM all_a_stock_universe").fetchone()[0] or 0)
             low_df = con.execute(
                 """
-                WITH daily_counts AS (
-                  SELECT e.trade_date, count(DISTINCT s.stock_code) AS covered_count
+                WITH expected_universe AS (
+                  SELECT e.trade_date, c.stock_code
                   FROM expected_dates e
+                  CROSS JOIN expected_codes c
+                  LEFT JOIN all_a_stock_universe u
+                    ON u.stock_code = c.stock_code
+                  WHERE ? = 0
+                     OR (
+                       u.stock_code IS NOT NULL
+                       AND (u.list_date IS NULL OR u.list_date <= e.trade_date)
+                       AND (u.delist_date IS NULL OR u.delist_date >= e.trade_date)
+                     )
+                ),
+                daily_counts AS (
+                  SELECT
+                    e.trade_date,
+                    count(DISTINCT e.stock_code) AS expected_count,
+                    count(DISTINCT s.stock_code) AS covered_count
+                  FROM expected_universe e
                   LEFT JOIN stock_ohlcv s
                     ON s.trade_date = e.trade_date
-                   AND s.stock_code IN (SELECT stock_code FROM expected_codes)
+                   AND s.stock_code = e.stock_code
                   GROUP BY e.trade_date
                 )
-                SELECT trade_date, covered_count
+                SELECT trade_date, covered_count, expected_count
                 FROM daily_counts
-                WHERE covered_count < ?
+                WHERE expected_count > 0
+                  AND covered_count::DOUBLE / NULLIF(expected_count::DOUBLE, 0) < 0.8
                 ORDER BY trade_date
-                LIMIT 20
                 """,
-                [max(1, int(len(expected_codes) * 0.8))],
+                [universe_rows],
             ).fetchdf()
             low_coverage_dates = pd.to_datetime(low_df["trade_date"]).dt.strftime("%Y%m%d").tolist() if not low_df.empty else []
+            if not low_df.empty:
+                severe = low_df[pd.to_numeric(low_df["covered_count"], errors="coerce") / pd.to_numeric(low_df["expected_count"], errors="coerce") < 0.4]
+                severe_low_coverage_dates = pd.to_datetime(severe["trade_date"]).dt.strftime("%Y%m%d").tolist() if not severe.empty else []
         stock_rows = con.execute("SELECT count(*) AS n FROM stock_ohlcv").fetchone()[0]
         breadth_rows = con.execute("SELECT count(*) AS n FROM market_breadth_daily").fetchone()[0]
         sector_constituent_rows = con.execute("SELECT count(*) AS n FROM sector_constituents").fetchone()[0]
@@ -626,7 +674,9 @@ def validate_clean_snapshot_sql(
     if expected_dates and latest_trade_date != pd.to_datetime(expected_dates[-1]).strftime("%Y%m%d"):
         failures.append(f"latest stock trade_date {latest_trade_date} does not match trade calendar {pd.to_datetime(expected_dates[-1]).strftime('%Y%m%d')}")
     if low_coverage_dates:
-        failures.append("universe coverage below 80% on " + ",".join(low_coverage_dates[:10]))
+        warnings.append("universe trading coverage below 80% on " + ",".join(low_coverage_dates[:10]) + "; this can happen on suspension/no-trade dates")
+    if severe_low_coverage_dates:
+        failures.append("universe coverage below 40% on " + ",".join(severe_low_coverage_dates[:10]))
     if int(breadth_rows) == 0:
         failures.append("market_breadth_daily was not rebuilt")
     if int(sector_constituent_rows) > 0 and int(sector_rows) == 0:
@@ -642,6 +692,7 @@ def validate_clean_snapshot_sql(
         "legacy_source_count": int(legacy_source_count),
         "invalid_source_count": int(invalid_source_count),
         "low_coverage_dates": low_coverage_dates,
+        "severe_low_coverage_dates": severe_low_coverage_dates,
         "latest_trade_date": latest_trade_date,
         "sample_invalid_rows": sample_invalid_rows.to_dict("records"),
         "source_distribution": source_distribution,

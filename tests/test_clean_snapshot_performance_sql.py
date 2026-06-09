@@ -229,6 +229,45 @@ def test_qfq_sql_uses_reference_factor(tmp_path: Path) -> None:
     assert out.loc[0, "validation_status"] == "validated_rebased"
 
 
+def test_qfq_sql_repairs_vendor_ohlc_bounds_before_validation(tmp_path: Path) -> None:
+    storage = _storage(tmp_path)
+    build_id = "unit-qfq-repair"
+    sql.clear_clean_snapshot_staging(storage, build_id)
+    sql.stage_selected_stock_codes(storage, build_id, ["920489"])
+    sql.append_clean_snapshot_stage_batch(
+        storage,
+        build_id,
+        daily_frames=[
+            pd.DataFrame(
+                {
+                    "ts_code": ["920489.BJ"],
+                    "trade_date": ["20140618"],
+                    "open": [10.88],
+                    "high": [10.88],
+                    "low": [10.88],
+                    "close": [10.81],
+                    "vol": [410.0],
+                    "amount": [439.5],
+                    "pct_chg": [3.1489],
+                }
+            )
+        ],
+        adj_frames=[pd.DataFrame({"ts_code": ["920489.BJ"], "trade_date": ["20140618"], "adj_factor": [1.0]})],
+        basic_frames=[],
+        selected_stock_codes=["920489"],
+    )
+
+    sql.build_reference_factor_table(storage, build_id, "20140618", ["920489"])
+    result = sql.build_stock_ohlcv_from_staging_sql(storage, build_id)
+    out = storage.read_df("SELECT open, high, low, close FROM stock_ohlcv")
+
+    assert result["ohlc_bound_repaired_rows"] == 1
+    assert out.loc[0, "open"] == pytest.approx(10.88)
+    assert out.loc[0, "high"] == pytest.approx(10.88)
+    assert out.loc[0, "low"] == pytest.approx(10.81)
+    assert out.loc[0, "close"] == pytest.approx(10.81)
+
+
 def test_qfq_sql_rejects_missing_reference_factor(tmp_path: Path) -> None:
     storage = _storage(tmp_path)
     build_id = "unit-missing-ref"
@@ -309,6 +348,54 @@ def test_sql_validation_detects_duplicate_keys(tmp_path: Path) -> None:
 
     assert result["duplicate_stock_trade_date_count"] == 1
     assert any("duplicate" in failure for failure in result["failures"])
+
+
+def test_sql_validation_coverage_uses_date_eligible_universe(tmp_path: Path) -> None:
+    storage = _storage(tmp_path)
+    storage.insert_df(
+        "all_a_stock_universe",
+        pd.DataFrame(
+            {
+                "stock_code": ["000001", "000002", "000003"],
+                "stock_name": ["One", "Two", "Future"],
+                "exchange": ["SZ", "SZ", "SZ"],
+                "list_status": ["active", "active", "active"],
+                "is_st": [False, False, False],
+                "list_date": [
+                    pd.Timestamp("2020-01-01").date(),
+                    pd.Timestamp("2020-01-01").date(),
+                    pd.Timestamp("2024-01-03").date(),
+                ],
+                "delist_date": [pd.NaT, pd.NaT, pd.NaT],
+                "source": ["tushare", "tushare", "tushare"],
+                "fetched_at": [pd.Timestamp("2024-01-31")] * 3,
+                "source_priority": [0, 0, 0],
+                "is_provisional": [False, False, False],
+                "validation_status": ["validated", "validated", "validated"],
+                "vendor_update_time": [pd.NaT, pd.NaT, pd.NaT],
+            }
+        ),
+    )
+    storage.insert_df("stock_ohlcv", _stock_rows(["000001", "000002"], ["20240102"]))
+
+    result = sql.validate_clean_snapshot_sql(storage, ["20240102"], ["000001", "000002", "000003"])
+
+    assert result["low_coverage_dates"] == []
+    assert not any("universe coverage below" in failure for failure in result["failures"])
+
+
+def test_sql_validation_low_trading_coverage_is_warning_not_failure(tmp_path: Path) -> None:
+    storage = _storage(tmp_path)
+    codes = [f"{idx:06d}" for idx in range(1, 11)]
+    storage.insert_df("all_a_stock_universe", _universe_rows(codes))
+    storage.insert_df("stock_ohlcv", _stock_rows(codes[:5], ["20240102"]))
+
+    result = sql.validate_clean_snapshot_sql(storage, ["20240102"], codes)
+
+    assert result["low_coverage_dates"] == ["20240102"]
+    assert result["severe_low_coverage_dates"] == []
+    assert any("trading coverage below 80%" in warning for warning in result["warnings"])
+    assert not any("universe coverage below 80%" in failure for failure in result["failures"])
 
 
 def test_market_breadth_sql_matches_pandas_baseline_on_synthetic_data(tmp_path: Path) -> None:

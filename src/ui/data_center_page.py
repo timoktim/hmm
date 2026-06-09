@@ -532,7 +532,7 @@ def render_data_update_tasks(storage: DuckDBStorage, universe_id: str | None = N
         st.info("基于本地 Tushare 确认日频 stock_ohlcv 计算全 A 市场宽度；不联网抓取旧网页源。")
     elif task == "更新 Tushare 行业/本地聚合板块":
         board_types = ["industry"]
-        st.info("默认只更新 Tushare 申万行业：先取行业成分，再用本地 Tushare 个股 OHLCV 聚合行业行情。概念板块为 legacy/unsupported，不静默回退网页源。")
+        st.info(f"默认更新 Tushare 申万 {settings.tushare_sw_level} 行业：先取行业成分，再用本地 Tushare 个股 OHLCV 聚合行业行情。概念板块为 legacy/unsupported，不静默回退网页源。")
     else:
         failures_count = storage.read_df("SELECT count(*) AS n FROM fetch_failures")
         n = 0 if failures_count.empty else int(failures_count.loc[0, "n"] or 0)

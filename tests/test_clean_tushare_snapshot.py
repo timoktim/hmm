@@ -234,6 +234,14 @@ class FakeTushareSnapshotClient:
         raise AssertionError("clean snapshot must not fetch full-market daily data stock-by-stock")
 
 
+class TailDailyUnavailableClient(FakeTushareSnapshotClient):
+    def _daily_raw_by_trade_date(self, trade_date: str, force_refresh: bool = False) -> DataResult:
+        if trade_date == self._trade_dates[-1]:
+            self.trade_date_calls.append(trade_date)
+            raise RuntimeError("tushare_daily_by_trade_date 调用失败: ValueError")
+        return super()._daily_raw_by_trade_date(trade_date, force_refresh=force_refresh)
+
+
 @pytest.fixture()
 def workspace_paths(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
     db_dir = tmp_path / "project" / "data" / "db"
@@ -631,6 +639,30 @@ def test_max_trade_dates_limits_for_unit_tests(workspace_paths: Path, source_db:
 
     assert summary["trade_day_count"] == 2
     assert client.trade_date_calls == ["20240102", "20240103"]
+
+
+def test_clean_snapshot_skips_unpublished_current_tail_trade_date(
+    workspace_paths: Path,
+    source_db: Path,
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    target = _target(workspace_paths)
+    client = TailDailyUnavailableClient()
+    monkeypatch.setattr(snap, "today_yyyymmdd", lambda: "20240104")
+
+    summary = _run_build(target, source_db, client=client)
+    storage = DuckDBStorage(target)
+    dates = storage.read_df("SELECT DISTINCT trade_date FROM stock_ohlcv ORDER BY trade_date")
+
+    assert summary["status"] == "PASS"
+    assert summary["requested_trade_day_count"] == 3
+    assert summary["trade_day_count"] == 2
+    assert summary["end_date"] == "20240103"
+    assert summary["skipped_trade_dates"] == ["20240104"]
+    assert summary["skipped_trade_date_count"] == 1
+    assert any("20240104" in warning and "not published yet" in warning for warning in summary["warnings"])
+    assert client.trade_date_calls == ["20240102", "20240103", "20240104"]
+    assert pd.Timestamp(dates["trade_date"].max()).date() == pd.Timestamp("2024-01-03").date()
 
 
 def test_max_stocks_limits_for_unit_tests(workspace_paths: Path, source_db: Path) -> None:

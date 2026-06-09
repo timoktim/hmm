@@ -105,7 +105,16 @@ def _audit_columns(
 
 
 def _safe_error(exc: Exception) -> str:
-    return type(exc).__name__
+    message = str(exc).strip()
+    if not message:
+        return type(exc).__name__
+    safe_message = message
+    for secret in {os.getenv("ASHARE_HMM_TUSHARE_TOKEN"), settings.tushare_token}:
+        secret_text = str(secret or "").strip()
+        if secret_text:
+            safe_message = safe_message.replace(secret_text, "[redacted]")
+    safe_message = safe_message.replace("\n", " ").replace("\r", " ")
+    return f"{type(exc).__name__}: {safe_message[:500]}"
 
 
 class TushareClient:
