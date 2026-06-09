@@ -88,6 +88,12 @@ jobs:
       - name: HSMM numba engine tests
         run: pytest -q tests/test_hsmm_numba_engine.py
 
+      - name: HSMM numba operational checks
+        run: pytest -q tests/test_hsmm_numba_operational.py
+
+      - name: HSMM numba engine no-DB check
+        run: bash scripts/check_hsmm_numba_engine.sh
+
       - name: Private path hygiene pytest
         run: pytest -q tests/test_private_path_hygiene.py
 
