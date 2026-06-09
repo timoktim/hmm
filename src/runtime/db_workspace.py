@@ -256,12 +256,15 @@ def validate_database(path: Path, initialize: bool = False) -> DatabaseValidatio
     can_connect = False
     missing_tables = list(CORE_TABLES)
     try:
-        with duckdb.connect(str(safe_path), read_only=True) as con:
+        # Streamlit keeps reruns inside one Python process. DuckDB rejects
+        # opening the same file with mixed read_only/read_write configs, so UI
+        # metadata probes use the same connection profile as DuckDBStorage.
+        with DuckDBStorage(safe_path).connect() as con:
             can_connect = True
             tables = _existing_tables(con)
             missing_tables = [table for table in CORE_TABLES if table not in tables]
     except Exception as exc:
-        errors.append(f"read-only connect failed: {exc}")
+        errors.append(f"connect failed: {exc}")
 
     if can_connect and missing_tables:
         warnings.append("Core schema is incomplete")
@@ -294,7 +297,7 @@ def _metadata_rows(label: str | None, profile: str) -> dict[str, str]:
 
 def _write_database_metadata(path: Path, label: str | None = None, profile: str = DB_PROFILE_TUSHARE_EMPTY) -> None:
     rows = _metadata_rows(label, profile)
-    with duckdb.connect(str(path)) as con:
+    with DuckDBStorage(path).connect() as con:
         con.execute(
             """
             CREATE TABLE IF NOT EXISTS database_workspace_metadata (
@@ -381,11 +384,12 @@ def _database_info(path: Path, active_path: Path | None = None) -> DatabaseInfo:
     )
 
 
-def list_database_files() -> list[DatabaseInfo]:
+def list_database_files(exclude_paths: Iterable[Path | str] | None = None) -> list[DatabaseInfo]:
     DEFAULT_DB_DIR.mkdir(parents=True, exist_ok=True)
     active_path = resolve_active_db_path()
+    excluded = {_absolute_lexical(path) for path in exclude_paths or []}
     paths = sorted(DEFAULT_DB_DIR.glob("*.duckdb"), key=lambda item: item.stat().st_mtime if item.exists() else 0, reverse=True)
-    return [_database_info(path, active_path=active_path) for path in paths]
+    return [_database_info(path, active_path=active_path) for path in paths if _absolute_lexical(path) not in excluded]
 
 
 def _scalar(con: duckdb.DuckDBPyConnection, sql: str, params: list[Any] | None = None) -> Any:
@@ -451,7 +455,7 @@ def database_summary(path: Path) -> DatabaseSummary:
     if not validation.can_connect:
         return summary
     try:
-        with duckdb.connect(str(safe_path), read_only=True) as con:
+        with DuckDBStorage(safe_path).connect() as con:
             tables = _existing_tables(con)
             row_counts = _row_counts(con, tables)
             source_distribution = _source_distribution(con, tables)

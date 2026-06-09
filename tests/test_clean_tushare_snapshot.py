@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import inspect
+import json
 from pathlib import Path
 
 import duckdb
@@ -419,6 +420,49 @@ def test_stock_ohlcv_written_without_duplicate_stock_trade_date(workspace_paths:
     )
 
     assert duplicates.empty
+
+
+def test_clean_snapshot_progress_callback_emits_overall_and_stock_levels(workspace_paths: Path, source_db: Path) -> None:
+    target = _target(workspace_paths, "progress.duckdb")
+    events: list[dict[str, object]] = []
+
+    summary = _run_build(target, source_db, progress_callback=events.append, job_id="unit-progress")
+
+    assert summary["status"] == "PASS"
+    assert events
+    assert events[-1]["status"] == "pass"
+    assert events[-1]["overall_progress"] == pytest.approx(1.0)
+    stock_events = [event for event in events if event.get("stage") == "fetch_stock_ohlcv_qfq" and "stock_total" in event]
+    assert stock_events
+    assert stock_events[-1]["stock_current"] == stock_events[-1]["stock_total"]
+    assert stock_events[-1]["stock_progress"] == pytest.approx(1.0)
+    assert {event.get("stock_api") for event in stock_events} >= {"daily", "adj_factor", "daily_basic"}
+    assert {event.get("stock_api") for event in stock_events} >= {"reference_factors", "normalize_qfq", "upsert_stock_ohlcv", "stock_ohlcv_written"}
+    assert all(0.0 <= float(event.get("overall_progress", 0.0)) <= 1.0 for event in events)
+
+
+def test_progress_json_writer_merges_runtime_metadata_without_token(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("ASHARE_HMM_TUSHARE_TOKEN", "<placeholder>")
+    progress_json = tmp_path / "progress.json"
+
+    snap._write_progress_json(
+        progress_json,
+        {
+            "job_id": "unit-job",
+            "pid": 12345,
+            "target_db": "data/db/target.duckdb",
+            "source_db": "data/db/source.duckdb",
+        },
+    )
+    snap._write_progress_json(progress_json, {"status": "running", "overall_progress": 0.5})
+    payload = json.loads(progress_json.read_text(encoding="utf-8"))
+    text = progress_json.read_text(encoding="utf-8")
+
+    assert payload["pid"] == 12345
+    assert payload["status"] == "running"
+    assert payload["overall_progress"] == 0.5
+    assert "<placeholder>" not in text
+    assert "ASHARE_HMM_TUSHARE_TOKEN" not in text
 
 
 def test_clean_snapshot_rejects_missing_adj_factor(workspace_paths: Path, source_db: Path) -> None:
