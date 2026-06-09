@@ -16,6 +16,7 @@ from src.data_pipeline.clean_snapshot_sql import (
     build_reference_factor_table,
     build_stock_ohlcv_from_staging_sql,
     clear_clean_snapshot_staging,
+    cleanup_clean_snapshot_staging,
     rebuild_market_breadth_sql,
     rebuild_sector_features_sql,
     rebuild_sector_ohlcv_sql,
@@ -149,6 +150,7 @@ class CleanSnapshotConfig:
     summary_json: Path | None = None
     report: Path | None = None
     set_active: bool = False
+    keep_staging: bool = False
 
 
 def _display_path(path: Path | str) -> str:
@@ -377,6 +379,9 @@ def _base_summary(config: CleanSnapshotConfig) -> dict[str, object]:
         "staging_rows": {},
         "fetch_duration_seconds": 0.0,
         "staging_write_duration_seconds": 0.0,
+        "staging_cleanup_rows": 0,
+        "staging_cleanup_duration_seconds": 0.0,
+        "staging_retention": "kept",
         "qfq_sql_transform_duration_seconds": 0.0,
         "stock_write_duration_seconds": 0.0,
         "validation_sql_duration_seconds": 0.0,
@@ -440,6 +445,7 @@ def _write_report(path: Path | str | None, summary: dict[str, object]) -> None:
     perf_keys = [
         "fetch_duration_seconds",
         "staging_write_duration_seconds",
+        "staging_cleanup_duration_seconds",
         "qfq_sql_transform_duration_seconds",
         "stock_write_duration_seconds",
         "validation_sql_duration_seconds",
@@ -453,6 +459,8 @@ def _write_report(path: Path | str | None, summary: dict[str, object]) -> None:
             "## Performance Benchmarks",
             "",
             *[f"- {key}: {summary.get(key, 0)}" for key in perf_keys],
+            f"- staging_cleanup_rows: {summary.get('staging_cleanup_rows', 0)}",
+            f"- staging_retention: {summary.get('staging_retention', 'kept')}",
             f"- rows_per_second: {json.dumps(summary.get('rows_per_second', {}), ensure_ascii=False, default=_safe_json_default)}",
             f"- memory_safety_note: {summary.get('memory_safety_note')}",
             "",
@@ -808,6 +816,7 @@ def fetch_clean_stock_ohlcv_qfq(
         "adj_factor_rows": int(snapshot_rows),
         "daily_basic_rows": int(staging_rows["daily_basic_rows"]),
         "reference_factor_count": int(reference_result.get("rows", 0) or 0),
+        "snapshot_build_id": snapshot_build_id,
         "fetch_rows": {key: int(value) for key, value in fetch_rows.items()},
         "staging_rows": {key: int(value) for key, value in staging_rows.items()},
         "fetch_duration_seconds": round(max(fetch_duration, 0.0), 3),
@@ -913,6 +922,7 @@ def run_clean_tushare_snapshot(
     summary_json: str | Path | None = None,
     report: str | Path | None = None,
     set_active: bool = False,
+    keep_staging: bool = False,
     client: MarketDataClient | None = None,
     progress_callback: ProgressCallback | None = None,
     job_id: str | None = None,
@@ -934,6 +944,7 @@ def run_clean_tushare_snapshot(
         summary_json=Path(summary_json) if summary_json else None,
         report=Path(report) if report else None,
         set_active=set_active,
+        keep_staging=keep_staging,
     )
     stages: list[StageRecord] = []
     summary = _base_summary(config)
@@ -1108,6 +1119,7 @@ def run_clean_tushare_snapshot(
         summary["qfq_sql_transform_duration_seconds"] = stock_result.get("qfq_sql_transform_duration_seconds", 0.0)
         summary["stock_write_duration_seconds"] = stock_result.get("stock_write_duration_seconds", 0.0)
         summary["rows_per_second"] = stock_result.get("rows_per_second", {})
+        summary["snapshot_build_id"] = stock_result.get("snapshot_build_id", "")
 
         started = time.monotonic()
         index_result = rebuild_market_indices_and_benchmarks(client, target_storage, config.start, effective_end)
@@ -1187,8 +1199,16 @@ def run_clean_tushare_snapshot(
         summary["status"] = "PASS" if summary.get("validation_status") == "pass" else "FAILED"
         if summary["status"] == "PASS":
             _write_metadata(target_storage, {"build_status": "pass", "completed_at": pd.Timestamp.now().isoformat()})
+            if config.keep_staging:
+                summary["staging_retention"] = "kept"
+            else:
+                cleanup_result = cleanup_clean_snapshot_staging(target_storage, str(stock_result.get("snapshot_build_id", "")))
+                summary["staging_cleanup_rows"] = int(cleanup_result.get("rows", 0) or 0)
+                summary["staging_cleanup_duration_seconds"] = float(cleanup_result.get("duration_seconds", 0.0) or 0.0)
+                summary["staging_retention"] = "cleaned"
         else:
             _write_metadata(target_storage, {"build_status": "failed", "completed_at": pd.Timestamp.now().isoformat()})
+            summary["staging_retention"] = "kept"
         if set_active:
             if summary["status"] != "PASS":
                 raise RuntimeError("set-active requires successful validation")
@@ -1255,6 +1275,7 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--progress-json", default=None)
     parser.add_argument("--job-id", default=None)
     parser.add_argument("--set-active", action="store_true")
+    parser.add_argument("--keep-staging", action="store_true", help="Keep clean snapshot staging rows for debugging or performance analysis.")
     parser.add_argument("--dry-run", action="store_true")
     args = parser.parse_args(argv)
     progress_callback: ProgressCallback | None = None
@@ -1278,6 +1299,7 @@ def main(argv: list[str] | None = None) -> int:
         summary_json=args.summary_json,
         report=args.report,
         set_active=args.set_active,
+        keep_staging=args.keep_staging,
         progress_callback=progress_callback,
         job_id=args.job_id,
     )

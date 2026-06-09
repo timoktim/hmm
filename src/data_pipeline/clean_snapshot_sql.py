@@ -139,6 +139,24 @@ def clear_clean_snapshot_staging(storage: DuckDBStorage, snapshot_build_id: str)
             con.execute(f"DELETE FROM {table} WHERE snapshot_build_id = ?", [snapshot_build_id])
 
 
+def cleanup_clean_snapshot_staging(storage: DuckDBStorage, snapshot_build_id: str) -> dict[str, object]:
+    ensure_clean_snapshot_staging_tables(storage)
+    started = time.monotonic()
+    rows = 0
+    with storage.connect() as con:
+        for table in STAGING_TABLES:
+            rows += int(
+                con.execute(
+                    f"SELECT count(*) AS n FROM {table} WHERE snapshot_build_id = ?",
+                    [snapshot_build_id],
+                ).fetchone()[0]
+                or 0
+            )
+        for table in STAGING_TABLES:
+            con.execute(f"DELETE FROM {table} WHERE snapshot_build_id = ?", [snapshot_build_id])
+    return {"rows": int(rows), "duration_seconds": _elapsed(started)}
+
+
 def stage_selected_stock_codes(storage: DuckDBStorage, snapshot_build_id: str, stock_codes: list[str]) -> int:
     codes = _normalize_code_list(stock_codes)
     if not codes:
