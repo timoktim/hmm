@@ -162,6 +162,57 @@ def update_adj_factor_snapshot(storage: DuckDBStorage, adj_df: pd.DataFrame) -> 
     return len(snapshot)
 
 
+def _confirmed_unchanged_adj_rows(storage: DuckDBStorage, new_adj_df: pd.DataFrame, tolerance: float = 1e-10) -> pd.DataFrame:
+    new_adj = _normalize_adj_factor_frame(new_adj_df)
+    if new_adj.empty:
+        return pd.DataFrame(columns=SNAPSHOT_COLUMNS)
+    codes = new_adj["stock_code"].drop_duplicates().tolist()
+    placeholders = ",".join(["?"] * len(codes))
+    old = storage.read_df(
+        f"""
+        SELECT stock_code, trade_date, adj_factor AS old_factor
+        FROM tushare_adj_factor_snapshot
+        WHERE stock_code IN ({placeholders})
+          AND trade_date BETWEEN ? AND ?
+        """,
+        [*codes, new_adj["trade_date"].min(), new_adj["trade_date"].max()],
+    )
+    if old.empty:
+        return pd.DataFrame(columns=SNAPSHOT_COLUMNS)
+    old["stock_code"] = old["stock_code"].astype(str).str.zfill(6)
+    old["trade_date"] = pd.to_datetime(old["trade_date"], errors="coerce").dt.date
+    old["old_factor"] = pd.to_numeric(old["old_factor"], errors="coerce")
+    merged = new_adj.merge(old, on=["stock_code", "trade_date"], how="inner")
+    if merged.empty:
+        return pd.DataFrame(columns=SNAPSHOT_COLUMNS)
+    unchanged = merged[(pd.to_numeric(merged["adj_factor"], errors="coerce") - merged["old_factor"]).abs() <= float(tolerance)].copy()
+    if unchanged.empty:
+        return pd.DataFrame(columns=SNAPSHOT_COLUMNS)
+    return unchanged[SNAPSHOT_COLUMNS].drop_duplicates(["stock_code", "trade_date"], keep="last")
+
+
+def _snapshot_rows_allowed_after_plan(
+    storage: DuckDBStorage,
+    new_adj_df: pd.DataFrame,
+    affected_all: pd.DataFrame,
+    planned_stock_codes: set[str],
+    *,
+    tolerance: float = 1e-10,
+) -> pd.DataFrame:
+    new_adj = _normalize_adj_factor_frame(new_adj_df)
+    if new_adj.empty:
+        return pd.DataFrame(columns=SNAPSHOT_COLUMNS)
+    if affected_all.empty:
+        return new_adj
+    normalized_planned = {str(code).zfill(6) for code in planned_stock_codes}
+    planned_rows = new_adj[new_adj["stock_code"].astype(str).str.zfill(6).isin(normalized_planned)].copy()
+    unchanged_rows = _confirmed_unchanged_adj_rows(storage, new_adj, tolerance=tolerance)
+    allowed = pd.concat([planned_rows, unchanged_rows], ignore_index=True) if not unchanged_rows.empty else planned_rows
+    if allowed.empty:
+        return pd.DataFrame(columns=SNAPSHOT_COLUMNS)
+    return allowed[SNAPSHOT_COLUMNS].drop_duplicates(["stock_code", "trade_date"], keep="last").sort_values(["stock_code", "trade_date"])
+
+
 def detect_changed_adj_factors(storage: DuckDBStorage, new_adj_df: pd.DataFrame, tolerance: float = 1e-10) -> pd.DataFrame:
     storage.init_schema()
     new_adj = _normalize_adj_factor_frame(new_adj_df)
@@ -558,7 +609,7 @@ def _write_rebuild_audit(
         )
 
 
-def _force_affected_from_adj(new_adj_df: pd.DataFrame, end_date: str, max_stocks: int | None = None) -> pd.DataFrame:
+def _force_affected_from_adj(new_adj_df: pd.DataFrame, end_date: str) -> pd.DataFrame:
     adj = _normalize_adj_factor_frame(new_adj_df)
     if adj.empty:
         return _empty_affected()
@@ -577,9 +628,33 @@ def _force_affected_from_adj(new_adj_df: pd.DataFrame, end_date: str, max_stocks
             }
         )
     out = pd.DataFrame(rows, columns=AFFECTED_COLUMNS)
-    if max_stocks is not None:
-        out = out.head(max(0, int(max_stocks))).copy()
     return out
+
+
+def _limit_affected_for_plan(affected_all: pd.DataFrame, max_stocks: int | None) -> pd.DataFrame:
+    if affected_all.empty:
+        return affected_all.copy()
+    if max_stocks is None:
+        return affected_all.copy()
+    return affected_all.head(max(0, int(max_stocks))).copy()
+
+
+def _summary_records(df: pd.DataFrame, limit: int = 20) -> list[dict[str, object]]:
+    if df.empty:
+        return []
+    return df.head(limit).to_dict(orient="records")
+
+
+def _summary_counts(affected_all: pd.DataFrame, plan: pd.DataFrame) -> dict[str, object]:
+    affected_codes = set(affected_all["stock_code"].astype(str).str.zfill(6).tolist()) if not affected_all.empty else set()
+    planned_codes = set(plan["stock_code"].astype(str).str.zfill(6).tolist()) if not plan.empty else set()
+    skipped = affected_all[~affected_all["stock_code"].astype(str).str.zfill(6).isin(planned_codes)].copy() if not affected_all.empty else _empty_affected()
+    return {
+        "affected_total_count": int(len(affected_codes)),
+        "planned_stock_count": int(len(planned_codes)),
+        "skipped_affected_count": int(len(affected_codes - planned_codes)),
+        "skipped_affected_preview": _summary_records(skipped),
+    }
 
 
 def _write_summary_json(path: str | Path | None, summary: dict[str, object]) -> None:
@@ -604,6 +679,9 @@ def _write_report(path: str | Path | None, summary: dict[str, object]) -> None:
         f"- start_date: {summary.get('start_date')}",
         f"- end_date: {summary.get('end_date')}",
         f"- affected_stock_count: {summary.get('affected_stock_count')}",
+        f"- affected_total_count: {summary.get('affected_total_count')}",
+        f"- planned_stock_count: {summary.get('planned_stock_count')}",
+        f"- skipped_affected_count: {summary.get('skipped_affected_count')}",
         f"- rebuilt_stock_count: {summary.get('rebuilt_stock_count')}",
         f"- rebuilt_row_count: {summary.get('rebuilt_row_count')}",
         f"- dependent_rebuild: {json.dumps(summary.get('dependent_rebuild', {}), ensure_ascii=False, default=_safe_json_default)}",
@@ -625,6 +703,14 @@ def _write_report(path: str | Path | None, summary: dict[str, object]) -> None:
             )
     else:
         lines.append("- No affected stocks.")
+    skipped = summary.get("skipped_affected_preview", [])
+    if skipped:
+        lines.extend(["", "## Skipped Affected Stocks", ""])
+        for item in skipped:
+            lines.append(
+                f"- {item.get('stock_code')}: earliest_factor_change={item.get('earliest_affected_date')}, "
+                f"changes={item.get('factor_change_count')}"
+            )
     target.write_text("\n".join(lines) + "\n", encoding="utf-8")
 
 
@@ -653,12 +739,13 @@ def run_qfq_rebuild(
     rebuild_run_id = f"qfq-{uuid.uuid4().hex[:16]}"
     created_at = pd.Timestamp.now()
     new_adj = fetch_adj_factor_window(client, start_norm, end_norm, force_refresh=force_refresh)
-    affected = _force_affected_from_adj(new_adj, end_norm, max_stocks=max_stocks) if force else detect_changed_adj_factors(storage, new_adj)
-    if max_stocks is not None and not affected.empty:
-        affected = affected.head(max(0, int(max_stocks))).copy()
+    affected_all = _force_affected_from_adj(new_adj, end_norm) if force else detect_changed_adj_factors(storage, new_adj)
+    affected_for_plan = _limit_affected_for_plan(affected_all, max_stocks)
     if mode == "rebuild-only" and not force:
         raise ValueError("rebuild-only 需要显式 --force，避免无差别重建。")
-    plan = plan_affected_stock_rebuild(storage, affected, end_norm)
+    plan = plan_affected_stock_rebuild(storage, affected_for_plan, end_norm)
+    counts = _summary_counts(affected_all, plan)
+    planned_codes = set(plan["stock_code"].astype(str).str.zfill(6).tolist()) if not plan.empty else set()
     if dry_run or mode == "detect-only" or plan.empty:
         status = "NOOP" if plan.empty else ("DRY_RUN" if dry_run else "DETECT_ONLY")
         snapshot_rows = 0
@@ -674,9 +761,11 @@ def run_qfq_rebuild(
             "snapshot_rows": snapshot_rows,
             "dependent_rebuild": {"status": "skipped"},
             "plan_preview": plan.head(50).to_dict(orient="records"),
+            **counts,
         }
         if not dry_run and mode == "detect-and-rebuild" and plan.empty:
-            snapshot_rows = update_adj_factor_snapshot(storage, new_adj)
+            snapshot_frame = _snapshot_rows_allowed_after_plan(storage, new_adj, affected_all, planned_codes)
+            snapshot_rows = update_adj_factor_snapshot(storage, snapshot_frame)
             summary["snapshot_rows"] = int(snapshot_rows)
             _write_rebuild_audit(
                 storage,
@@ -700,7 +789,6 @@ def run_qfq_rebuild(
             plan,
             dry_run=False,
             force_refresh=force_refresh,
-            max_stocks=max_stocks,
         )
         if rebuild_summary.get("failures"):
             raise RuntimeError("; ".join(str(item) for item in rebuild_summary["failures"]))
@@ -713,7 +801,8 @@ def run_qfq_rebuild(
         )
         if dependent_summary.get("market_breadth_failures"):
             raise RuntimeError("; ".join(str(item) for item in dependent_summary["market_breadth_failures"]))
-        snapshot_rows = update_adj_factor_snapshot(storage, new_adj)
+        snapshot_frame = _snapshot_rows_allowed_after_plan(storage, new_adj, affected_all, planned_codes)
+        snapshot_rows = update_adj_factor_snapshot(storage, snapshot_frame)
         summary = {
             "status": "PASS",
             "mode": mode,
@@ -726,6 +815,7 @@ def run_qfq_rebuild(
             "snapshot_rows": int(snapshot_rows),
             "dependent_rebuild": dependent_summary,
             "plan_preview": plan.head(50).to_dict(orient="records"),
+            **counts,
         }
         _write_rebuild_audit(
             storage,
@@ -755,6 +845,7 @@ def run_qfq_rebuild(
             "snapshot_rows": 0,
             "error_type": type(exc).__name__,
             "plan_preview": plan.head(50).to_dict(orient="records"),
+            **counts,
         }
         _write_rebuild_audit(
             storage,

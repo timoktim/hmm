@@ -235,6 +235,60 @@ def test_qfq_rebuild_run_is_audited(tmp_path) -> None:
     assert affected.loc[0, "stock_code"] == "000001"
 
 
+def test_max_stocks_updates_snapshot_only_for_rebuilt_stocks(tmp_path) -> None:
+    storage = DuckDBStorage(tmp_path / "max_stocks_snapshot.duckdb")
+    storage.init_schema()
+    codes = ["000001", "000002", "000003"]
+    storage.upsert_df(
+        "all_a_stock_universe",
+        pd.DataFrame([{"stock_code": code, "stock_name": code, "list_status": "active"} for code in codes]),
+        ["stock_code"],
+    )
+    old_adj = pd.DataFrame([_adj_row(code, "20240102", 1.0) for code in codes])
+    new_adj = pd.DataFrame([_adj_row(code, "20240102", 2.0) for code in codes])
+    update_adj_factor_snapshot(storage, old_adj)
+    client = FakeQfqClient(
+        new_adj.to_dict(orient="records"),
+        {"000001": pd.DataFrame([_stock_row("000001", "2024-01-01", 10.0), _stock_row("000001", "2024-01-02", 11.0)])},
+    )
+
+    summary = run_qfq_rebuild(start="20240102", end="20240102", max_stocks=1, storage=storage, client=client)
+    snapshot = storage.read_df("SELECT stock_code, adj_factor FROM tushare_adj_factor_snapshot ORDER BY stock_code")
+    factors = dict(zip(snapshot["stock_code"], snapshot["adj_factor"], strict=False))
+    detected_again = detect_changed_adj_factors(storage, new_adj)
+
+    assert summary["status"] == "PASS"
+    assert summary["affected_total_count"] == 3
+    assert summary["planned_stock_count"] == 1
+    assert summary["skipped_affected_count"] == 2
+    assert [row["stock_code"] for row in summary["skipped_affected_preview"]] == ["000002", "000003"]
+    assert factors == {"000001": pytest.approx(2.0), "000002": pytest.approx(1.0), "000003": pytest.approx(1.0)}
+    assert set(detected_again["stock_code"]) == {"000002", "000003"}
+
+
+def test_max_stocks_zero_noop_does_not_update_changed_snapshot(tmp_path) -> None:
+    storage = DuckDBStorage(tmp_path / "max_zero_snapshot.duckdb")
+    storage.init_schema()
+    codes = ["000001", "000002", "000003"]
+    old_adj = pd.DataFrame([_adj_row(code, "20240102", 1.0) for code in codes])
+    new_adj = pd.DataFrame([_adj_row(code, "20240102", 2.0) for code in codes])
+    update_adj_factor_snapshot(storage, old_adj)
+    client = FakeQfqClient(new_adj.to_dict(orient="records"))
+
+    summary = run_qfq_rebuild(start="20240102", end="20240102", max_stocks=0, storage=storage, client=client)
+    snapshot = storage.read_df("SELECT stock_code, adj_factor FROM tushare_adj_factor_snapshot ORDER BY stock_code")
+    detected_again = detect_changed_adj_factors(storage, new_adj)
+
+    assert summary["status"] == "NOOP"
+    assert summary["affected_total_count"] == 3
+    assert summary["planned_stock_count"] == 0
+    assert summary["skipped_affected_count"] == 3
+    assert summary["snapshot_rows"] == 0
+    assert snapshot["adj_factor"].tolist() == pytest.approx([1.0, 1.0, 1.0])
+    assert set(detected_again["stock_code"]) == set(codes)
+    assert int(storage.read_df("SELECT count(*) AS n FROM stock_ohlcv").loc[0, "n"]) == 0
+
+
 def test_dependent_market_breadth_recomputed_for_affected_window(tmp_path) -> None:
     storage = DuckDBStorage(tmp_path / "breadth.duckdb")
     storage.init_schema()
