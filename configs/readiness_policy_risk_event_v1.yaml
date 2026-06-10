@@ -1,0 +1,165 @@
+{
+  "metadata": {
+    "schema_name": "readiness_policy_risk_event",
+    "schema_version": "v1",
+    "index_id": "STAGE03V-WP0-v1",
+    "stage_id": "stage03v",
+    "route_anchors": [
+      "docs/roadmap/STAGE03V_VOLATILITY_DRAWDOWN_RISK_PLAN.md",
+      "docs/roadmap/STAGE03V_ROUND3_FINAL_ADDENDUM_20260610.md"
+    ],
+    "information_cutoff_date": "2026-06-10",
+    "holdout_start": "2026-06-11",
+    "contract_scope": "wp0_contract_only"
+  },
+  "readiness_statuses": {
+    "usable_probability": {
+      "allowed": true,
+      "ui_display": true,
+      "allow_numeric_probability": true,
+      "allow_ordinal": true,
+      "requires": [
+        "calibration_passed",
+        "validation_passed",
+        "validation_fold_event_evidence_sufficient",
+        "no_leakage_evidence",
+        "label_completeness_satisfied"
+      ],
+      "failure": false
+    },
+    "ordinal_only": {
+      "allowed": true,
+      "ui_display": true,
+      "allow_numeric_probability": false,
+      "allow_ordinal": true,
+      "allowed_ordinal_labels": [
+        "low",
+        "medium",
+        "high",
+        "extreme"
+      ],
+      "failure": false
+    },
+    "baseline_only": {
+      "allowed": true,
+      "ui_display": true,
+      "allow_numeric_probability": false,
+      "allow_ordinal": true,
+      "allowed_ordinal_labels": [
+        "low",
+        "medium",
+        "high",
+        "extreme"
+      ],
+      "failure": false
+    },
+    "insufficient_sample": {
+      "allowed": true,
+      "ui_display": true,
+      "allow_numeric_probability": false,
+      "allow_ordinal": false,
+      "pseudo_probability_fill": false,
+      "failure": false
+    },
+    "invalid": {
+      "allowed": true,
+      "ui_display": false,
+      "allow_numeric_probability": false,
+      "allow_ordinal": false,
+      "pseudo_probability_fill": false,
+      "failure": true
+    }
+  },
+  "calibration_statuses": {
+    "not_calibrated": {
+      "allowed": true,
+      "usable_probability_allowed": false
+    },
+    "calibration_candidate": {
+      "allowed": true,
+      "usable_probability_allowed": false
+    },
+    "calibrated_pass": {
+      "allowed": true,
+      "usable_probability_allowed": true
+    },
+    "calibrated_fail": {
+      "allowed": true,
+      "usable_probability_allowed": false
+    },
+    "not_applicable": {
+      "allowed": true,
+      "usable_probability_allowed": false
+    }
+  },
+  "ordinal_policy": {
+    "source_rows": "validation_fold_rows_only",
+    "score_source": "validation_fold_scores",
+    "default_buckets": {
+      "low": {
+        "rule": "score < validation q40"
+      },
+      "medium": {
+        "rule": "q40 <= score < q75"
+      },
+      "high": {
+        "rule": "q75 <= score < q90"
+      },
+      "extreme": {
+        "rule": "score >= q90"
+      }
+    },
+    "forbidden_bucket_tuning": [
+      "final_holdout",
+      "post_hoc_visual_appearance",
+      "model_performance"
+    ],
+    "insufficient_sample_handling": "emit insufficient_sample directly; do not convert to low risk",
+    "invalid_handling": "emit invalid directly; do not display numeric risk"
+  },
+  "event_evidence_gating": {
+    "market_event_share_sensitivity": [0.10, 0.20, 0.30],
+    "primary_market_event_share": 0.20,
+    "idiosyncratic_discount_default": 0.25,
+    "idiosyncratic_discount_sensitivity": [0.10, 0.25, 0.50],
+    "market_event_block_count_lt_2": "usable_probability_forbidden",
+    "effective_event_evidence_count_lt_5": "blocked_or_drop_threshold",
+    "effective_event_evidence_count_5_to_9": "diagnostic_or_ordinal_only",
+    "effective_event_evidence_count_gte_10": "modeling_eligible_not_auto_usable"
+  },
+  "readiness_evidence_scope": {
+    "wp0_5_feasibility_counts_may_use": "historical_development",
+    "wp5_usable_probability_evidence_counts_must_use": "validation_fold_rows_only",
+    "training_period_evidence_cannot_satisfy_usable_probability": true,
+    "prospective_final_holdout_can_tune_readiness": false
+  },
+  "display_rules": {
+    "usable_probability": {
+      "may_show_numeric_probability": true,
+      "requires_calibration_status": "calibrated_pass"
+    },
+    "ordinal_only": {
+      "may_show_numeric_probability": false,
+      "may_show_ordinal": true
+    },
+    "baseline_only": {
+      "may_show_numeric_probability": false,
+      "may_show_ordinal": true
+    },
+    "insufficient_sample": {
+      "may_show_numeric_probability": false,
+      "must_not_fill_pseudo_probability": true
+    },
+    "invalid": {
+      "may_show_numeric_probability": false,
+      "must_hide_numeric_signal": true
+    }
+  },
+  "forbidden_behavior": {
+    "use_final_holdout_to_choose_bucket_cutoffs": "forbidden",
+    "post_hoc_backtest_appearance_tuning": "forbidden",
+    "use_model_performance_to_tune_ordinal_cutoffs_after_evaluation": "forbidden",
+    "training_period_only_evidence_for_usable_probability": "forbidden",
+    "raw_score_as_probability": "forbidden"
+  }
+}

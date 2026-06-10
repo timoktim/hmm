@@ -1,0 +1,122 @@
+{
+  "index_id": "STAGE03V-WP0-v1",
+  "branch": "stage03v/wp0-scope-freeze-contracts-ledger",
+  "status": "pass",
+  "route_anchor_paths": [
+    "docs/roadmap/STAGE03V_VOLATILITY_DRAWDOWN_RISK_PLAN.md",
+    "docs/roadmap/STAGE03V_ROUND3_FINAL_ADDENDUM_20260610.md"
+  ],
+  "work_package": "docs/work_packages/stage03v/STAGE03V_WP0_scope_freeze_contracts_ledger.md",
+  "contract_paths": [
+    "configs/risk_event_signal_contract_v1.yaml",
+    "configs/readiness_policy_risk_event_v1.yaml",
+    "configs/stage03v_sw_l2_universe_manifest_v1.yaml"
+  ],
+  "execution_index_path": "docs/work_packages/stage03v/STAGE03V_EXECUTION_INDEX.md",
+  "ledger_or_split_manifest_path": "reports/stage04/prospective_validation_ledger.stage03v.template.jsonl",
+  "split_manifest_fallback_used": false,
+  "information_cutoff_date": "2026-06-10",
+  "holdout_start": "2026-06-11",
+  "historical_development": "trade_date <= 2026-06-10",
+  "prospective_final_holdout": "trade_date >= 2026-06-11",
+  "required_label_horizons": [1, 3, 5, 10, 20],
+  "scheduled_holdout_review_frequency": "quarterly",
+  "ad_hoc_holdout_peeking": "forbidden",
+  "consumption_count_enabled": true,
+  "stage_boundary": {
+    "stage_id": "stage03v",
+    "active_module": "Stage03V1 Downside Risk",
+    "stage03v1_entity_type": "sw2021_l2_industry",
+    "stage03v2_implemented": false,
+    "stage03v3_implemented": false,
+    "stage03v2_status": "placeholder_only",
+    "stage03v3_status": "placeholder_only"
+  },
+  "permanent_cross_cutoff_censoring": {
+    "present": true,
+    "cross_cutoff_censoring_policy": "permanent",
+    "information_cutoff_date": "2026-06-10",
+    "label_cutoff_date": "2026-06-10",
+    "allowed_cross_cutoff_handling": [
+      "cross_cutoff_censored",
+      "exclude_with_reason"
+    ],
+    "forbidden_cross_cutoff_handling": [
+      "backfill_after_cutoff",
+      "fill_from_holdout_prices"
+    ]
+  },
+  "benchmark_downside_target": {
+    "present": true,
+    "benchmark_target_name": "broad_a_share_downside_event",
+    "preferred_benchmark_name": "CSI All Share / 中证全指",
+    "source_table": "market_benchmark_ohlcv",
+    "target_kind": "downside_event",
+    "path_metric": "MAE",
+    "horizon_policy": "same_as_slice",
+    "threshold_policy": "same_as_slice",
+    "fallback_if_unavailable": "benchmark_target_unavailable",
+    "benchmark_selection_after_modeling": "forbidden"
+  },
+  "sw2021_l2_universe_manifest": {
+    "present": true,
+    "taxonomy_provider": "SW",
+    "taxonomy_version": "SW2021",
+    "taxonomy_level": "L2",
+    "index_history_policy": "official_backfilled_index_history_if_available",
+    "reform_check_date": "2021-07-01",
+    "constituent_count_min": 5,
+    "history_continuity_required": true,
+    "no_performance_based_filtering": true,
+    "filter_list_frozen_in_manifest": true,
+    "empirical_promotion_universe": "sw2021_l2_industry_only",
+    "optional_diagnostic_universe": "sw2021_l1_aggregation"
+  },
+  "readiness_policy": {
+    "readiness_statuses": [
+      "usable_probability",
+      "ordinal_only",
+      "baseline_only",
+      "insufficient_sample",
+      "invalid"
+    ],
+    "calibration_statuses": [
+      "not_calibrated",
+      "calibration_candidate",
+      "calibrated_pass",
+      "calibrated_fail",
+      "not_applicable"
+    ],
+    "ordinal_buckets": {
+      "low": "score < validation q40",
+      "medium": "q40 <= score < q75",
+      "high": "q75 <= score < q90",
+      "extreme": "score >= q90"
+    },
+    "market_event_share_sensitivity": [0.10, 0.20, 0.30],
+    "primary_market_event_share": 0.20,
+    "idiosyncratic_discount_default": 0.25,
+    "idiosyncratic_discount_sensitivity": [0.10, 0.25, 0.50],
+    "wp0_5_feasibility_counts_may_use": "historical_development",
+    "wp5_usable_probability_evidence_counts_must_use": "validation_fold_rows_only",
+    "training_period_evidence_cannot_satisfy_usable_probability": true
+  },
+  "comparability_break_statement": "Stage03V1 uses SW2021 level-2 industries only. Earlier Stage03R and signal-validation artifacts based on roughly 465 mixed industry/concept boards are not directly comparable to Stage03V1 metrics without an explicit comparability adjustment.",
+  "boundary_flags": {
+    "external_data_fetch": "no",
+    "target_dataset_built": "no",
+    "model_training": "no",
+    "probability_calibration": "no",
+    "holdout_consumed": "no",
+    "HMM_HSMM_training_modified": "no",
+    "decision_or_trading_surface_created": "no",
+    "decision_or_trading_output": "no",
+    "buy_sell_output": "no",
+    "sizing_output": "no",
+    "stage03v_wp0_5_started": "no"
+  },
+  "remaining_risks": [
+    "WP0 is contract-only; later packages must implement runtime enforcement for target building, censoring regression tests, sample feasibility, and validation-fold evidence counts.",
+    "Stage03V uses a Stage03V-specific Stage04-compatible ledger template; future local holdout-read ledgers must remain ignored unless a later reviewed package promotes them."
+  ]
+}
