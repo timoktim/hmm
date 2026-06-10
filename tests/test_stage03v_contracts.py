@@ -66,14 +66,15 @@ def test_required_wp0_files_exist_and_machine_configs_parse() -> None:
     assert json.loads(REPORT_JSON.read_text(encoding="utf-8"))["index_id"] == "STAGE03V-WP0-v1"
 
 
-def test_execution_index_marks_wp0_archived_wp0_5_accepted_and_later_packages_blocked() -> None:
+def test_execution_index_marks_wp0_wp0_5_archived_wp1_accepted_and_later_packages_blocked() -> None:
     text = EXECUTION_INDEX.read_text(encoding="utf-8")
 
     assert "STAGE03V-WP0-v1 | Scope Freeze, Contracts, Ledger | archived" in text
-    assert "STAGE03V-WP0.5-v1 | Sample Feasibility Preflight | accepted" in text
-    assert "STAGE03V-WP1 | Risk Event Target Dataset v1 | blocked" in text
-    assert "STAGE03V-WP0.5-v1 is the only package executed by this branch." in text
-    assert "STAGE03V-WP1 and later packages remain blocked" in text
+    assert "STAGE03V-WP0.5-v1 | Sample Feasibility Preflight | archived" in text
+    assert "STAGE03V-WP1-v1 | Risk Event Target Dataset v1 | accepted" in text
+    assert "STAGE03V-WP2 | Target Leakage, Purge, Embargo, and CI Gate | blocked" in text
+    assert "STAGE03V-WP1-v1 is the only package executed by this branch." in text
+    assert "STAGE03V-WP2 and later packages remain blocked" in text
 
 
 def test_stage_boundary_and_placeholders_are_contractual() -> None:
