@@ -1,0 +1,31 @@
+{
+  "index_id": "STAGE03V-WP2-v1",
+  "policy_version": "stage03v_purge_embargo_policy_v1",
+  "information_cutoff_date": "2026-06-10",
+  "holdout_start": "2026-06-11",
+  "max_horizon_days": 20,
+  "purge_rule": "remove any training row whose target observation interval overlaps a validation/test interval",
+  "embargo_rule": "remove training rows whose trade_date falls within embargo_days after a validation/test interval",
+  "embargo_days": 20,
+  "fold_plan_source": "historical_development_only",
+  "final_holdout_policy": "withheld_not_scored",
+  "fold_order": "deterministic_time_ordered",
+  "target_usage_included": [
+    "eligible",
+    "diagnostic_only"
+  ],
+  "model_training": "no",
+  "probability_calibration": "no",
+  "readiness_assigned": "no",
+  "boundary_flags": {
+    "external_data_fetch": "no",
+    "target_dataset_modified": "no",
+    "model_training": "no",
+    "probability_calibration": "no",
+    "readiness_assigned": "no",
+    "holdout_consumed": "no",
+    "HMM_HSMM_training_modified": "no",
+    "stage03v2_implemented": "no",
+    "stage03v3_implemented": "no"
+  }
+}

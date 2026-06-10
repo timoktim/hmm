@@ -116,3 +116,4 @@ Stage03V reuses the Stage04 prospective validation ledger mechanism through a St
 | 2026-06-10 | Archived WP0.5 and activated STAGE03V-WP1-v1 risk event target dataset. | ChatGPT |
 | 2026-06-10 | Accepted STAGE03V-WP1-v1 risk event target dataset builder. | Codex |
 | 2026-06-10 | Archived WP1 and activated STAGE03V-WP2-v1 target controls gate. | ChatGPT |
+| 2026-06-10 | Implemented STAGE03V-WP2-v1 target leakage, cross-cutoff, purge/embargo, and namespace control gate. | Codex |
