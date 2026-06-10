@@ -5,13 +5,17 @@
     "index_id": "STAGE03V-WP1-v1",
     "stage_id": "stage03v",
     "target_definition_version": "stage03v1_downside_event_target_v1",
-    "created_at": "2026-06-10T08:41:33+00:00"
+    "created_at": "2026-06-10T09:11:39+00:00"
   },
   "source": {
-    "db_path": "missing_stage03v_v7.duckdb",
+    "db_path": "data/db/a_share_hmm_tushare_v7.duckdb",
     "feasibility_report": "reports/stage03v/sample_feasibility_report.json",
-    "taxonomy_source_status": null,
-    "v7_coverage_available": "no"
+    "taxonomy_source_status": "verified_sw2021_l2_tushare_classify",
+    "universe_source_status": "verified_sw2021_l2_tushare_classify",
+    "v7_coverage_available": "yes",
+    "v7_db_requirement_status": "pass",
+    "coverage_start": "2014-01-02",
+    "coverage_end": "2026-06-09"
   },
   "universe": {
     "entity_type": "sw2021_l2_industry",
@@ -20,18 +24,1381 @@
     "taxonomy_level": "L2",
     "feature_scope_id": "stage03v_wp1_target_scope_v1",
     "universe_id": "stage03v_sw2021_l2_target_universe_v1",
-    "entity_count_after_quality_filter": 0,
-    "entity_count_after_silent_break_handling": 0,
-    "constituent_count_filter_status": null,
-    "silent_entity_break_handling": "not_applicable",
+    "entity_count_total": 162,
+    "entity_count_after_quality_filter": 124,
+    "entity_count_after_silent_break_handling": 124,
+    "quality_filter_exclusion_count": 38,
+    "constituent_count_filter_status": "partial_low_constituents",
+    "silent_entity_break_count": 2,
+    "silent_entity_break_handling": "excluded",
     "permanent_censoring_policy": "cross_cutoff_censored"
   },
-  "silent_entity_break_entities": [],
-  "exclusions": [],
-  "entities": [],
+  "quality_filter_summary": {
+    "quality_filter_exclusion_count": 38,
+    "non_verified_or_non_l2_industry_count": 31,
+    "constituent_count_min_required": 5,
+    "constituent_count_min_observed": 2,
+    "constituent_count_filter_status": "partial_low_constituents",
+    "short_history_entity_count": 0,
+    "silent_entity_break_count": 2,
+    "silent_entity_break_handling": "excluded",
+    "exclusion_reason_counts": {
+      "non_verified_or_non_l2_industry": 31,
+      "constituent_count_lt_5": 7,
+      "silent_break_already_excluded_by_quality_filter": 2
+    }
+  },
+  "silent_entity_break_entities": [
+    {
+      "entity_id": "industry:医疗美容",
+      "sector_name": "医疗美容",
+      "max_gap_days": 140,
+      "break_gap_count": 2,
+      "handling": "silent_break_already_excluded_by_quality_filter",
+      "reason": "unexplained_price_history_gap_gt_45_calendar_days"
+    },
+    {
+      "entity_id": "industry:油气开采Ⅱ",
+      "sector_name": "油气开采Ⅱ",
+      "max_gap_days": 99,
+      "break_gap_count": 1,
+      "handling": "silent_break_already_excluded_by_quality_filter",
+      "reason": "unexplained_price_history_gap_gt_45_calendar_days"
+    }
+  ],
+  "exclusions": [
+    {
+      "entity_id": "industry:纺织服饰",
+      "sector_name": "纺织服饰",
+      "reason": "non_verified_or_non_l2_industry"
+    },
+    {
+      "entity_id": "industry:综合",
+      "sector_name": "综合",
+      "reason": "non_verified_or_non_l2_industry"
+    },
+    {
+      "entity_id": "industry:家用电器",
+      "sector_name": "家用电器",
+      "reason": "non_verified_or_non_l2_industry"
+    },
+    {
+      "entity_id": "industry:建筑材料",
+      "sector_name": "建筑材料",
+      "reason": "non_verified_or_non_l2_industry"
+    },
+    {
+      "entity_id": "industry:传媒",
+      "sector_name": "传媒",
+      "reason": "non_verified_or_non_l2_industry"
+    },
+    {
+      "entity_id": "industry:电子",
+      "sector_name": "电子",
+      "reason": "non_verified_or_non_l2_industry"
+    },
+    {
+      "entity_id": "industry:食品饮料",
+      "sector_name": "食品饮料",
+      "reason": "non_verified_or_non_l2_industry"
+    },
+    {
+      "entity_id": "industry:医药生物",
+      "sector_name": "医药生物",
+      "reason": "non_verified_or_non_l2_industry"
+    },
+    {
+      "entity_id": "industry:公用事业",
+      "sector_name": "公用事业",
+      "reason": "non_verified_or_non_l2_industry"
+    },
+    {
+      "entity_id": "industry:汽车",
+      "sector_name": "汽车",
+      "reason": "non_verified_or_non_l2_industry"
+    },
+    {
+      "entity_id": "industry:通信",
+      "sector_name": "通信",
+      "reason": "non_verified_or_non_l2_industry"
+    },
+    {
+      "entity_id": "industry:美容护理",
+      "sector_name": "美容护理",
+      "reason": "non_verified_or_non_l2_industry"
+    },
+    {
+      "entity_id": "industry:计算机",
+      "sector_name": "计算机",
+      "reason": "non_verified_or_non_l2_industry"
+    },
+    {
+      "entity_id": "industry:非银金融",
+      "sector_name": "非银金融",
+      "reason": "non_verified_or_non_l2_industry"
+    },
+    {
+      "entity_id": "industry:农林牧渔",
+      "sector_name": "农林牧渔",
+      "reason": "non_verified_or_non_l2_industry"
+    },
+    {
+      "entity_id": "industry:钢铁",
+      "sector_name": "钢铁",
+      "reason": "non_verified_or_non_l2_industry"
+    },
+    {
+      "entity_id": "industry:银行",
+      "sector_name": "银行",
+      "reason": "non_verified_or_non_l2_industry"
+    },
+    {
+      "entity_id": "industry:交通运输",
+      "sector_name": "交通运输",
+      "reason": "non_verified_or_non_l2_industry"
+    },
+    {
+      "entity_id": "industry:社会服务",
+      "sector_name": "社会服务",
+      "reason": "non_verified_or_non_l2_industry"
+    },
+    {
+      "entity_id": "industry:机械设备",
+      "sector_name": "机械设备",
+      "reason": "non_verified_or_non_l2_industry"
+    },
+    {
+      "entity_id": "industry:有色金属",
+      "sector_name": "有色金属",
+      "reason": "non_verified_or_non_l2_industry"
+    },
+    {
+      "entity_id": "industry:轻工制造",
+      "sector_name": "轻工制造",
+      "reason": "non_verified_or_non_l2_industry"
+    },
+    {
+      "entity_id": "industry:房地产",
+      "sector_name": "房地产",
+      "reason": "non_verified_or_non_l2_industry"
+    },
+    {
+      "entity_id": "industry:电力设备",
+      "sector_name": "电力设备",
+      "reason": "non_verified_or_non_l2_industry"
+    },
+    {
+      "entity_id": "industry:石油石化",
+      "sector_name": "石油石化",
+      "reason": "non_verified_or_non_l2_industry"
+    },
+    {
+      "entity_id": "industry:基础化工",
+      "sector_name": "基础化工",
+      "reason": "non_verified_or_non_l2_industry"
+    },
+    {
+      "entity_id": "industry:商贸零售",
+      "sector_name": "商贸零售",
+      "reason": "non_verified_or_non_l2_industry"
+    },
+    {
+      "entity_id": "industry:建筑装饰",
+      "sector_name": "建筑装饰",
+      "reason": "non_verified_or_non_l2_industry"
+    },
+    {
+      "entity_id": "industry:国防军工",
+      "sector_name": "国防军工",
+      "reason": "non_verified_or_non_l2_industry"
+    },
+    {
+      "entity_id": "industry:煤炭",
+      "sector_name": "煤炭",
+      "reason": "non_verified_or_non_l2_industry"
+    },
+    {
+      "entity_id": "industry:环保",
+      "sector_name": "环保",
+      "reason": "non_verified_or_non_l2_industry"
+    },
+    {
+      "entity_id": "industry:体育Ⅱ",
+      "sector_name": "体育Ⅱ",
+      "reason": "constituent_count_lt_5"
+    },
+    {
+      "entity_id": "industry:其他家电Ⅱ",
+      "sector_name": "其他家电Ⅱ",
+      "reason": "constituent_count_lt_5"
+    },
+    {
+      "entity_id": "industry:农业综合Ⅱ",
+      "sector_name": "农业综合Ⅱ",
+      "reason": "constituent_count_lt_5"
+    },
+    {
+      "entity_id": "industry:医疗美容",
+      "sector_name": "医疗美容",
+      "reason": "constituent_count_lt_5"
+    },
+    {
+      "entity_id": "industry:旅游零售Ⅱ",
+      "sector_name": "旅游零售Ⅱ",
+      "reason": "constituent_count_lt_5"
+    },
+    {
+      "entity_id": "industry:林业Ⅱ",
+      "sector_name": "林业Ⅱ",
+      "reason": "constituent_count_lt_5"
+    },
+    {
+      "entity_id": "industry:油气开采Ⅱ",
+      "sector_name": "油气开采Ⅱ",
+      "reason": "constituent_count_lt_5"
+    },
+    {
+      "entity_id": "industry:医疗美容",
+      "sector_name": "医疗美容",
+      "reason": "silent_break_already_excluded_by_quality_filter",
+      "max_gap_days": 140,
+      "break_gap_count": 2
+    },
+    {
+      "entity_id": "industry:油气开采Ⅱ",
+      "sector_name": "油气开采Ⅱ",
+      "reason": "silent_break_already_excluded_by_quality_filter",
+      "max_gap_days": 99,
+      "break_gap_count": 1
+    }
+  ],
+  "entity_audit_summary": {
+    "entity_list_materialized": true,
+    "entity_count": 124,
+    "entity_id_field": "entity_id",
+    "entity_segment_policy": "single_segment_after_excluding_unexplained_silent_breaks"
+  },
+  "entities": [
+    {
+      "entity_id": "industry:IT服务Ⅱ",
+      "sector_code": "industry:IT服务Ⅱ",
+      "sector_name": "IT服务Ⅱ",
+      "entity_segment_id": "industry:IT服务Ⅱ::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:一般零售",
+      "sector_code": "industry:一般零售",
+      "sector_name": "一般零售",
+      "entity_segment_id": "industry:一般零售::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:专业工程",
+      "sector_code": "industry:专业工程",
+      "sector_name": "专业工程",
+      "entity_segment_id": "industry:专业工程::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:专业服务",
+      "sector_code": "industry:专业服务",
+      "sector_name": "专业服务",
+      "entity_segment_id": "industry:专业服务::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:专业连锁Ⅱ",
+      "sector_code": "industry:专业连锁Ⅱ",
+      "sector_name": "专业连锁Ⅱ",
+      "entity_segment_id": "industry:专业连锁Ⅱ::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:专用设备",
+      "sector_code": "industry:专用设备",
+      "sector_name": "专用设备",
+      "entity_segment_id": "industry:专用设备::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:个护用品",
+      "sector_code": "industry:个护用品",
+      "sector_name": "个护用品",
+      "entity_segment_id": "industry:个护用品::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:中药Ⅱ",
+      "sector_code": "industry:中药Ⅱ",
+      "sector_name": "中药Ⅱ",
+      "entity_segment_id": "industry:中药Ⅱ::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:乘用车",
+      "sector_code": "industry:乘用车",
+      "sector_name": "乘用车",
+      "entity_segment_id": "industry:乘用车::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:互联网电商",
+      "sector_code": "industry:互联网电商",
+      "sector_name": "互联网电商",
+      "entity_segment_id": "industry:互联网电商::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:休闲食品",
+      "sector_code": "industry:休闲食品",
+      "sector_name": "休闲食品",
+      "entity_segment_id": "industry:休闲食品::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:保险Ⅱ",
+      "sector_code": "industry:保险Ⅱ",
+      "sector_name": "保险Ⅱ",
+      "entity_segment_id": "industry:保险Ⅱ::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:元件",
+      "sector_code": "industry:元件",
+      "sector_name": "元件",
+      "entity_segment_id": "industry:元件::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:光伏设备",
+      "sector_code": "industry:光伏设备",
+      "sector_name": "光伏设备",
+      "entity_segment_id": "industry:光伏设备::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:光学光电子",
+      "sector_code": "industry:光学光电子",
+      "sector_name": "光学光电子",
+      "entity_segment_id": "industry:光学光电子::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:其他电子Ⅱ",
+      "sector_code": "industry:其他电子Ⅱ",
+      "sector_name": "其他电子Ⅱ",
+      "entity_segment_id": "industry:其他电子Ⅱ::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:其他电源设备Ⅱ",
+      "sector_code": "industry:其他电源设备Ⅱ",
+      "sector_name": "其他电源设备Ⅱ",
+      "entity_segment_id": "industry:其他电源设备Ⅱ::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:养殖业",
+      "sector_code": "industry:养殖业",
+      "sector_name": "养殖业",
+      "entity_segment_id": "industry:养殖业::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:军工电子Ⅱ",
+      "sector_code": "industry:军工电子Ⅱ",
+      "sector_name": "军工电子Ⅱ",
+      "entity_segment_id": "industry:军工电子Ⅱ::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:农产品加工",
+      "sector_code": "industry:农产品加工",
+      "sector_name": "农产品加工",
+      "entity_segment_id": "industry:农产品加工::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:农化制品",
+      "sector_code": "industry:农化制品",
+      "sector_name": "农化制品",
+      "entity_segment_id": "industry:农化制品::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:农商行Ⅱ",
+      "sector_code": "industry:农商行Ⅱ",
+      "sector_name": "农商行Ⅱ",
+      "entity_segment_id": "industry:农商行Ⅱ::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:冶钢原料",
+      "sector_code": "industry:冶钢原料",
+      "sector_name": "冶钢原料",
+      "entity_segment_id": "industry:冶钢原料::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:出版",
+      "sector_code": "industry:出版",
+      "sector_name": "出版",
+      "entity_segment_id": "industry:出版::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:动物保健Ⅱ",
+      "sector_code": "industry:动物保健Ⅱ",
+      "sector_name": "动物保健Ⅱ",
+      "entity_segment_id": "industry:动物保健Ⅱ::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:包装印刷",
+      "sector_code": "industry:包装印刷",
+      "sector_name": "包装印刷",
+      "entity_segment_id": "industry:包装印刷::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:化妆品",
+      "sector_code": "industry:化妆品",
+      "sector_name": "化妆品",
+      "entity_segment_id": "industry:化妆品::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:化学制品",
+      "sector_code": "industry:化学制品",
+      "sector_name": "化学制品",
+      "entity_segment_id": "industry:化学制品::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:化学制药",
+      "sector_code": "industry:化学制药",
+      "sector_name": "化学制药",
+      "entity_segment_id": "industry:化学制药::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:化学原料",
+      "sector_code": "industry:化学原料",
+      "sector_name": "化学原料",
+      "entity_segment_id": "industry:化学原料::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:化学纤维",
+      "sector_code": "industry:化学纤维",
+      "sector_name": "化学纤维",
+      "entity_segment_id": "industry:化学纤维::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:医疗器械",
+      "sector_code": "industry:医疗器械",
+      "sector_name": "医疗器械",
+      "entity_segment_id": "industry:医疗器械::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:医疗服务",
+      "sector_code": "industry:医疗服务",
+      "sector_name": "医疗服务",
+      "entity_segment_id": "industry:医疗服务::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:医药商业",
+      "sector_code": "industry:医药商业",
+      "sector_name": "医药商业",
+      "entity_segment_id": "industry:医药商业::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:半导体",
+      "sector_code": "industry:半导体",
+      "sector_name": "半导体",
+      "entity_segment_id": "industry:半导体::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:厨卫电器",
+      "sector_code": "industry:厨卫电器",
+      "sector_name": "厨卫电器",
+      "entity_segment_id": "industry:厨卫电器::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:商用车",
+      "sector_code": "industry:商用车",
+      "sector_name": "商用车",
+      "entity_segment_id": "industry:商用车::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:国有大型银行Ⅱ",
+      "sector_code": "industry:国有大型银行Ⅱ",
+      "sector_name": "国有大型银行Ⅱ",
+      "entity_segment_id": "industry:国有大型银行Ⅱ::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:地面兵装Ⅱ",
+      "sector_code": "industry:地面兵装Ⅱ",
+      "sector_name": "地面兵装Ⅱ",
+      "entity_segment_id": "industry:地面兵装Ⅱ::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:城商行Ⅱ",
+      "sector_code": "industry:城商行Ⅱ",
+      "sector_name": "城商行Ⅱ",
+      "entity_segment_id": "industry:城商行Ⅱ::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:基础建设",
+      "sector_code": "industry:基础建设",
+      "sector_name": "基础建设",
+      "entity_segment_id": "industry:基础建设::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:塑料",
+      "sector_code": "industry:塑料",
+      "sector_name": "塑料",
+      "entity_segment_id": "industry:塑料::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:多元金融",
+      "sector_code": "industry:多元金融",
+      "sector_name": "多元金融",
+      "entity_segment_id": "industry:多元金融::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:家居用品",
+      "sector_code": "industry:家居用品",
+      "sector_name": "家居用品",
+      "entity_segment_id": "industry:家居用品::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:家电零部件Ⅱ",
+      "sector_code": "industry:家电零部件Ⅱ",
+      "sector_name": "家电零部件Ⅱ",
+      "entity_segment_id": "industry:家电零部件Ⅱ::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:小家电",
+      "sector_code": "industry:小家电",
+      "sector_name": "小家电",
+      "entity_segment_id": "industry:小家电::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:小金属",
+      "sector_code": "industry:小金属",
+      "sector_name": "小金属",
+      "entity_segment_id": "industry:小金属::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:工业金属",
+      "sector_code": "industry:工业金属",
+      "sector_name": "工业金属",
+      "entity_segment_id": "industry:工业金属::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:工程咨询服务Ⅱ",
+      "sector_code": "industry:工程咨询服务Ⅱ",
+      "sector_name": "工程咨询服务Ⅱ",
+      "entity_segment_id": "industry:工程咨询服务Ⅱ::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:工程机械",
+      "sector_code": "industry:工程机械",
+      "sector_name": "工程机械",
+      "entity_segment_id": "industry:工程机械::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:广告营销",
+      "sector_code": "industry:广告营销",
+      "sector_name": "广告营销",
+      "entity_segment_id": "industry:广告营销::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:影视院线",
+      "sector_code": "industry:影视院线",
+      "sector_name": "影视院线",
+      "entity_segment_id": "industry:影视院线::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:房地产开发",
+      "sector_code": "industry:房地产开发",
+      "sector_name": "房地产开发",
+      "entity_segment_id": "industry:房地产开发::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:房地产服务",
+      "sector_code": "industry:房地产服务",
+      "sector_name": "房地产服务",
+      "entity_segment_id": "industry:房地产服务::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:房屋建设Ⅱ",
+      "sector_code": "industry:房屋建设Ⅱ",
+      "sector_name": "房屋建设Ⅱ",
+      "entity_segment_id": "industry:房屋建设Ⅱ::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:摩托车及其他",
+      "sector_code": "industry:摩托车及其他",
+      "sector_name": "摩托车及其他",
+      "entity_segment_id": "industry:摩托车及其他::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:教育",
+      "sector_code": "industry:教育",
+      "sector_name": "教育",
+      "entity_segment_id": "industry:教育::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:数字媒体",
+      "sector_code": "industry:数字媒体",
+      "sector_name": "数字媒体",
+      "entity_segment_id": "industry:数字媒体::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:文娱用品",
+      "sector_code": "industry:文娱用品",
+      "sector_name": "文娱用品",
+      "entity_segment_id": "industry:文娱用品::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:旅游及景区",
+      "sector_code": "industry:旅游及景区",
+      "sector_name": "旅游及景区",
+      "entity_segment_id": "industry:旅游及景区::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:普钢",
+      "sector_code": "industry:普钢",
+      "sector_name": "普钢",
+      "entity_segment_id": "industry:普钢::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:服装家纺",
+      "sector_code": "industry:服装家纺",
+      "sector_name": "服装家纺",
+      "entity_segment_id": "industry:服装家纺::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:橡胶",
+      "sector_code": "industry:橡胶",
+      "sector_name": "橡胶",
+      "entity_segment_id": "industry:橡胶::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:水泥",
+      "sector_code": "industry:水泥",
+      "sector_name": "水泥",
+      "entity_segment_id": "industry:水泥::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:汽车服务",
+      "sector_code": "industry:汽车服务",
+      "sector_name": "汽车服务",
+      "entity_segment_id": "industry:汽车服务::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:汽车零部件",
+      "sector_code": "industry:汽车零部件",
+      "sector_name": "汽车零部件",
+      "entity_segment_id": "industry:汽车零部件::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:油服工程",
+      "sector_code": "industry:油服工程",
+      "sector_name": "油服工程",
+      "entity_segment_id": "industry:油服工程::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:消费电子",
+      "sector_code": "industry:消费电子",
+      "sector_name": "消费电子",
+      "entity_segment_id": "industry:消费电子::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:渔业",
+      "sector_code": "industry:渔业",
+      "sector_name": "渔业",
+      "entity_segment_id": "industry:渔业::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:游戏Ⅱ",
+      "sector_code": "industry:游戏Ⅱ",
+      "sector_name": "游戏Ⅱ",
+      "entity_segment_id": "industry:游戏Ⅱ::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:炼化及贸易",
+      "sector_code": "industry:炼化及贸易",
+      "sector_name": "炼化及贸易",
+      "entity_segment_id": "industry:炼化及贸易::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:焦炭Ⅱ",
+      "sector_code": "industry:焦炭Ⅱ",
+      "sector_name": "焦炭Ⅱ",
+      "entity_segment_id": "industry:焦炭Ⅱ::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:煤炭开采",
+      "sector_code": "industry:煤炭开采",
+      "sector_name": "煤炭开采",
+      "entity_segment_id": "industry:煤炭开采::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:照明设备Ⅱ",
+      "sector_code": "industry:照明设备Ⅱ",
+      "sector_name": "照明设备Ⅱ",
+      "entity_segment_id": "industry:照明设备Ⅱ::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:燃气Ⅱ",
+      "sector_code": "industry:燃气Ⅱ",
+      "sector_name": "燃气Ⅱ",
+      "entity_segment_id": "industry:燃气Ⅱ::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:物流",
+      "sector_code": "industry:物流",
+      "sector_name": "物流",
+      "entity_segment_id": "industry:物流::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:特钢Ⅱ",
+      "sector_code": "industry:特钢Ⅱ",
+      "sector_name": "特钢Ⅱ",
+      "entity_segment_id": "industry:特钢Ⅱ::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:环保设备Ⅱ",
+      "sector_code": "industry:环保设备Ⅱ",
+      "sector_name": "环保设备Ⅱ",
+      "entity_segment_id": "industry:环保设备Ⅱ::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:环境治理",
+      "sector_code": "industry:环境治理",
+      "sector_name": "环境治理",
+      "entity_segment_id": "industry:环境治理::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:玻璃玻纤",
+      "sector_code": "industry:玻璃玻纤",
+      "sector_name": "玻璃玻纤",
+      "entity_segment_id": "industry:玻璃玻纤::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:生物制品",
+      "sector_code": "industry:生物制品",
+      "sector_name": "生物制品",
+      "entity_segment_id": "industry:生物制品::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:电力",
+      "sector_code": "industry:电力",
+      "sector_name": "电力",
+      "entity_segment_id": "industry:电力::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:电子化学品Ⅱ",
+      "sector_code": "industry:电子化学品Ⅱ",
+      "sector_name": "电子化学品Ⅱ",
+      "entity_segment_id": "industry:电子化学品Ⅱ::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:电机Ⅱ",
+      "sector_code": "industry:电机Ⅱ",
+      "sector_name": "电机Ⅱ",
+      "entity_segment_id": "industry:电机Ⅱ::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:电池",
+      "sector_code": "industry:电池",
+      "sector_name": "电池",
+      "entity_segment_id": "industry:电池::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:电网设备",
+      "sector_code": "industry:电网设备",
+      "sector_name": "电网设备",
+      "entity_segment_id": "industry:电网设备::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:电视广播Ⅱ",
+      "sector_code": "industry:电视广播Ⅱ",
+      "sector_name": "电视广播Ⅱ",
+      "entity_segment_id": "industry:电视广播Ⅱ::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:白色家电",
+      "sector_code": "industry:白色家电",
+      "sector_name": "白色家电",
+      "entity_segment_id": "industry:白色家电::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:白酒Ⅱ",
+      "sector_code": "industry:白酒Ⅱ",
+      "sector_name": "白酒Ⅱ",
+      "entity_segment_id": "industry:白酒Ⅱ::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:种植业",
+      "sector_code": "industry:种植业",
+      "sector_name": "种植业",
+      "entity_segment_id": "industry:种植业::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:纺织制造",
+      "sector_code": "industry:纺织制造",
+      "sector_name": "纺织制造",
+      "entity_segment_id": "industry:纺织制造::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:综合Ⅱ",
+      "sector_code": "industry:综合Ⅱ",
+      "sector_name": "综合Ⅱ",
+      "entity_segment_id": "industry:综合Ⅱ::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:股份制银行Ⅱ",
+      "sector_code": "industry:股份制银行Ⅱ",
+      "sector_name": "股份制银行Ⅱ",
+      "entity_segment_id": "industry:股份制银行Ⅱ::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:能源金属",
+      "sector_code": "industry:能源金属",
+      "sector_name": "能源金属",
+      "entity_segment_id": "industry:能源金属::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:自动化设备",
+      "sector_code": "industry:自动化设备",
+      "sector_name": "自动化设备",
+      "entity_segment_id": "industry:自动化设备::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:航天装备Ⅱ",
+      "sector_code": "industry:航天装备Ⅱ",
+      "sector_name": "航天装备Ⅱ",
+      "entity_segment_id": "industry:航天装备Ⅱ::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:航海装备Ⅱ",
+      "sector_code": "industry:航海装备Ⅱ",
+      "sector_name": "航海装备Ⅱ",
+      "entity_segment_id": "industry:航海装备Ⅱ::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:航空机场",
+      "sector_code": "industry:航空机场",
+      "sector_name": "航空机场",
+      "entity_segment_id": "industry:航空机场::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:航空装备Ⅱ",
+      "sector_code": "industry:航空装备Ⅱ",
+      "sector_name": "航空装备Ⅱ",
+      "entity_segment_id": "industry:航空装备Ⅱ::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:航运港口",
+      "sector_code": "industry:航运港口",
+      "sector_name": "航运港口",
+      "entity_segment_id": "industry:航运港口::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:装修建材",
+      "sector_code": "industry:装修建材",
+      "sector_name": "装修建材",
+      "entity_segment_id": "industry:装修建材::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:装修装饰Ⅱ",
+      "sector_code": "industry:装修装饰Ⅱ",
+      "sector_name": "装修装饰Ⅱ",
+      "entity_segment_id": "industry:装修装饰Ⅱ::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:计算机设备",
+      "sector_code": "industry:计算机设备",
+      "sector_name": "计算机设备",
+      "entity_segment_id": "industry:计算机设备::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:证券Ⅱ",
+      "sector_code": "industry:证券Ⅱ",
+      "sector_name": "证券Ⅱ",
+      "entity_segment_id": "industry:证券Ⅱ::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:调味发酵品Ⅱ",
+      "sector_code": "industry:调味发酵品Ⅱ",
+      "sector_name": "调味发酵品Ⅱ",
+      "entity_segment_id": "industry:调味发酵品Ⅱ::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:贵金属",
+      "sector_code": "industry:贵金属",
+      "sector_name": "贵金属",
+      "entity_segment_id": "industry:贵金属::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:贸易Ⅱ",
+      "sector_code": "industry:贸易Ⅱ",
+      "sector_name": "贸易Ⅱ",
+      "entity_segment_id": "industry:贸易Ⅱ::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:轨交设备Ⅱ",
+      "sector_code": "industry:轨交设备Ⅱ",
+      "sector_name": "轨交设备Ⅱ",
+      "entity_segment_id": "industry:轨交设备Ⅱ::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:软件开发",
+      "sector_code": "industry:软件开发",
+      "sector_name": "软件开发",
+      "entity_segment_id": "industry:软件开发::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:通信服务",
+      "sector_code": "industry:通信服务",
+      "sector_name": "通信服务",
+      "entity_segment_id": "industry:通信服务::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:通信设备",
+      "sector_code": "industry:通信设备",
+      "sector_name": "通信设备",
+      "entity_segment_id": "industry:通信设备::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:通用设备",
+      "sector_code": "industry:通用设备",
+      "sector_name": "通用设备",
+      "entity_segment_id": "industry:通用设备::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:造纸",
+      "sector_code": "industry:造纸",
+      "sector_name": "造纸",
+      "entity_segment_id": "industry:造纸::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:酒店餐饮",
+      "sector_code": "industry:酒店餐饮",
+      "sector_name": "酒店餐饮",
+      "entity_segment_id": "industry:酒店餐饮::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:金属新材料",
+      "sector_code": "industry:金属新材料",
+      "sector_name": "金属新材料",
+      "entity_segment_id": "industry:金属新材料::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:铁路公路",
+      "sector_code": "industry:铁路公路",
+      "sector_name": "铁路公路",
+      "entity_segment_id": "industry:铁路公路::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:非白酒",
+      "sector_code": "industry:非白酒",
+      "sector_name": "非白酒",
+      "entity_segment_id": "industry:非白酒::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:非金属材料Ⅱ",
+      "sector_code": "industry:非金属材料Ⅱ",
+      "sector_name": "非金属材料Ⅱ",
+      "entity_segment_id": "industry:非金属材料Ⅱ::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:风电设备",
+      "sector_code": "industry:风电设备",
+      "sector_name": "风电设备",
+      "entity_segment_id": "industry:风电设备::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:食品加工",
+      "sector_code": "industry:食品加工",
+      "sector_name": "食品加工",
+      "entity_segment_id": "industry:食品加工::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:饮料乳品",
+      "sector_code": "industry:饮料乳品",
+      "sector_name": "饮料乳品",
+      "entity_segment_id": "industry:饮料乳品::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:饰品",
+      "sector_code": "industry:饰品",
+      "sector_name": "饰品",
+      "entity_segment_id": "industry:饰品::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:饲料",
+      "sector_code": "industry:饲料",
+      "sector_name": "饲料",
+      "entity_segment_id": "industry:饲料::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    },
+    {
+      "entity_id": "industry:黑色家电",
+      "sector_code": "industry:黑色家电",
+      "sector_name": "黑色家电",
+      "entity_segment_id": "industry:黑色家电::segment_1",
+      "taxonomy_provider": "SW",
+      "taxonomy_version": "SW2021",
+      "taxonomy_level": "L2"
+    }
+  ],
   "boundary_flags": {
     "external_data_fetch": "no",
-    "target_dataset_built": "no",
+    "target_dataset_built": "yes",
     "persistent_db_table_written": "no",
     "model_training": "no",
     "probability_calibration": "no",

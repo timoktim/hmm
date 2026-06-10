@@ -5,9 +5,12 @@ from pathlib import Path
 
 import pandas as pd
 
+import src.evaluation.stage03v_risk_target_dataset as target_mod
 from src.evaluation.stage03v_risk_target_dataset import (
     SliceSpec,
+    V7Inputs,
     _slice_specs_from_feasibility,
+    _write_target_universe_manifest,
     build_risk_target_report,
     compute_path_target_rows,
     validate_wp0_5_feasibility,
@@ -92,7 +95,7 @@ def test_diagnostic_only_slice_rows_remain_diagnostic_only_and_no_usable_probabi
     assert rows.loc[rows["target_usage"].eq("diagnostic_only"), "horizon"].eq(1).all()
 
 
-def test_missing_v7_db_blocks_without_falling_back_to_old_db(tmp_path: Path) -> None:
+def test_missing_v7_db_blocks_without_falling_back_to_old_db_when_manifest_path_is_explicit(tmp_path: Path) -> None:
     feasibility = tmp_path / "sample_feasibility_report.json"
     feasibility.write_text(json.dumps(_feasibility_report()), encoding="utf-8")
     output = tmp_path / "risk_event_target_support.md"
@@ -115,7 +118,30 @@ def test_missing_v7_db_blocks_without_falling_back_to_old_db(tmp_path: Path) -> 
     assert report["source_db_path"] != "data/db/a_share_hmm.duckdb"
     assert report["boundary_flags"]["external_data_fetch"] == "no"
     assert json.loads(summary.read_text(encoding="utf-8"))["status"] == "blocked_missing_v7_db"
+    assert report["target_universe_manifest_written"] is True
+    assert json.loads(universe.read_text(encoding="utf-8"))["source"]["db_path"] == "missing_stage03v_v7.duckdb"
     assert sample.exists()
+
+
+def test_missing_v7_db_default_does_not_write_formal_target_universe(tmp_path: Path, monkeypatch) -> None:
+    feasibility = tmp_path / "sample_feasibility_report.json"
+    feasibility.write_text(json.dumps(_feasibility_report()), encoding="utf-8")
+    formal_manifest = tmp_path / "formal_stage03v_sw_l2_target_universe_v1.yaml"
+    monkeypatch.setattr(target_mod, "DEFAULT_TARGET_UNIVERSE", formal_manifest)
+
+    report = target_mod.build_risk_target_report(
+        db_path=tmp_path / "missing_stage03v_v7.duckdb",
+        feasibility_path=feasibility,
+        output=tmp_path / "risk_event_target_support.md",
+        summary_json=tmp_path / "risk_event_target_support.json",
+        sample_csv=tmp_path / "risk_event_target_dataset_sample.csv",
+        no_fetch=True,
+    )
+
+    assert report["status"] == "blocked_missing_v7_db"
+    assert report["target_universe_manifest_written"] is False
+    assert report["target_universe_manifest_path"] is None
+    assert not formal_manifest.exists()
 
 
 def test_wp0_5_not_ready_blocks_before_db_use(tmp_path: Path) -> None:
@@ -134,6 +160,78 @@ def test_wp0_5_not_ready_blocks_before_db_use(tmp_path: Path) -> None:
 
     assert report["status"] == "blocked_wp0_5_not_ready"
     assert "status_not_pass" in report["blocking_reasons"]
+
+
+def test_target_universe_manifest_records_v7_quality_silent_break_and_entity_audit(tmp_path: Path) -> None:
+    path = tmp_path / "stage03v_sw_l2_target_universe_v1.yaml"
+    report = {
+        "created_at": "2026-06-10T00:00:00+00:00",
+        "source_db_path": "data/db/a_share_hmm_tushare_v7.duckdb",
+        "feasibility_report_path": "reports/stage03v/sample_feasibility_report.json",
+        "universe_source_status": "verified_sw2021_l2_tushare_classify",
+        "v7_coverage_available": "yes",
+        "v7_db_requirement_status": "pass",
+        "coverage_start": "2014-01-02",
+        "coverage_end": "2026-06-09",
+        "entity_count_total": 162,
+        "entity_count_after_quality_filter": 124,
+        "entity_count_after_silent_break_handling": 124,
+        "quality_filter_exclusion_count": 38,
+        "non_verified_or_non_l2_industry_count": 31,
+        "constituent_count_min_observed": 2,
+        "constituent_count_filter_status": "partial_low_constituents",
+        "short_history_entity_count": 0,
+        "silent_entity_break_count": 2,
+        "silent_entity_break_handling": "excluded",
+        "permanent_censoring_policy": "cross_cutoff_censored",
+        "silent_entity_break_entities": [
+            {
+                "entity_id": "industry:医疗美容",
+                "sector_name": "医疗美容",
+                "handling": "silent_break_already_excluded_by_quality_filter",
+                "reason": "unexplained_price_history_gap_gt_45_calendar_days",
+            }
+        ],
+        "boundary_flags": {"external_data_fetch": "no"},
+    }
+    v7 = V7Inputs(
+        price_frame=pd.DataFrame(),
+        universe_frame=pd.DataFrame(
+            [
+                {
+                    "entity_id": "industry:IT服务Ⅱ",
+                    "sector_name": "IT服务Ⅱ",
+                    "entity_segment_id": "industry:IT服务Ⅱ::segment_1",
+                }
+            ]
+        ),
+        exclusions=[
+            {
+                "entity_id": "industry:医疗美容",
+                "sector_name": "医疗美容",
+                "reason": "silent_break_already_excluded_by_quality_filter",
+            }
+        ],
+        silent_break_entities=report["silent_entity_break_entities"],
+        coverage={},
+    )
+
+    _write_target_universe_manifest(path, report, v7)
+    manifest = json.loads(path.read_text(encoding="utf-8"))
+
+    assert manifest["source"]["db_path"] == "data/db/a_share_hmm_tushare_v7.duckdb"
+    assert manifest["source"]["v7_coverage_available"] == "yes"
+    assert manifest["source"]["taxonomy_source_status"] == "verified_sw2021_l2_tushare_classify"
+    assert manifest["source"]["universe_source_status"] == "verified_sw2021_l2_tushare_classify"
+    assert manifest["universe"]["entity_count_after_quality_filter"] == 124
+    assert manifest["universe"]["entity_count_after_silent_break_handling"] == 124
+    assert manifest["universe"]["silent_entity_break_count"] == 2
+    assert manifest["quality_filter_summary"]["constituent_count_filter_status"] == "partial_low_constituents"
+    assert manifest["quality_filter_summary"]["quality_filter_exclusion_count"] == 38
+    assert manifest["silent_entity_break_entities"][0]["entity_id"] == "industry:医疗美容"
+    assert manifest["exclusions"][0]["reason"] == "silent_break_already_excluded_by_quality_filter"
+    assert manifest["entity_audit_summary"]["entity_count"] == 1
+    assert manifest["entities"][0]["entity_id"] == "industry:IT服务Ⅱ"
 
 
 def test_compute_target_rows_has_required_minimum_columns() -> None:

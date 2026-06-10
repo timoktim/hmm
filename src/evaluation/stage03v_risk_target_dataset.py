@@ -686,6 +686,7 @@ def read_v7_inputs(db_path: Path | str) -> V7Inputs:
         short_history_ids = set(
             entity_summary.loc[entity_summary["min_trade_date"] > pd.Timestamp("2021-07-01"), "sector_id"].astype(str)
         )
+        coverage["short_history_entity_count"] = int(len(short_history_ids))
         for entity_id in sorted(short_history_ids):
             row = verified_meta[verified_meta["sector_id"].eq(entity_id)].head(1)
             exclusions.append(
@@ -995,6 +996,21 @@ def _write_target_universe_manifest(path: Path, report: Mapping[str, Any], v7: V
                     "taxonomy_level": TAXONOMY_LEVEL,
                 }
             )
+    exclusion_reason_counts: dict[str, int] = {}
+    for item in v7.exclusions:
+        reason = str(item.get("reason", "unknown"))
+        exclusion_reason_counts[reason] = exclusion_reason_counts.get(reason, 0) + 1
+    quality_filter_summary = {
+        "quality_filter_exclusion_count": report.get("quality_filter_exclusion_count"),
+        "non_verified_or_non_l2_industry_count": report.get("non_verified_or_non_l2_industry_count"),
+        "constituent_count_min_required": 5,
+        "constituent_count_min_observed": report.get("constituent_count_min_observed"),
+        "constituent_count_filter_status": report.get("constituent_count_filter_status"),
+        "short_history_entity_count": report.get("short_history_entity_count"),
+        "silent_entity_break_count": report.get("silent_entity_break_count"),
+        "silent_entity_break_handling": report.get("silent_entity_break_handling"),
+        "exclusion_reason_counts": exclusion_reason_counts,
+    }
     manifest = {
         "metadata": {
             "schema_name": "stage03v_sw_l2_target_universe",
@@ -1008,7 +1024,11 @@ def _write_target_universe_manifest(path: Path, report: Mapping[str, Any], v7: V
             "db_path": report.get("source_db_path"),
             "feasibility_report": report.get("feasibility_report_path"),
             "taxonomy_source_status": report.get("universe_source_status"),
+            "universe_source_status": report.get("universe_source_status"),
             "v7_coverage_available": report.get("v7_coverage_available"),
+            "v7_db_requirement_status": report.get("v7_db_requirement_status"),
+            "coverage_start": report.get("coverage_start"),
+            "coverage_end": report.get("coverage_end"),
         },
         "universe": {
             "entity_type": ENTITY_TYPE,
@@ -1017,14 +1037,24 @@ def _write_target_universe_manifest(path: Path, report: Mapping[str, Any], v7: V
             "taxonomy_level": TAXONOMY_LEVEL,
             "feature_scope_id": FEATURE_SCOPE_ID,
             "universe_id": UNIVERSE_ID,
+            "entity_count_total": report.get("entity_count_total"),
             "entity_count_after_quality_filter": report.get("entity_count_after_quality_filter"),
             "entity_count_after_silent_break_handling": report.get("entity_count_after_silent_break_handling"),
+            "quality_filter_exclusion_count": report.get("quality_filter_exclusion_count"),
             "constituent_count_filter_status": report.get("constituent_count_filter_status"),
+            "silent_entity_break_count": report.get("silent_entity_break_count"),
             "silent_entity_break_handling": report.get("silent_entity_break_handling"),
             "permanent_censoring_policy": report.get("permanent_censoring_policy"),
         },
+        "quality_filter_summary": quality_filter_summary,
         "silent_entity_break_entities": report.get("silent_entity_break_entities", []),
         "exclusions": v7.exclusions,
+        "entity_audit_summary": {
+            "entity_list_materialized": True,
+            "entity_count": len(universe_rows),
+            "entity_id_field": "entity_id",
+            "entity_segment_policy": "single_segment_after_excluding_unexplained_silent_breaks",
+        },
         "entities": universe_rows,
         "boundary_flags": report.get("boundary_flags", {}),
     }
@@ -1085,7 +1115,7 @@ def build_risk_target_report(
     output: Path | str = DEFAULT_OUTPUT,
     summary_json: Path | str = DEFAULT_SUMMARY_JSON,
     sample_csv: Path | str = DEFAULT_SAMPLE_CSV,
-    target_universe: Path | str = DEFAULT_TARGET_UNIVERSE,
+    target_universe: Path | str | None = None,
     sample_cap: int = DEFAULT_SAMPLE_ROWS,
     no_fetch: bool = True,
 ) -> dict[str, Any]:
@@ -1093,7 +1123,8 @@ def build_risk_target_report(
     output_path = Path(output)
     summary_path = Path(summary_json)
     sample_path = Path(sample_csv)
-    universe_path = Path(target_universe)
+    target_universe_explicit = target_universe is not None
+    universe_path = Path(target_universe) if target_universe_explicit else DEFAULT_TARGET_UNIVERSE
 
     if not no_fetch:
         raise ValueError("Stage03V WP1 target builder is no-fetch only")
@@ -1108,10 +1139,13 @@ def build_risk_target_report(
             feasibility_status=feasibility.get("status"),
             reasons=feasibility_issues,
         )
+        report["target_universe_manifest_path"] = _safe_path(universe_path) if target_universe_explicit else None
+        report["target_universe_manifest_written"] = bool(target_universe_explicit)
         _write_markdown(output_path, report)
         _write_json(summary_path, report)
         _write_sample_csv(sample_path, _empty_target_frame(), sample_cap)
-        _write_target_universe_manifest(universe_path, report, V7Inputs(pd.DataFrame(), pd.DataFrame(), [], [], {}))
+        if target_universe_explicit:
+            _write_target_universe_manifest(universe_path, report, V7Inputs(pd.DataFrame(), pd.DataFrame(), [], [], {}))
         return report
 
     v7 = read_v7_inputs(resolved_db)
@@ -1125,10 +1159,13 @@ def build_risk_target_report(
         )
         report["db_opened_read_only"] = "yes" if v7.coverage.get("db_opened_read_only") else "no"
         report["v7_coverage_available"] = v7.coverage.get("v7_coverage_available", "no")
+        report["target_universe_manifest_path"] = _safe_path(universe_path) if target_universe_explicit else None
+        report["target_universe_manifest_written"] = bool(target_universe_explicit)
         _write_markdown(output_path, report)
         _write_json(summary_path, report)
         _write_sample_csv(sample_path, _empty_target_frame(), sample_cap)
-        _write_target_universe_manifest(universe_path, report, v7)
+        if target_universe_explicit:
+            _write_target_universe_manifest(universe_path, report, v7)
         return report
 
     slices = _slice_specs_from_feasibility(feasibility)
@@ -1180,6 +1217,9 @@ def build_risk_target_report(
         "silent_entity_break_entities": v7.silent_break_entities,
         "silent_entity_break_handling": v7.coverage.get("silent_entity_break_handling"),
         "quality_filter_exclusion_count": v7.coverage.get("quality_filter_exclusion_count"),
+        "non_verified_or_non_l2_industry_count": v7.coverage.get("non_verified_or_non_l2_industry_count"),
+        "short_history_entity_count": v7.coverage.get("short_history_entity_count"),
+        "constituent_count_min_observed": v7.coverage.get("constituent_count_min_observed"),
         "constituent_count_filter_status": v7.coverage.get("constituent_count_filter_status"),
         "target_row_count": aggregate["target_row_count"],
         "sample_csv_row_count": sample_count,
@@ -1201,6 +1241,7 @@ def build_risk_target_report(
         "target_rows_materialized": "sample_csv_only",
         "sample_csv_path": _safe_path(sample_path),
         "target_universe_manifest_path": _safe_path(universe_path),
+        "target_universe_manifest_written": True,
         "created_at": created_at,
         "no_fetch": True,
         "external_data_fetch": "no",
@@ -1222,7 +1263,15 @@ def _parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
     parser.add_argument("--summary-json", type=Path, default=DEFAULT_SUMMARY_JSON)
     parser.add_argument("--sample-csv", type=Path, default=DEFAULT_SAMPLE_CSV)
-    parser.add_argument("--target-universe", type=Path, default=DEFAULT_TARGET_UNIVERSE)
+    parser.add_argument(
+        "--target-universe",
+        type=Path,
+        default=None,
+        help=(
+            "Target universe manifest path. Successful V7 runs default to the formal config path; "
+            "blocked runs write a manifest only when this option is explicit."
+        ),
+    )
     parser.add_argument("--sample-cap", type=int, default=DEFAULT_SAMPLE_ROWS)
     parser.add_argument("--no-fetch", action="store_true", default=True)
     return parser.parse_args(argv)
