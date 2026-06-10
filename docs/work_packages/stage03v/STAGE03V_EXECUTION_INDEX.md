@@ -2,13 +2,13 @@
 
 Status: active
 Stage: 03V / Volatility and downside-risk hazard
-Active package: STAGE03V-WP2.1-v1
+Active package: STAGE03V-WP3-v1
 
 ## Purpose
 
 Stage03V defines a volatility and downside-risk hazard route after the Stage03R hazard-first lifecycle work and Stage04 prospective validation discipline. WP0 froze the scope, contracts, taxonomy, readiness policy, and prospective holdout registration before any target building, model training, probability calibration, or empirical holdout consumption.
 
-WP0.5 completed sample-feasibility preflight on the V7 verified SW2021 L2 universe. WP1 completed the first formal Stage03V1 downside-risk target dataset builder and synthetic path-target tests. WP2 created the target-control gate for target leakage, permanent cross-cutoff censoring, purge/embargo, and feature/target namespace leakage policy. WP2.1 is now active and adds a full-target streaming / blockwise audit before baseline or model packages open.
+WP0.5 completed sample-feasibility preflight on the V7 verified SW2021 L2 universe. WP1 completed the first formal Stage03V1 downside-risk target dataset builder and synthetic path-target tests. WP2 created the target-control gate for target leakage, permanent cross-cutoff censoring, purge/embargo, and feature/target namespace leakage policy. WP2.1 completed a full-target streaming / blockwise audit. WP3 is now active and adds causal baseline diagnostics before logistic hazard, calibration, or readiness packages open.
 
 ## Route Anchors
 
@@ -19,10 +19,12 @@ WP0.5 completed sample-feasibility preflight on the V7 verified SW2021 L2 univer
 - `docs/work_packages/stage03v/STAGE03V_WP1_risk_event_target_dataset_v1.md`
 - `docs/work_packages/stage03v/STAGE03V_WP2_target_leakage_purge_embargo_ci_gate.md`
 - `docs/work_packages/stage03v/STAGE03V_WP2.1_full_target_streaming_audit.md`
-- `docs/codex_instructions/stage03v/CODEX_STAGE03V_WP2.1_full_target_streaming_audit.md`
+- `docs/work_packages/stage03v/STAGE03V_WP3_volatility_range_empirical_baselines.md`
+- `docs/codex_instructions/stage03v/CODEX_STAGE03V_WP3_volatility_range_empirical_baselines.md`
 - `reports/stage03v/sample_feasibility_report.json`
 - `reports/stage03v/risk_event_target_support.json`
 - `reports/stage03v/target_controls_report.json`
+- `reports/stage03v/full_target_streaming_audit_report.json`
 
 ## Package Sequence
 
@@ -32,9 +34,9 @@ WP0.5 completed sample-feasibility preflight on the V7 verified SW2021 L2 univer
 | STAGE03V-WP0.5-v1 | Sample Feasibility Preflight | archived | stage03v/wp0.5-sample-feasibility-preflight | count downside-risk event feasibility evidence before target dataset construction |
 | STAGE03V-WP1-v1 | Risk Event Target Dataset v1 | archived | stage03v/wp1-risk-event-target-dataset-v1 | build formal downside-risk target dataset builder and synthetic path-target tests |
 | STAGE03V-WP2-v1 | Target Leakage, Purge, Embargo, and CI Gate | archived | stage03v/wp2-target-leakage-purge-embargo-ci-gate | enforce target controls before baseline or model packages open |
-| STAGE03V-WP2.1-v1 | Full Target Streaming Audit | active | stage03v/wp2.1-full-target-streaming-audit | run full-target streaming / blockwise audit before baseline packages open |
-| STAGE03V-WP3 | Volatility, Range-Based, Empirical, and Continuous Diagnostic Baselines | blocked_until_wp2_1_accepted | pending | add baseline diagnostics after target controls and full-target audit pass |
-| STAGE03V-WP3.5 | Volatility-Scaled Threshold Supplement | blocked | pending | evaluate volatility-scaled threshold supplement before readiness promotion |
+| STAGE03V-WP2.1-v1 | Full Target Streaming Audit | archived | stage03v/wp2.1-full-target-streaming-audit | run full-target streaming / blockwise audit before baseline packages open |
+| STAGE03V-WP3-v1 | Volatility, Range-Based, Empirical, and Continuous Diagnostic Baselines | active | stage03v/wp3-volatility-range-empirical-baselines | add causal baseline diagnostics after target controls and full-target audit pass |
+| STAGE03V-WP3.5 | Volatility-Scaled Threshold Supplement | blocked_until_wp3_accepted | pending | evaluate volatility-scaled threshold supplement before readiness promotion |
 | STAGE03V-WP4 | Logistic Downside Risk Hazard v1 | blocked | pending | train downside risk hazard only after prior contracts and gates pass |
 | STAGE03V-WP5 | Calibration, Clustered Inference, and Downside Risk Readiness Matrix | blocked | pending | calibrate and assign readiness only after model validation artifacts exist |
 | STAGE03V-WP6 | Risk Validation Protocol and Downshift Research Report | blocked | pending | validate research-only/downshift evidence after readiness matrix |
@@ -42,20 +44,20 @@ WP0.5 completed sample-feasibility preflight on the V7 verified SW2021 L2 univer
 
 ## Execution Rules
 
-1. Only STAGE03V-WP2.1-v1 is executable in the current Stage03V branch sequence.
-2. STAGE03V-WP3 and later packages are blocked until WP2.1 is accepted.
-3. WP2.1 must use the V7 DB path and accepted WP1 / WP2 support artifacts as hard inputs.
-4. WP2.1 may rebuild or audit target rows in streaming mode, but must not modify the target dataset.
-5. WP2.1 must not write persistent DB target tables.
-6. WP2.1 must not commit a full target dataset extract.
-7. WP2.1 must not train any model.
-8. WP2.1 must not assign `usable_probability`, `ordinal_only`, or any model readiness status.
-9. WP2.1 must not fetch external data.
-10. WP2.1 must not consume or inspect prospective final holdout performance.
-11. WP2.1 must enforce target, censoring, split-role, and slice-support consistency across the full target row universe.
-12. WP2.1 must preserve WP2 purge/embargo and feature/target namespace controls.
-13. WP2.1 must not modify HMM or HSMM training algorithms.
-14. WP2.1 must not create UI, trading, buy/sell, recommendation, sizing, or decision outputs.
+1. Only STAGE03V-WP3-v1 is executable in the current Stage03V branch sequence.
+2. STAGE03V-WP3.5 and later packages are blocked until WP3 is accepted.
+3. WP3 must use the V7 DB path and accepted WP1 / WP2 / WP2.1 artifacts as hard inputs.
+4. WP3 may compute causal baseline diagnostic scores and aggregate metrics, but must not train logistic hazard or any learned model.
+5. WP3 must not calibrate probabilities.
+6. WP3 must not assign `usable_probability`, `ordinal_only`, `baseline_only`, or any model readiness status.
+7. WP3 must not fetch external data.
+8. WP3 must not consume or inspect prospective final holdout performance.
+9. WP3 must not modify WP1 target rows, labels, support reports, or target universe manifests.
+10. WP3 must not commit full target or full feature matrices.
+11. WP3 must not write persistent DB tables by default.
+12. WP3 must preserve WP2 purge/embargo and feature/target namespace controls.
+13. WP3 must not modify HMM or HSMM training algorithms.
+14. WP3 must not create UI, trading, buy/sell, recommendation, sizing, or decision outputs.
 15. Stage03V2 and Stage03V3 remain placeholders only unless a later reviewed package explicitly activates them.
 
 ## WP0 Accepted Deliverables
@@ -99,7 +101,7 @@ WP0.5 completed sample-feasibility preflight on the V7 verified SW2021 L2 univer
 - `reports/stage03v/purge_embargo_fold_plan.json`
 - `reports/stage03v/target_controls_audit_sample.csv`
 
-## WP2.1 Expected Deliverables
+## WP2.1 Accepted Deliverables
 
 - `src/evaluation/stage03v_full_target_audit.py`
 - `scripts/stage03v_full_target_audit_gate.sh`
@@ -108,6 +110,19 @@ WP0.5 completed sample-feasibility preflight on the V7 verified SW2021 L2 univer
 - `reports/stage03v/full_target_streaming_audit_report.json`
 - `reports/stage03v/full_target_streaming_audit_chunk_summary.csv`
 - `reports/stage03v/full_target_streaming_audit_error_sample.csv`
+
+## WP3 Expected Deliverables
+
+- `src/evaluation/stage03v_baseline_diagnostics.py`
+- `scripts/stage03v_baseline_diagnostics_gate.sh`
+- `tests/test_stage03v_baseline_diagnostics.py`
+- `tests/test_stage03v_baseline_causality.py`
+- `configs/stage03v_baseline_diagnostics_policy_v1.yaml`
+- `reports/stage03v/baseline_diagnostics_report.md`
+- `reports/stage03v/baseline_diagnostics_report.json`
+- `reports/stage03v/baseline_diagnostics_fold_metrics.csv`
+- `reports/stage03v/baseline_diagnostics_slice_metrics.csv`
+- `reports/stage03v/baseline_diagnostics_audit_sample.csv`
 
 ## Locked Dates
 
@@ -133,3 +148,4 @@ Stage03V reuses the Stage04 prospective validation ledger mechanism through a St
 | 2026-06-10 | Implemented STAGE03V-WP2-v1 target leakage, cross-cutoff, purge/embargo, and namespace control gate. | Codex |
 | 2026-06-10 | Archived WP2 and activated STAGE03V-WP2.1-v1 full-target streaming audit. | ChatGPT |
 | 2026-06-10 | Implemented STAGE03V-WP2.1-v1 full-target streaming / blockwise audit. | Codex |
+| 2026-06-10 | Archived WP2.1 and activated STAGE03V-WP3-v1 baseline diagnostics. | ChatGPT |
