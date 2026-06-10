@@ -2,13 +2,13 @@
 
 Status: active
 Stage: 03V / Volatility and downside-risk hazard
-Active package: STAGE03V-WP1-v1
+Active package: none; STAGE03V-WP1-v1 accepted in this branch
 
 ## Purpose
 
 Stage03V defines a volatility and downside-risk hazard route after the Stage03R hazard-first lifecycle work and Stage04 prospective validation discipline. WP0 froze the scope, contracts, taxonomy, readiness policy, and prospective holdout registration before any target building, model training, probability calibration, or empirical holdout consumption.
 
-WP0.5 completed sample-feasibility preflight on the V7 verified SW2021 L2 universe. WP1 is now active and builds the first formal Stage03V1 downside-risk target dataset builder and synthetic path-target tests. WP1 must not train models, calibrate probabilities, assign readiness, consume holdout performance, or implement Stage03V2 / Stage03V3.
+WP0.5 completed sample-feasibility preflight on the V7 verified SW2021 L2 universe. WP1 has completed the first formal Stage03V1 downside-risk target dataset builder and synthetic path-target tests in this branch. WP1 did not train models, calibrate probabilities, assign readiness, consume holdout performance, or implement Stage03V2 / Stage03V3.
 
 ## Route Anchors
 
@@ -26,8 +26,8 @@ WP0.5 completed sample-feasibility preflight on the V7 verified SW2021 L2 univer
 |---|---|---|---|---|
 | STAGE03V-WP0-v1 | Scope Freeze, Contracts, Ledger | archived | stage03v/wp0-scope-freeze-contracts-ledger | freeze Stage03V scope, signal contract, readiness policy, SW2021 L2 universe, and Stage03V holdout registration |
 | STAGE03V-WP0.5-v1 | Sample Feasibility Preflight | archived | stage03v/wp0.5-sample-feasibility-preflight | count downside-risk event feasibility evidence before target dataset construction |
-| STAGE03V-WP1-v1 | Risk Event Target Dataset v1 | active | stage03v/wp1-risk-event-target-dataset-v1 | build formal downside-risk target dataset builder and synthetic path-target tests |
-| STAGE03V-WP2 | Target Leakage, Purge, Embargo, and CI Gate | blocked_until_wp1_accepted | pending | enforce target leakage controls after target dataset exists |
+| STAGE03V-WP1-v1 | Risk Event Target Dataset v1 | accepted | stage03v/wp1-risk-event-target-dataset-v1 | build formal downside-risk target dataset builder and synthetic path-target tests |
+| STAGE03V-WP2 | Target Leakage, Purge, Embargo, and CI Gate | blocked | pending | enforce target leakage controls after target dataset exists |
 | STAGE03V-WP3 | Volatility, Range-Based, Empirical, and Continuous Diagnostic Baselines | blocked | pending | add baseline diagnostics after target controls exist |
 | STAGE03V-WP3.5 | Volatility-Scaled Threshold Supplement | blocked | pending | evaluate volatility-scaled threshold supplement before readiness promotion |
 | STAGE03V-WP4 | Logistic Downside Risk Hazard v1 | blocked | pending | train downside risk hazard only after prior contracts and gates pass |
@@ -37,8 +37,8 @@ WP0.5 completed sample-feasibility preflight on the V7 verified SW2021 L2 univer
 
 ## Execution Rules
 
-1. Only STAGE03V-WP1-v1 is executable in the current Stage03V branch sequence.
-2. STAGE03V-WP2 and later packages are blocked until WP1 is accepted.
+1. STAGE03V-WP1-v1 is the only package executed by this branch.
+2. STAGE03V-WP2 and later packages remain blocked until a later reviewed work package explicitly activates them.
 3. WP1 must use the V7 DB path and WP0.5 feasibility report as hard inputs.
 4. WP1 may build target rows and support artifacts, but must not train any model.
 5. WP1 must not assign `usable_probability`, `ordinal_only`, or any model readiness status.
@@ -68,7 +68,7 @@ WP0.5 completed sample-feasibility preflight on the V7 verified SW2021 L2 univer
 - `reports/stage03v/sample_feasibility_report.md`
 - `reports/stage03v/sample_feasibility_report.json`
 
-## WP1 Expected Deliverables
+## WP1 Accepted Deliverables
 
 - `src/evaluation/stage03v_risk_target_dataset.py`
 - `scripts/stage03v_risk_target_gate.sh`
@@ -98,3 +98,4 @@ Stage03V reuses the Stage04 prospective validation ledger mechanism through a St
 | 2026-06-10 | Archived accepted WP0 and activated STAGE03V-WP0.5-v1 sample feasibility preflight. | ChatGPT |
 | 2026-06-10 | Accepted STAGE03V-WP0.5-v1 sample feasibility preflight. | Codex |
 | 2026-06-10 | Archived WP0.5 and activated STAGE03V-WP1-v1 risk event target dataset. | ChatGPT |
+| 2026-06-10 | Accepted STAGE03V-WP1-v1 risk event target dataset builder; WP2 and later remain blocked. | Codex |

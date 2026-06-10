@@ -422,10 +422,10 @@ Also run a negative check for missing V7 DB:
 
 ```bash
 python -m src.evaluation.stage03v_risk_target_dataset \
-  --db /tmp/missing_stage03v_v7.duckdb \
-  --output /tmp/stage03v_wp1_missing_v7.md \
-  --summary-json /tmp/stage03v_wp1_missing_v7.json \
-  --sample-csv /tmp/stage03v_wp1_missing_v7_sample.csv \
+  --db tmp/missing_stage03v_v7.duckdb \
+  --output tmp/stage03v_wp1_missing_v7.md \
+  --summary-json tmp/stage03v_wp1_missing_v7.json \
+  --sample-csv tmp/stage03v_wp1_missing_v7_sample.csv \
   --no-fetch
 ```
 
