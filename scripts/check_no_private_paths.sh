@@ -4,17 +4,19 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
-if [[ -n "${PYTHON:-}" ]]; then
+if [[ -n "${PYTHON_BIN:-}" ]]; then
+  PYTHON_BIN="$PYTHON_BIN"
+elif [[ -n "${PYTHON:-}" ]]; then
   PYTHON_BIN="$PYTHON"
-elif command -v python >/dev/null 2>&1; then
-  PYTHON_BIN="python"
 elif [[ -x .venv/bin/python ]]; then
   PYTHON_BIN=".venv/bin/python"
+elif command -v python >/dev/null 2>&1; then
+  PYTHON_BIN="python"
 elif command -v python3 >/dev/null 2>&1; then
   PYTHON_BIN="python3"
 else
   echo "PRIVATE_PATH_HYGIENE=fail"
-  echo "No python interpreter found. Set PYTHON or create .venv/bin/python."
+  echo "No python interpreter found. Set PYTHON_BIN/PYTHON or create .venv/bin/python."
   exit 2
 fi
 

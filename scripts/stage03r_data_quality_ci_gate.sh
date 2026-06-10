@@ -7,13 +7,15 @@ cd "$ROOT"
 choose_python() {
   if [[ -n "${PYTHON_BIN:-}" ]]; then
     printf '%s\n' "$PYTHON_BIN"
-  elif command -v python >/dev/null 2>&1; then
-    printf '%s\n' "python"
   elif [[ -x .venv/bin/python ]]; then
     printf '%s\n' ".venv/bin/python"
+  elif command -v python >/dev/null 2>&1; then
+    printf '%s\n' "python"
+  elif command -v python3 >/dev/null 2>&1; then
+    printf '%s\n' "python3"
   else
     echo "STAGE03R_DATA_QUALITY_CI_GATE=fail"
-    echo "No python executable found. Expected python or .venv/bin/python."
+    echo "No python executable found. Expected PYTHON_BIN, .venv/bin/python, python, or python3."
     return 1
   fi
 }
