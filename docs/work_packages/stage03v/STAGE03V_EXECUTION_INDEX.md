@@ -132,3 +132,4 @@ Stage03V reuses the Stage04 prospective validation ledger mechanism through a St
 | 2026-06-10 | Archived WP1 and activated STAGE03V-WP2-v1 target controls gate. | ChatGPT |
 | 2026-06-10 | Implemented STAGE03V-WP2-v1 target leakage, cross-cutoff, purge/embargo, and namespace control gate. | Codex |
 | 2026-06-10 | Archived WP2 and activated STAGE03V-WP2.1-v1 full-target streaming audit. | ChatGPT |
+| 2026-06-10 | Implemented STAGE03V-WP2.1-v1 full-target streaming / blockwise audit. | Codex |
