@@ -61,6 +61,8 @@ reports/stage03r/*_full.csv
 !reports/stage03v/*.json
 !reports/stage03v/risk_event_target_dataset_sample.csv
 !reports/stage03v/target_controls_audit_sample.csv
+!reports/stage03v/full_target_streaming_audit_chunk_summary.csv
+!reports/stage03v/full_target_streaming_audit_error_sample.csv
 !reports/stage04/
 !reports/stage04/*.md
 !reports/stage04/*.json
