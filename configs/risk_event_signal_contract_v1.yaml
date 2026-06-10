@@ -1,0 +1,170 @@
+{
+  "stage_id": "stage03v",
+  "active_module": "Stage03V1 Downside Risk",
+  "stage03v1_entity_type": "sw2021_l2_industry",
+  "stage03v2_implemented": false,
+  "stage03v3_implemented": false,
+  "metadata": {
+    "schema_name": "risk_event_signal_contract",
+    "schema_version": "v1",
+    "index_id": "STAGE03V-WP0-v1",
+    "stage_id": "stage03v",
+    "active_module": "Stage03V1 Downside Risk",
+    "route_anchors": [
+      "docs/roadmap/STAGE03V_VOLATILITY_DRAWDOWN_RISK_PLAN.md",
+      "docs/roadmap/STAGE03V_ROUND3_FINAL_ADDENDUM_20260610.md"
+    ],
+    "work_package": "docs/work_packages/stage03v/STAGE03V_WP0_scope_freeze_contracts_ledger.md",
+    "default_decision_surface": "none",
+    "contract_scope": "wp0_contract_only"
+  },
+  "stage_boundary": {
+    "active_module": "Stage03V1 Downside Risk",
+    "stage03v1_entity_type": "sw2021_l2_industry",
+    "stage03v1_responsibility": "estimate future downside path-event probability and ordinal risk tendency for SW2021 L2 industries only after later validation packages",
+    "stage03v2": {
+      "name": "Stage03V2 Upside Trigger",
+      "implemented": false,
+      "status": "placeholder_only",
+      "forbidden_in_wp0": true
+    },
+    "stage03v3": {
+      "name": "Stage03V3 Competing Risks",
+      "implemented": false,
+      "status": "placeholder_only",
+      "forbidden_in_wp0": true
+    },
+    "hmm_hsmm_role": "context_features_only",
+    "hmm_hsmm_training_algorithm_modified": false
+  },
+  "split_role_policy": {
+    "information_cutoff_date": "2026-06-10",
+    "holdout_start": "2026-06-11",
+    "historical_development": "trade_date <= 2026-06-10",
+    "prospective_final_holdout": "trade_date >= 2026-06-11",
+    "required_label_horizons": [1, 3, 5, 10, 20],
+    "label_completeness_required": true,
+    "consumption_count_enabled": true,
+    "scheduled_holdout_review_frequency": "quarterly",
+    "ad_hoc_holdout_peeking": "forbidden",
+    "stage04_holdout_start_inherited": false
+  },
+  "cross_cutoff_censoring": {
+    "cross_cutoff_censoring_policy": "permanent",
+    "information_cutoff_date": "2026-06-10",
+    "label_cutoff_date": "2026-06-10",
+    "allowed_cross_cutoff_handling": [
+      "cross_cutoff_censored",
+      "exclude_with_reason"
+    ],
+    "forbidden_cross_cutoff_handling": [
+      "backfill_after_cutoff",
+      "fill_from_holdout_prices"
+    ],
+    "preferred": "keep the row with censoring_status = cross_cutoff_censored and event_label = null",
+    "fallback": "exclude the row with explicit exclusion_reason = cross_cutoff_target_window",
+    "invariant": [
+      "For split_role = historical_development: target_observation_end_date must be <= information_cutoff_date.",
+      "If target_observation_end_date > information_cutoff_date: the row must be permanently marked cross_cutoff_censored or excluded from the development dataset.",
+      "A cross-cutoff censored row must not be backfilled in historical_development after future prices become available."
+    ]
+  },
+  "target_contract": {
+    "primary_stage03v1_target": {
+      "target_name": "sw2021_l2_downside_event",
+      "target_kind": "downside_event",
+      "path_metric": "MAE",
+      "entity_type": "sw2021_l2_industry",
+      "core_horizons": [5, 10, 20],
+      "optional_diagnostic_horizons": [1, 3],
+      "fixed_threshold_grid": [0.03, 0.05, 0.08, 0.10],
+      "mdd_role": "diagnostic_only_if_cheap",
+      "mfe_role": "reserved_for_stage03v2_placeholder"
+    },
+    "benchmark_downside_target": {
+      "benchmark_target_name": "broad_a_share_downside_event",
+      "preferred_benchmark_name": "CSI All Share / 中证全指",
+      "source_table": "market_benchmark_ohlcv",
+      "target_kind": "downside_event",
+      "path_metric": "MAE",
+      "horizon_policy": "same_as_slice",
+      "threshold_policy": "same_as_slice",
+      "fallback_if_unavailable": "benchmark_target_unavailable",
+      "benchmark_selection_after_modeling": "forbidden"
+    }
+  },
+  "field_categories": {
+    "display_safe": {
+      "description": "May be shown as context without implying a trading or sizing decision."
+    },
+    "internal_diagnostic": {
+      "description": "May be retained for diagnostics, audit, or research reports."
+    },
+    "calibration_required": {
+      "description": "Numeric probability-like values require calibration, validation, sample support, and readiness approval before display."
+    },
+    "hidden": {
+      "description": "Must not be displayed as a numeric signal or used as a default decision input."
+    },
+    "forbidden_decision_output": {
+      "description": "Must not be emitted by Stage03V WP0."
+    }
+  },
+  "fields": {
+    "risk_event_raw_score": {
+      "category": "calibration_required",
+      "ui_exposure": "hidden_until_readiness_approved",
+      "decision_input_default": false,
+      "readiness_required": true
+    },
+    "risk_tendency_ordinal": {
+      "category": "display_safe",
+      "ui_exposure": "low_medium_high_extreme_only_when_readiness_policy_allows",
+      "decision_input_default": false,
+      "readiness_required": true
+    },
+    "calibrated_downside_probability": {
+      "category": "calibration_required",
+      "ui_exposure": "hidden_until_usable_probability",
+      "decision_input_default": false,
+      "readiness_required": true
+    },
+    "risk_readiness_status": {
+      "category": "display_safe",
+      "ui_exposure": "readiness_metadata",
+      "decision_input_default": false,
+      "readiness_required": true
+    },
+    "benchmark_downside_event": {
+      "category": "internal_diagnostic",
+      "ui_exposure": "wp0_5_market_block_counting_only",
+      "decision_input_default": false,
+      "readiness_required": false
+    },
+    "hmm_state_label": {
+      "category": "display_safe",
+      "ui_exposure": "context_only",
+      "decision_input_default": false,
+      "readiness_required": false
+    },
+    "hsmm_state_age": {
+      "category": "display_safe",
+      "ui_exposure": "context_only",
+      "decision_input_default": false,
+      "readiness_required": false
+    }
+  },
+  "forbidden_behavior": {
+    "external_data_fetch": false,
+    "target_dataset_built": false,
+    "model_training": false,
+    "probability_calibration": false,
+    "holdout_consumed": false,
+    "decision_surface_created": false,
+    "trading_output_created": false,
+    "buy_sell_output_created": false,
+    "sizing_output_created": false,
+    "raw_score_as_probability": "forbidden",
+    "post_hoc_bucket_tuning": "forbidden"
+  }
+}
