@@ -2,13 +2,13 @@
 
 Status: active
 Stage: 03V / Volatility and downside-risk hazard
-Active package: STAGE03V-WP0.5-v1
+Active package: none; STAGE03V-WP0.5-v1 accepted in this branch
 
 ## Purpose
 
 Stage03V defines a volatility and downside-risk hazard route after the Stage03R hazard-first lifecycle work and Stage04 prospective validation discipline. WP0 froze the scope, contracts, taxonomy, readiness policy, and prospective holdout registration before any target building, model training, probability calibration, or empirical holdout consumption.
 
-WP0.5 is now active. It performs sample-feasibility preflight only: counting event evidence, market blocks, idiosyncratic industry episodes, cross-cutoff censored rows, and feasibility verdicts before any formal target dataset or model package is opened.
+WP0.5 has completed the sample-feasibility preflight in this branch. It counts event evidence, market blocks, idiosyncratic industry episodes, cross-cutoff censored rows, and feasibility verdicts before any formal target dataset or model package is opened. The local report is partial where the available local industry tables are not verified as SW2021 L2.
 
 ## Route Anchors
 
@@ -23,8 +23,8 @@ WP0.5 is now active. It performs sample-feasibility preflight only: counting eve
 | index_id | package | status | branch | purpose |
 |---|---|---|---|---|
 | STAGE03V-WP0-v1 | Scope Freeze, Contracts, Ledger | archived | stage03v/wp0-scope-freeze-contracts-ledger | freeze Stage03V scope, signal contract, readiness policy, SW2021 L2 universe, and Stage03V holdout registration |
-| STAGE03V-WP0.5-v1 | Sample Feasibility Preflight | active | stage03v/wp0.5-sample-feasibility-preflight | count downside-risk event feasibility evidence before target dataset construction |
-| STAGE03V-WP1 | Risk Event Target Dataset v1 | blocked_until_wp0_5_accepted | pending | build target dataset after feasibility gate |
+| STAGE03V-WP0.5-v1 | Sample Feasibility Preflight | accepted | stage03v/wp0.5-sample-feasibility-preflight | count downside-risk event feasibility evidence before target dataset construction |
+| STAGE03V-WP1 | Risk Event Target Dataset v1 | blocked | pending | build target dataset only after a later reviewed WP1 instruction explicitly activates it |
 | STAGE03V-WP2 | Target Leakage, Purge, Embargo, and CI Gate | blocked | pending | enforce target leakage controls after target dataset exists |
 | STAGE03V-WP3 | Volatility, Range-Based, Empirical, and Continuous Diagnostic Baselines | blocked | pending | add baseline diagnostics after target controls exist |
 | STAGE03V-WP3.5 | Volatility-Scaled Threshold Supplement | blocked | pending | evaluate volatility-scaled threshold supplement before readiness promotion |
@@ -35,8 +35,8 @@ WP0.5 is now active. It performs sample-feasibility preflight only: counting eve
 
 ## Execution Rules
 
-1. Only STAGE03V-WP0.5-v1 is executable in the current Stage03V branch sequence.
-2. STAGE03V-WP1 and later packages are blocked until WP0.5 is accepted.
+1. STAGE03V-WP0.5-v1 is the only package executed by this branch.
+2. STAGE03V-WP1 and later packages remain blocked until a later reviewed work package explicitly activates them.
 3. WP0.5 may read local DuckDB data if available, but must not require private DuckDB in CI.
 4. WP0.5 must not create persistent `risk_event_target_dataset_v1` tables.
 5. WP0.5 must not commit DuckDB, WAL, local cache, or full data extracts.
@@ -59,7 +59,7 @@ WP0.5 is now active. It performs sample-feasibility preflight only: counting eve
 - `reports/stage03v/stage03v_wp0_scope_freeze_report.json`
 - `tests/test_stage03v_contracts.py`
 
-## WP0.5 Expected Deliverables
+## WP0.5 Accepted Deliverables
 
 - `src/evaluation/stage03v_sample_feasibility.py`
 - `scripts/stage03v_sample_feasibility_gate.sh`
@@ -84,3 +84,4 @@ Stage03V reuses the Stage04 prospective validation ledger mechanism through a St
 |---|---|---|
 | 2026-06-10 | Activated STAGE03V-WP0-v1 and blocked WP0.5 plus later packages until WP0 acceptance. | Codex |
 | 2026-06-10 | Archived accepted WP0 and activated STAGE03V-WP0.5-v1 sample feasibility preflight. | ChatGPT |
+| 2026-06-10 | Accepted STAGE03V-WP0.5-v1 sample feasibility preflight in this branch; WP1 and later remain blocked. | Codex |
