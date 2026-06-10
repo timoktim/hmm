@@ -2,7 +2,7 @@ from __future__ import annotations
 
 import pandas as pd
 
-from src.ui.lifecycle_page import _load_lifecycle_latest_daily, _load_sector_trajectory
+from src.ui.lifecycle_page import _format_metric_date, _load_lifecycle_latest_daily, _load_sector_trajectory
 
 
 class RecordingStorage:
@@ -59,3 +59,9 @@ def test_sector_trajectory_query_is_sector_scoped_and_limited():
     assert "sector_code = ?" in sql
     assert "LIMIT ?" in sql
     assert params[-2:] == ["S1", 60]
+
+
+def test_metric_date_formatter_returns_streamlit_safe_strings():
+    assert _format_metric_date(pd.Timestamp("2026-06-09")) == "2026-06-09"
+    assert _format_metric_date(pd.Timestamp("2026-06-09").date()) == "2026-06-09"
+    assert _format_metric_date(pd.NaT) == "无"
