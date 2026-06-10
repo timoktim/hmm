@@ -65,6 +65,12 @@ def _format_share(value: object) -> str:
     return f"{float(numeric):.1%}"
 
 
+def _format_metric_date(value: object) -> str:
+    if pd.isna(value):
+        return "无"
+    return pd.Timestamp(value).strftime("%Y-%m-%d")
+
+
 def _latest_lifecycle_run(storage: DuckDBStorage, require_profile_metadata: bool = False) -> str | None:
     if require_profile_metadata:
         return latest_completed_hsmm_lifecycle_run(storage)
@@ -382,10 +388,10 @@ def render_lifecycle_page(storage: DuckDBStorage, universe_id: str | None = None
 
     st.subheader("当前状态概览")
     m1, m2, m3, m4 = st.columns(4)
-    m1.metric("最新日期", latest_date.date() if pd.notna(latest_date) else "无")
+    m1.metric("最新日期", _format_metric_date(latest_date))
     m2.metric("板块数量", len(latest))
     m3.metric("Profile 口径", profile_mode)
-    m4.metric("Profile 截止日", cutoff.date() if pd.notna(cutoff) else "无")
+    m4.metric("Profile 截止日", _format_metric_date(cutoff))
     if not metadata.empty:
         row = metadata.iloc[0]
         st.caption(
