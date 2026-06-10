@@ -2,13 +2,15 @@
 
 Date: 2026-06-10
 
-Status: review_candidate_round1_revised
+Status: review_candidate_round2_revised
 
 Scope: add a volatility and downside-risk hazard branch after Stage03R evidence-gated hazard work.
 
 Review rule: this document is a planning anchor only. No Stage03V work package is active until this document is reviewed and explicitly accepted.
 
-Round 1 review status: major review comments accepted. The plan now adds sample-feasibility preflight, prospective holdout locking, date-clustered inference, stronger volatility baselines, continuous downside-volatility diagnostics, and model-vs-baseline downshift comparison.
+Round 1 review status: accepted. The plan added sample-feasibility preflight, prospective holdout locking, date-clustered inference, stronger volatility baselines, continuous downside-volatility diagnostics, and model-vs-baseline downshift comparison.
+
+Round 2 review status: accepted with precise modifications. The plan now uses a dual market-block and idiosyncratic-industry episode feasibility design, Stage04-ledger-compatible holdout registration with a Stage03V information cutoff, SW2021 level-2 taxonomy controls, a pre-registered universe quality filter, optional SW level-1 diagnostic aggregation, and an explicit comparability break versus earlier mixed-board Stage03R evidence.
 
 ## 0. Route decision
 
@@ -24,10 +26,10 @@ Existing HMM / HSMM infrastructure
 
 Stage03V1 is the first implementation target. Stage03V2 and Stage03V3 stay scoped placeholders unless Stage03V1 produces enough evidence to justify extension.
 
-The core shift is from predicting model-produced state transitions to predicting observable future path-risk events. The first practical question is:
+The first practical question is:
 
 ```text
-For a SW level-2 industry observed at trade_date t,
+For a SW2021 level-2 industry observed at trade_date t,
 what is the probability that the future N-trading-day path suffers a downside move exceeding threshold X?
 ```
 
@@ -41,29 +43,47 @@ Stage03V must keep the same safety posture as Stage03R:
 - No Stage03V output is a buy/sell instruction.
 - Cross-sectional rows are not independent evidence.
 - Model promotion must be evaluated against the strongest eligible baseline, not only against doing nothing.
+- Prior Stage03R and signal-validation artifacts built on roughly 465 mixed boards are not directly comparable to Stage03V1 evidence built on SW level-2 industries.
 
-## 1. Round 1 review decisions
+## 1. Review decisions
 
-Accepted changes:
+### 1.1 Round 1 accepted changes
 
 - Add `STAGE03V-WP0.5` sample feasibility preflight before target dataset construction.
-- Use the local V7 long-history database, if available, as the empirical Stage03V source because it covers the post-2014 history needed for stress episodes.
-- Restrict Stage03V1 v1 empirical universe to SW level-2 industries. Concept sectors and custom baskets are deferred.
+- Use the local V7 long-history database, if available, as the empirical Stage03V source.
+- Restrict Stage03V1 v1 empirical universe to SW level-2 industries.
 - Add independent event-block counts and effective sample diagnostics.
 - Add date-clustered or block-bootstrap confidence intervals for model-vs-baseline deltas.
-- Add date-weighted calibration to reduce domination by a few broad-market stress dates.
+- Add date-weighted calibration.
 - Add baseline-driven downshift comparison in WP6.
-- Lock prospective holdout in WP0 through an explicit split-role manifest.
-- Move synthetic MAE / MDD / off-by-one tests into WP1, so target construction cannot merge without path-target correctness tests.
+- Lock prospective holdout in WP0.
+- Move synthetic MAE / MDD / off-by-one tests into WP1.
 - Pre-register ordinal risk bucket rules in WP0.
 - Add HAR-style continuous downside-volatility diagnostic track.
 - Add range-based volatility baselines such as Parkinson and Garman-Klass.
 - Add a volatility-scaled threshold supplement before readiness promotion.
 
-Modified or rejected changes:
+### 1.2 Round 2 accepted changes
 
-- Deep fixed-threshold slices such as 20d / 10% are not removed at the planning-document level. They become feasibility-gated slices. If independent event blocks or sample support are insufficient, they are downgraded, deferred, or removed by `STAGE03V-WP0.5` evidence.
-- The prospective holdout starting strictly after 2026-06-10 is structurally clean but initially empty. Stage03V1 can pass engineering and historical-validation gates before the prospective holdout fills, but empirical promotion to decision-support status must remain `DEFER` until the prospective holdout has enough observations.
+- Replace one-layer market-event counting with two-layer feasibility evidence:
+  - market-level event blocks;
+  - idiosyncratic industry episodes outside market-level blocks.
+- Keep market-level blocks as a strict input to numeric probability promotion, while using effective total event evidence to avoid incorrectly blocking industry-specific slices.
+- Add event-share sensitivity at 10%, 20%, and 30% instead of relying only on 20%.
+- Document that `gap <= horizon` merging naturally lowers long-horizon event-block counts.
+- Reuse the Stage04 prospective validation ledger mechanism where available, but register a separate Stage03V ledger entry with `information_cutoff_date = 2026-06-10` and `holdout_start = 2026-06-11`.
+- Add minimum prospective holdout requirements for final decision-support promotion.
+- Add a quarterly holdout evaluation cadence with consumption counting.
+- Add SW2021 taxonomy controls and 2021 reform break checks.
+- Pre-register SW level-2 universe quality filters.
+- Add optional SW level-1 diagnostic aggregation as a non-promotion cross-check.
+- Add explicit comparability break versus earlier 465 mixed-board evidence.
+
+### 1.3 Clarified decisions
+
+Deep fixed-threshold slices such as 20d / 10% are not removed at the planning-document level. They are feasibility-gated. If market blocks, idiosyncratic episodes, or total effective evidence are insufficient, they are downgraded, deferred, or removed by `STAGE03V-WP0.5` evidence.
+
+The prospective holdout starting after 2026-06-10 is structurally clean but initially small. Stage03V1 can pass engineering and historical-validation gates before the prospective holdout fills, but empirical promotion to decision-support status must remain `DEFER` until the prospective holdout satisfies the minimum size and stress-event requirements.
 
 ## 2. Module map
 
@@ -73,7 +93,7 @@ Modified or rejected changes:
 | Stage03V2 | Upside Trigger | estimate future upside touch probability, for example future MFE above +Y | placeholder only |
 | Stage03V3 | Competing Risks | estimate first-hit balance between upside and downside barriers | placeholder only |
 
-Stage03V1 owns only downside risk. It may compute some shared target primitives that later support Stage03V2 or Stage03V3, but it must not implement upside-trigger models or competing-risk models in v1.
+Stage03V1 owns only downside risk. It may compute shared target primitives that later support Stage03V2 or Stage03V3, but it must not implement upside-trigger models or competing-risk models in v1.
 
 ## 3. Data scope and sample assumptions
 
@@ -86,7 +106,7 @@ Expected V7 role:
 ```text
 local long-history empirical source
 coverage target: around 2014 onward
-purpose: include multiple stress and recovery regimes, such as 2015, 2018, 2024, and later periods
+purpose: include multiple stress and recovery regimes, such as 2015, 2018, 2020, 2021-2022, 2024, and later periods
 ```
 
 If only the short 2025-2026 database is available, Stage03V1 may run smoke tests and schema tests, but it must not claim empirical readiness for deep downside events.
@@ -96,8 +116,10 @@ If only the short 2025-2026 database is available, Stage03V1 may run smoke tests
 Stage03V1 v1 empirical universe:
 
 ```text
-SW level-2 industry only
+SW2021 level-2 industry only
 ```
+
+The intended data contract is official SW2021 level-2 index history with official backfilled historical series where available.
 
 Out of Stage03V1 v1 empirical scope:
 
@@ -110,9 +132,45 @@ individual stocks
 
 Reason: downside events are highly cross-sectionally correlated. A cleaner and smaller SW level-2 industry taxonomy gives fewer pseudo-replicates and cleaner effective-sample accounting.
 
-### 3.3 Effective sample principle
+### 3.3 SW taxonomy and universe quality policy
 
-For downside events, the effective sample size is closer to the number of independent market-event periods than to `row_count = date_count × industry_count`.
+Stage03V-WP0 must pre-register the exact taxonomy and universe quality filter.
+
+Minimum taxonomy fields:
+
+```text
+taxonomy_provider: SW
+taxonomy_version: SW2021
+taxonomy_level: L2
+index_history_policy: official_backfilled_index_history_if_available
+reform_check_date: 2021-07-01 or actual local cutover date
+```
+
+Minimum quality filter:
+
+```text
+constituent_count_min: 5 when constituent snapshot is available
+history_continuity_required: true
+no_performance_based_filtering: true
+filter_list_frozen_in_manifest: true
+```
+
+WP0.5 and WP1 must check that there is no silent entity break, duplicated entity, or unexplained disappearance around the 2021 SW reform window. If a historical index series starts after the reform window, it can remain in the universe only if the manifest marks the shorter history and its eligibility is evaluated separately.
+
+Optional diagnostic layer:
+
+```text
+SW2021 level-1 aggregation may be computed for market-event cross-checks.
+SW level-1 diagnostics cannot become the Stage03V1 v1 empirical promotion universe.
+```
+
+### 3.4 Comparability break
+
+Earlier Stage03R and signal-validation artifacts used a broader mixed-board universe, including industry and concept boards. Stage03V1 uses SW2021 level-2 industries only. Metrics, event counts, state distributions, cross-sectional dispersion, and validation results must not be compared one-to-one with the earlier 465-board reports without an explicit comparability adjustment.
+
+### 3.5 Effective sample principle
+
+For downside events, the effective sample size is closer to the number of independent market periods and idiosyncratic industry episodes than to `row_count = date_count × industry_count`.
 
 All promotion reports must distinguish:
 
@@ -121,11 +179,16 @@ row_count
 trade_date_count
 positive_row_count
 positive_trade_date_count
-independent_event_block_count
+market_event_block_count_10pct
+market_event_block_count_20pct
+market_event_block_count_30pct
+idiosyncratic_industry_episode_count
+discounted_idiosyncratic_episode_count
+effective_event_evidence_count
 effective_date_cluster_count
 ```
 
-A broad market selloff that triggers many industries on the same dates counts primarily as one calendar event block for inference, not as dozens of independent positive examples.
+A broad market selloff that triggers many industries on the same dates counts primarily as one calendar event block for inference, not as dozens of independent positive examples. A single-industry or small-cluster policy shock can contribute independent evidence only when it is outside market-level event blocks and passes the idiosyncratic episode definition.
 
 ## 4. Upstream and downstream connection
 
@@ -156,7 +219,7 @@ sector_state_daily
 hsmm_lifecycle_ui_daily
 model_runs
 validation_runs
-split_role_manifest
+stage04_prospective_validation_registry or equivalent split ledger
 ```
 
 Custom-basket assets are not part of Stage03V1 v1 empirical scope.
@@ -180,18 +243,17 @@ A downstream consumer may read only readiness-approved Stage03V fields. Invalid,
 
 Stage03V1 builds a supervised, auditable downside-risk branch.
 
-The function is:
-
 ```text
-Lock split roles and prospective holdout
--> test sample feasibility on long-history SW level-2 data
+Register Stage03V in the prospective validation ledger
+-> freeze universe, taxonomy, ordinal policy, and holdout cadence
+-> test sample feasibility on long-history SW2021 level-2 data
 -> build future downside path-event targets
 -> create causal risk features
 -> train strong volatility and empirical baselines
 -> run continuous downside-volatility diagnostics
 -> train logistic downside hazard candidate only for feasible slices
 -> calibrate only on validation folds with date-aware weighting
--> assign readiness status using clustered inference
+-> assign readiness status using market-block and idiosyncratic-episode evidence
 -> validate whether model-driven risk downshift beats baseline-driven risk downshift
 ```
 
@@ -256,7 +318,7 @@ If simple HAR-style or EWMA/range-based volatility models cannot improve future 
 then event-probability modeling should be downgraded or stopped early unless event-target evidence is independently strong.
 ```
 
-Continuous diagnostics are not decision signals. They are sample-efficient sanity checks for whether the feature set contains forward-looking risk information beyond rolling volatility baselines.
+Continuous diagnostics are not decision signals. They are sample-efficient checks for whether the feature set contains forward-looking risk information beyond rolling volatility baselines.
 
 ### 6.5 Core horizons
 
@@ -290,7 +352,7 @@ Suggested core threshold mapping for the first readiness review:
 20d: 8% and 10%
 ```
 
-Deep-threshold slices are feasibility-gated. A slice with insufficient independent event blocks cannot be promoted to `usable_probability`.
+Deep-threshold slices are feasibility-gated. A slice with insufficient market-block, idiosyncratic-episode, or total effective event evidence cannot be promoted to `usable_probability`.
 
 A volatility-scaled threshold track must be scheduled before WP5 readiness promotion:
 
@@ -346,7 +408,10 @@ risk_tendency_ordinal
 calibration_status
 readiness_status
 sample_support
-independent_event_block_count
+market_event_block_count_20pct
+idiosyncratic_industry_episode_count
+discounted_idiosyncratic_episode_count
+effective_event_evidence_count
 effective_date_cluster_count
 baseline_model_id
 model_vs_baseline_delta
@@ -358,6 +423,7 @@ split_role
 target_definition_version
 feature_scope_id
 universe_id
+taxonomy_version
 created_at
 ```
 
@@ -392,11 +458,28 @@ decision_support_candidate
 
 Only `usable_probability` can support numeric probability display. `ordinal_only` can support low / medium / high / extreme display. `baseline_only`, `insufficient_sample`, and `invalid` cannot be promoted into numeric risk probability.
 
-## 9. Split-role and holdout policy
+## 9. Split-role, holdout, and evaluation cadence policy
 
 Stage03V must lock split roles in WP0 before empirical modeling.
 
-Required manifest:
+Stage03V should reuse the Stage04 prospective validation ledger mechanism if it exists and is machine-readable. It must register a Stage03V-specific entry rather than inheriting Stage04 dates blindly.
+
+Required registry or manifest entry:
+
+```text
+stage_id: stage03v
+information_cutoff_date: 2026-06-10
+holdout_start: 2026-06-11
+historical_development: trade_date <= 2026-06-10
+prospective_final_holdout: trade_date >= 2026-06-11
+horizons: [1, 3, 5, 10, 20]
+label_completeness_required: true
+consumption_count_enabled: true
+```
+
+If Stage04 already has a prospective ledger with `minimum_candidate_holdout_start_date = 2026-05-29`, Stage03V must not reuse that start date for Stage03V final promotion. The Stage03V route was designed after observing information through 2026-06-10, so the Stage03V holdout must start on 2026-06-11.
+
+Required artifacts:
 
 ```text
 configs/stage03v_split_role_manifest_v1.yaml
@@ -404,29 +487,25 @@ reports/stage03v/stage03v_split_role_manifest_v1.md
 reports/stage03v/stage03v_split_role_manifest_v1.json
 ```
 
-Minimum manifest fields:
+These artifacts may be exported from the Stage04 ledger if a compatible ledger exists. If no compatible ledger exists, WP0 creates a temporary Stage03V manifest and records the migration requirement.
+
+Minimum prospective holdout size for final decision-support promotion:
 
 ```text
-trade_date
-split_role
-split_role_version
-is_final_holdout
-is_prospective_holdout
-created_at
-source_database_id
-universe_policy
+complete_20d_labeled_trade_dates >= 120
+prospective_independent_market_event_blocks >= 2
+all holdout consumptions recorded
 ```
 
-Default split-role policy:
+Because a 20d label is complete only after the future 20 trading days are known, the last 20 trading days of the prospective period are not eligible for 20d final evaluation.
+
+Holdout evaluation cadence:
 
 ```text
-historical_development: trade_date <= 2026-06-10
-prospective_final_holdout: trade_date > 2026-06-10
+scheduled_holdout_review_frequency: quarterly
+ad_hoc_holdout_peeking: forbidden
+consumption_count_increment: every scheduled review or manual holdout read
 ```
-
-Historical development may contain train and validation folds, but the prospective final holdout must not be used for feature selection, threshold tuning, calibration mapping selection, bucket cutoff selection, model comparison, or repeated testing.
-
-If a Stage04 prospective validation ledger already exists and is machine-readable, Stage03V should reuse or reference it instead of creating an incompatible split ledger. If not, Stage03V-WP0 creates the Stage03V manifest directly.
 
 A Stage03V1 final report may have:
 
@@ -437,11 +516,11 @@ prospective_holdout_verdict: DEFER
 final_verdict: DEFER
 ```
 
-This is acceptable while the prospective holdout is still too small.
+This is acceptable while the prospective holdout is too small or lacks at least two independent market event blocks.
 
 ## 10. Stage03V1 development sequence
 
-### STAGE03V-WP0: Scope freeze, signal contract, execution index, and split-role manifest
+### STAGE03V-WP0: Scope freeze, signal contract, execution index, taxonomy manifest, and holdout ledger entry
 
 Goal: freeze Stage03V boundaries before any modeling or target-building work.
 
@@ -450,9 +529,14 @@ ToDo:
 - [ ] Create `docs/work_packages/stage03v/STAGE03V_EXECUTION_INDEX.md`.
 - [ ] Create `configs/risk_event_signal_contract_v1.yaml`.
 - [ ] Create `configs/readiness_policy_risk_event_v1.yaml`.
-- [ ] Create `configs/stage03v_split_role_manifest_v1.yaml` or reference an existing Stage04 prospective validation ledger.
+- [ ] Register Stage03V in the Stage04 prospective validation ledger if compatible, or create `configs/stage03v_split_role_manifest_v1.yaml` with a migration note.
+- [ ] Set `information_cutoff_date = 2026-06-10` and `holdout_start = 2026-06-11`.
+- [ ] Pre-register quarterly holdout evaluation cadence and consumption-count requirements.
 - [ ] Record Stage03V1 as active target and Stage03V2 / Stage03V3 as placeholders.
-- [ ] Record SW level-2 industry as the only Stage03V1 v1 empirical universe.
+- [ ] Record SW2021 level-2 industry as the only Stage03V1 v1 empirical universe.
+- [ ] Record taxonomy fields and the 2021 SW reform check window.
+- [ ] Pre-register universe quality filter, including constituent count and history continuity rules.
+- [ ] Record comparability break versus earlier 465 mixed-board evidence.
 - [ ] Define field categories: `display_safe`, `internal_diagnostic`, `calibration_required`, `hidden`.
 - [ ] Define readiness statuses and allowed UI behavior.
 - [ ] Define ordinal bucket rules before evaluation.
@@ -465,7 +549,8 @@ Deliverables:
 docs/work_packages/stage03v/STAGE03V_EXECUTION_INDEX.md
 configs/risk_event_signal_contract_v1.yaml
 configs/readiness_policy_risk_event_v1.yaml
-configs/stage03v_split_role_manifest_v1.yaml
+configs/stage03v_split_role_manifest_v1.yaml or Stage04 ledger entry export
+configs/stage03v_sw_l2_universe_manifest_v1.yaml
 reports/stage03v/stage03v_wp0_scope_freeze_report.md
 reports/stage03v/stage03v_split_role_manifest_v1.md
 reports/stage03v/stage03v_split_role_manifest_v1.json
@@ -478,7 +563,10 @@ Acceptance:
 - [ ] Numeric risk probability is gated by readiness policy.
 - [ ] Ordinal risk bucket rules are pre-registered.
 - [ ] HMM and HSMM are context features only.
-- [ ] Split-role manifest exists and marks `trade_date > 2026-06-10` as prospective final holdout.
+- [ ] Stage03V has a ledger-compatible entry with `information_cutoff_date = 2026-06-10` and `holdout_start = 2026-06-11`.
+- [ ] Quarterly holdout evaluation and consumption counting are specified.
+- [ ] SW2021 L2 taxonomy and quality filter are frozen.
+- [ ] The report explicitly states that Stage03V evidence is not directly comparable to previous 465 mixed-board Stage03R evidence.
 - [ ] No production model code is changed.
 - [ ] No target dataset is built yet.
 
@@ -490,32 +578,69 @@ ToDo:
 
 - [ ] Read the local V7 database when available.
 - [ ] Verify date coverage and source database identity.
-- [ ] Verify SW level-2 industry universe coverage.
+- [ ] Verify SW2021 level-2 industry universe coverage.
+- [ ] Verify taxonomy version, quality filter, and 2021 reform-window continuity.
 - [ ] Compute event base rates for candidate fixed thresholds.
 - [ ] Compute preliminary volatility-scaled threshold base rates using causal ex-ante volatility estimates.
-- [ ] Compute positive row count, positive trade-date count, and independent event-block count.
-- [ ] Compute event-block counts by split role, horizon, threshold, and target kind.
+- [ ] Compute positive row count, positive trade-date count, and market-level event-block counts.
+- [ ] Compute event-share sensitivity using 10%, 20%, and 30% thresholds.
+- [ ] Compute idiosyncratic industry episodes outside market-level blocks.
+- [ ] Compute discounted idiosyncratic episode count and total effective event evidence.
+- [ ] Compute counts by split role, horizon, threshold, threshold type, and target kind.
 - [ ] Compute expected sample support by state label, volatility bucket, and risk bucket where context fields are available.
+- [ ] Optionally compute SW level-1 diagnostic aggregation for market-block cross-checks.
 - [ ] Emit feasibility verdict per slice: `eligible`, `diagnostic_only`, `defer_threshold`, `drop_threshold`, or `blocked_short_history`.
 - [ ] Emit a recommended Stage03V1 threshold set.
 
-Independent event-block rule:
+Market event-block rule:
 
 ```text
 For each horizon × threshold × target_kind:
   compute cross-sectional event_share by trade_date
-  mark event-active dates when event_share >= 20% or benchmark downside event is active
+  mark event-active dates at event_share >= 10%, >= 20%, and >= 30%
+  use 20% as the primary market-block threshold unless WP0.5 recommends a documented change
+  also mark benchmark downside event dates when benchmark target is available
   merge contiguous active dates
   merge gaps <= horizon to avoid counting one selloff as many independent events
-  count merged blocks as independent_event_block_count
+  count merged blocks as market_event_block_count
+```
+
+Idiosyncratic industry episode rule:
+
+```text
+For each industry × horizon × threshold × target_kind:
+  find continuous industry event days
+  merge gaps <= horizon
+  remove or mark portions overlapping primary 20% market event blocks
+  count remaining non-overlapping episodes as idiosyncratic_industry_episode_count
+  treat different industries and non-overlapping periods as partially independent, not fully row-independent
+```
+
+Default effective evidence rule:
+
+```text
+market_event_block_count = primary 20% market-block count
+idiosyncratic_discount = 0.25 by default
+idiosyncratic_discount_sensitivity = [0.10, 0.25, 0.50]
+discounted_idiosyncratic_episode_count = idiosyncratic_discount * idiosyncratic_industry_episode_count
+effective_event_evidence_count = market_event_block_count + discounted_idiosyncratic_episode_count
 ```
 
 Default gating:
 
 ```text
-independent_event_block_count < 5:  blocked or drop_threshold
-5 <= independent_event_block_count < 10: diagnostic_only or ordinal_only maximum
-independent_event_block_count >= 10: eligible for modeling, but not automatically usable_probability
+market_event_block_count < 2: usable_probability forbidden, even if idiosyncratic episodes exist
+effective_event_evidence_count < 5: blocked or drop_threshold
+5 <= effective_event_evidence_count < 10: diagnostic_only or ordinal_only maximum
+effective_event_evidence_count >= 10: eligible for modeling, but not automatically usable_probability
+```
+
+Long-horizon note:
+
+```text
+The gap <= horizon merge rule intentionally makes long-horizon event blocks coarser.
+For 20d horizons, a chain of selloff days across a quarter may count as one block.
+This is a conservative effective-sample rule, not a data defect.
 ```
 
 Candidate files:
@@ -532,9 +657,13 @@ Acceptance:
 
 - [ ] Feasibility report exists.
 - [ ] V7 coverage is recorded when available.
-- [ ] SW level-2 universe coverage is recorded.
-- [ ] Each candidate horizon × threshold has event base rate and independent event-block count.
-- [ ] Slices below the event-block threshold cannot become `usable_probability` later.
+- [ ] SW2021 level-2 universe coverage is recorded.
+- [ ] 2021 reform-window continuity is checked.
+- [ ] Quality-filtered industry list is recorded and frozen.
+- [ ] Each candidate horizon × threshold has base rate, market-block count, idiosyncratic episode count, and effective event evidence count.
+- [ ] 10% / 20% / 30% event-share sensitivity is reported.
+- [ ] Long-horizon block-merging interpretation is documented.
+- [ ] Slices below the evidence threshold cannot become `usable_probability` later.
 - [ ] If only short-history data is available, empirical promotion is blocked or deferred explicitly.
 - [ ] No model training occurs.
 
@@ -545,13 +674,15 @@ Goal: construct a causal, reproducible downside risk target dataset and prove pa
 ToDo:
 
 - [ ] Add a builder for `risk_event_target_dataset_v1`.
-- [ ] Support `entity_type = sw_l2_industry` as the v1 empirical entity type.
+- [ ] Support `entity_type = sw2021_l2_industry` as the v1 empirical entity type.
 - [ ] Defer custom basket support.
+- [ ] Enforce the WP0 SW2021 L2 universe manifest and quality filter.
 - [ ] Compute `future_return`, `MAE`, optional diagnostic `MDD`, and future realized volatility fields.
 - [ ] Generate `downside_event` labels by eligible horizon and threshold from WP0.5.
 - [ ] Persist `target_observation_end_date`.
 - [ ] Persist `censoring_status`.
 - [ ] Persist `target_definition_version`.
+- [ ] Persist taxonomy version and split role.
 - [ ] Emit sample-support tables by horizon, threshold, entity type, state label, recent-volatility bucket, and split role.
 - [ ] Keep all feature dates at or before `trade_date`.
 - [ ] Add synthetic path fixtures with known MAE, MFE, MDD, final return, and off-by-one boundaries.
@@ -575,6 +706,7 @@ trade_date
 entity_type
 entity_id
 sector_code
+taxonomy_version
 feature_scope_id
 universe_id
 split_role
@@ -601,6 +733,9 @@ Acceptance:
 - [ ] Last available dates with insufficient forward path are marked as censored or excluded according to policy.
 - [ ] MAE, MDD, final return, and event labels match synthetic examples.
 - [ ] Off-by-one tests pass.
+- [ ] SW2021 L2 taxonomy version is persisted.
+- [ ] No silent entity break or duplicate is detected around the 2021 reform window.
+- [ ] Quality-filtered universe is enforced.
 - [ ] Sample-support report exists.
 - [ ] No model training occurs.
 
@@ -614,7 +749,7 @@ ToDo:
 - [ ] Test purge and embargo boundaries for overlapping horizons.
 - [ ] Test that future target columns are not accepted as feature columns.
 - [ ] Test entity-level duplicate protection.
-- [ ] Test split-role manifest enforcement.
+- [ ] Test split-role manifest and Stage04-ledger consumption enforcement.
 - [ ] Add CI-safe tests that do not require private DuckDB availability.
 - [ ] Document Stage03V target leakage policy.
 
@@ -631,7 +766,7 @@ Acceptance:
 
 - [ ] Purge and embargo tests pass.
 - [ ] Feature leakage tests pass.
-- [ ] Split-role enforcement tests pass.
+- [ ] Split-role and holdout-consumption enforcement tests pass.
 - [ ] Tests are deterministic and CI-safe.
 - [ ] No model training occurs.
 
@@ -673,7 +808,7 @@ tests/test_stage03v_continuous_vol_diagnostics.py
 Acceptance:
 
 - [ ] Baselines run without future leakage.
-- [ ] Baseline metrics include Brier, event rate, bucket monotonicity, sample support, and independent event-block count.
+- [ ] Baseline metrics include Brier, event rate, bucket monotonicity, sample support, market-block count, idiosyncratic episode count, and effective event evidence.
 - [ ] Continuous diagnostics include MSE, QLIKE or equivalent volatility-loss metric, rank correlation, and fold-level stability.
 - [ ] Sparse buckets emit `insufficient_sample` or `baseline_only`.
 - [ ] Baseline probability is not promoted as `usable_probability`.
@@ -689,7 +824,7 @@ ToDo:
 - [ ] Build causal ex-ante volatility estimates for each horizon.
 - [ ] Generate volatility-scaled thresholds: `X = k * ex_ante_vol_N` for `k in {1.0, 1.5, 2.0}`.
 - [ ] Build volatility-scaled downside event labels.
-- [ ] Compute base rates and independent event-block counts.
+- [ ] Compute base rates, market-block counts, idiosyncratic episodes, and effective event evidence counts.
 - [ ] Compare fixed-threshold and volatility-scaled sample support.
 - [ ] Decide which volatility-scaled slices are eligible for WP4 / WP5.
 
@@ -706,7 +841,7 @@ tests/test_stage03v_vol_scaled_targets.py
 Acceptance:
 
 - [ ] Volatility-scaled labels use only causal ex-ante volatility.
-- [ ] Each scaled slice has base rate and independent event-block count.
+- [ ] Each scaled slice has base rate and effective evidence counts.
 - [ ] Ineligible scaled slices are marked `diagnostic_only`, `defer_threshold`, or `drop_threshold`.
 - [ ] WP5 readiness promotion is blocked until this supplement is accepted or explicitly waived with reason.
 - [ ] No model training occurs.
@@ -758,7 +893,7 @@ ToDo:
 - [ ] Add isotonic calibration on validation folds only.
 - [ ] Use date-aware calibration weighting or equivalent grouped evaluation.
 - [ ] Compare raw logistic, calibrated logistic, and strongest eligible baselines.
-- [ ] Compute Brier score, ECE, calibration slope / intercept, bucket monotonicity, PR-AUC, event rate, sample support, and independent event-block count.
+- [ ] Compute Brier score, ECE, calibration slope / intercept, bucket monotonicity, PR-AUC, event rate, sample support, market-block count, idiosyncratic episode count, and effective event evidence.
 - [ ] Compute model-vs-baseline deltas for Brier, ECE, PR-AUC, bucket separation, and risk-bucket monotonicity.
 - [ ] Attach trade-date clustered or block-bootstrap confidence intervals to model-vs-baseline deltas.
 - [ ] Build readiness matrix by horizon, threshold, threshold type, entity type, state label, volatility bucket, and risk bucket.
@@ -766,6 +901,7 @@ ToDo:
 - [ ] Emit fallback reason for every non-usable slice.
 - [ ] Prevent calibration that worsens Brier from receiving `usable_probability`.
 - [ ] Prevent slices whose model-vs-baseline CI includes zero from receiving `usable_probability`.
+- [ ] Prevent slices with `market_event_block_count < 2` from receiving `usable_probability`.
 
 Candidate files:
 
@@ -788,6 +924,7 @@ Acceptance:
 - [ ] Numeric probability appears only in `usable_probability` slices.
 - [ ] Model-vs-baseline deltas include date-clustered or block-bootstrap confidence intervals.
 - [ ] If the confidence interval includes zero, the slice cannot be `usable_probability`.
+- [ ] If market-block evidence is too low, the slice cannot be `usable_probability` even when idiosyncratic evidence prevents blocking.
 - [ ] Calibration is not dominated by a few broad-market selloff dates without weighting or grouped evaluation disclosure.
 - [ ] Most slices may be `ordinal_only`; this is acceptable.
 - [ ] No decision output is created.
@@ -805,13 +942,13 @@ ToDo:
 - [ ] Measure future max drawdown reduction.
 - [ ] Measure CVaR reduction.
 - [ ] Measure realized volatility reduction.
-- [ ] Measure stress-period recall only when independent event-block support is sufficient; otherwise mark it diagnostic-only.
+- [ ] Measure stress-period recall only when market-block or total effective event evidence is sufficient; otherwise mark it diagnostic-only.
 - [ ] Measure false risk-downshift rate.
 - [ ] Measure missed-upside cost.
 - [ ] Measure turnover or churn cost if a simulated exposure rule is used.
 - [ ] Attach date-clustered or event-block bootstrap confidence intervals to risk-validation deltas.
 - [ ] Record every trial in validation artifacts.
-- [ ] Keep final holdout protected.
+- [ ] Keep final holdout protected and respect quarterly consumption cadence.
 
 Candidate files:
 
@@ -866,7 +1003,7 @@ Acceptance:
 - [ ] Final gate report exists.
 - [ ] Verdict is machine-readable.
 - [ ] If empirical evidence is weak, verdict is `DEFER` or `BLOCKED` rather than promoted.
-- [ ] If prospective holdout has insufficient post-2026-06-10 data, final decision-support promotion remains `DEFER`.
+- [ ] If prospective holdout has insufficient post-2026-06-10 data, fewer than 120 complete 20d labeled trade dates, or fewer than 2 independent market event blocks, final decision-support promotion remains `DEFER`.
 - [ ] Stage03V2 and Stage03V3 remain blocked unless explicitly activated by a follow-up route document.
 
 ## 11. Stage03V1 global ToDo list
@@ -875,11 +1012,12 @@ Acceptance:
 - [ ] Create Stage03V execution index.
 - [ ] Create risk-event signal contract.
 - [ ] Create risk-event readiness policy.
-- [ ] Create split-role manifest and prospective holdout lock.
-- [ ] Run sample feasibility preflight on V7 SW level-2 data.
+- [ ] Register Stage03V in the prospective validation ledger with Stage03V-specific cutoff and start date.
+- [ ] Freeze SW2021 L2 taxonomy and universe quality filter.
+- [ ] Run sample feasibility preflight on V7 SW2021 L2 data.
 - [ ] Build risk-event target dataset.
 - [ ] Add synthetic path-event tests in the target package.
-- [ ] Add leakage, purge, embargo, and split-role tests.
+- [ ] Add leakage, purge, embargo, split-role, and holdout-consumption tests.
 - [ ] Build volatility, range-based, empirical, and continuous diagnostic baselines.
 - [ ] Build volatility-scaled threshold supplement.
 - [ ] Train logistic downside risk hazard candidate only for eligible slices.
@@ -916,6 +1054,7 @@ HMM_margin
 HSMM_state_age
 HSMM_phase
 HSMM_duration_percentile
+SW2021_L1_diagnostic_context
 ```
 
 Forbidden default features:
@@ -933,6 +1072,7 @@ HSMM_calibrated_p_exit_as_default_input
 any final-holdout-derived tuning flag
 custom_basket_feature_in_v1_empirical_promotion
 concept_sector_feature_in_v1_empirical_promotion
+posthoc_universe_filter
 ```
 
 HSMM lifecycle context can be used only as non-probability context unless a later contract explicitly allows a readiness-approved field.
@@ -941,27 +1081,31 @@ HSMM lifecycle context can be used only as non-probability context unless a late
 
 Stage03V1 can pass only if all of the following hold:
 
-1. Split-role manifest locks prospective final holdout before modeling.
-2. Sample feasibility preflight passes or narrows the eligible slice set.
-3. Risk target dataset passes causal, censoring, purge, and embargo audit.
-4. Synthetic path target tests pass in WP1.
-5. Baselines exist and are explicitly compared.
-6. Continuous volatility diagnostics do not contradict the event-probability thesis, or the model path is downgraded honestly.
-7. Volatility-scaled threshold supplement is evaluated before readiness promotion.
-8. Logistic hazard adds evidence over the strongest eligible baseline or is downgraded honestly.
-9. Calibration does not worsen Brier for any slice marked `usable_probability`.
-10. Model-vs-baseline deltas for `usable_probability` slices have date-clustered or block-bootstrap confidence intervals that do not include zero.
-11. Sparse or correlated slices emit `insufficient_sample`, `baseline_only`, or `ordinal_only`.
-12. Risk validation protocol is pre-registered.
-13. Downshift validation compares model-driven downshift against baseline-driven downshift.
-14. Final holdout discipline is preserved.
-15. Output remains risk context or decision-support candidate, not trading instruction.
+1. Stage03V is registered in the prospective validation ledger with `information_cutoff_date = 2026-06-10` and `holdout_start = 2026-06-11`.
+2. The split-role manifest locks prospective final holdout before modeling.
+3. SW2021 L2 taxonomy, universe quality filter, and 2021 reform-window continuity checks pass.
+4. Sample feasibility preflight passes or narrows the eligible slice set.
+5. Risk target dataset passes causal, censoring, purge, and embargo audit.
+6. Synthetic path target tests pass in WP1.
+7. Baselines exist and are explicitly compared.
+8. Continuous volatility diagnostics do not contradict the event-probability thesis, or the model path is downgraded honestly.
+9. Volatility-scaled threshold supplement is evaluated before readiness promotion.
+10. Logistic hazard adds evidence over the strongest eligible baseline or is downgraded honestly.
+11. Calibration does not worsen Brier for any slice marked `usable_probability`.
+12. Model-vs-baseline deltas for `usable_probability` slices have date-clustered or block-bootstrap confidence intervals that do not include zero.
+13. `usable_probability` slices satisfy market-block and effective-event-evidence requirements.
+14. Sparse or correlated slices emit `insufficient_sample`, `baseline_only`, or `ordinal_only`.
+15. Risk validation protocol is pre-registered.
+16. Downshift validation compares model-driven downshift against baseline-driven downshift.
+17. Final holdout discipline, quarterly cadence, and consumption counting are preserved.
+18. Output remains risk context or decision-support candidate, not trading instruction.
 
 Stage03V1 should fail or defer if:
 
 - V7 long-history data is unavailable and only short 2025-2026 data is available for empirical claims;
 - the event base rate is too sparse for stable calibration;
-- independent event-block count is too low;
+- market-block and effective event evidence are too low;
+- idiosyncratic episodes are the only evidence for a slice that seeks `usable_probability`;
 - most apparent improvement comes from one market selloff block only;
 - row-level metrics look good but date-clustered intervals do not support the delta;
 - calibration improves ranking but worsens probability quality;
@@ -993,12 +1137,14 @@ Reviewer should decide these before STAGE03V-WP0 starts:
 - [ ] Should `MDD` be diagnostic only in v1, or should it be a primary target?
 - [ ] Are the initial horizons `{5, 10, 20}` sufficient?
 - [ ] Are the fixed thresholds `{3%, 5%, 8%, 10%}` acceptable as candidate thresholds subject to WP0.5 feasibility?
-- [ ] Is SW level-2 industry the correct v1 empirical universe?
+- [ ] Is SW2021 level-2 industry the correct v1 empirical universe?
 - [ ] Should custom baskets stay deferred until sector-level evidence exists?
 - [ ] Should volatility-scaled thresholds be mandatory before WP5 readiness promotion? This plan says yes.
 - [ ] Should Stage03V1 consume Stage03R hazard outputs as features, or only HMM / HSMM context fields?
-- [ ] Should the prospective holdout be strictly `trade_date > 2026-06-10`? This plan says yes unless an existing Stage04 ledger supersedes it.
-- [ ] What minimum prospective holdout size is required before final decision-support promotion?
+- [ ] Should the Stage03V holdout use `information_cutoff_date = 2026-06-10` and `holdout_start = 2026-06-11`? This plan says yes.
+- [ ] Is `market_event_block_count < 2` too strict or too loose for forbidding `usable_probability`?
+- [ ] Should the idiosyncratic episode discount default be 0.25? WP0.5 must report sensitivity at 0.10 / 0.25 / 0.50.
+- [ ] Is quarterly holdout review cadence acceptable?
 
 ## 16. Out of scope for Stage03V1
 
@@ -1014,6 +1160,8 @@ The following are explicitly out of scope:
 - Promotion of raw logistic score as probability.
 - Concept-sector or custom-basket empirical promotion in v1.
 - Row-count-only inference that treats industry-date rows as independent evidence.
+- Silent reuse of Stage04 holdout dates that predate the Stage03V information cutoff.
+- Post-hoc exclusion of SW level-2 industries based on model performance.
 
 ## 17. Revision log
 
@@ -1021,3 +1169,4 @@ The following are explicitly out of scope:
 |---|---|---|
 | 2026-06-10 | Initial review-candidate Stage03V route plan. | ChatGPT |
 | 2026-06-10 | Incorporated round 1 review: sample feasibility, V7/SW-L2 scope, clustered inference, baseline-controlled validation, prospective holdout lock, continuous-vol diagnostics, range-vol baselines, and volatility-scaled thresholds. | ChatGPT |
+| 2026-06-10 | Incorporated round 2 review: dual market/idiosyncratic event evidence, event-share sensitivity, Stage04-ledger-compatible Stage03V holdout registration, prospective holdout minimum size and cadence, SW2021 taxonomy controls, universe quality filtering, SW L1 diagnostics, and comparability break. | ChatGPT |
