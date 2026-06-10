@@ -23,7 +23,9 @@ choose_python() {
 PYTHON_CMD="$(choose_python)"
 export PYTHON_BIN="$PYTHON_CMD"
 export PYTHON="$PYTHON_CMD"
-if [[ -x .venv/bin/pytest ]]; then
+if [[ -n "${PYTEST_BIN:-}" ]]; then
+  export PYTEST="$PYTEST_BIN"
+elif [[ -x .venv/bin/pytest ]]; then
   export PYTEST_BIN=".venv/bin/pytest"
   export PYTEST=".venv/bin/pytest"
 fi

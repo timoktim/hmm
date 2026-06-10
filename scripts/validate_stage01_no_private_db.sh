@@ -5,12 +5,14 @@ ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
 choose_python() {
-  if [[ -n "${PYTHON:-}" ]]; then
+  if [[ -n "${PYTHON_BIN:-}" ]]; then
+    printf '%s\n' "$PYTHON_BIN"
+  elif [[ -n "${PYTHON:-}" ]]; then
     printf '%s\n' "$PYTHON"
-  elif command -v python >/dev/null 2>&1; then
-    printf '%s\n' "python"
   elif [[ -x .venv/bin/python ]]; then
     printf '%s\n' ".venv/bin/python"
+  elif command -v python >/dev/null 2>&1; then
+    printf '%s\n' "python"
   elif command -v python3 >/dev/null 2>&1; then
     printf '%s\n' "python3"
   else
@@ -19,12 +21,14 @@ choose_python() {
 }
 
 choose_pytest() {
-  if [[ -n "${PYTEST:-}" ]]; then
+  if [[ -n "${PYTEST_BIN:-}" ]]; then
+    printf '%s\n' "$PYTEST_BIN"
+  elif [[ -n "${PYTEST:-}" ]]; then
     printf '%s\n' "$PYTEST"
-  elif command -v pytest >/dev/null 2>&1; then
-    printf '%s\n' "pytest"
   elif [[ -x .venv/bin/pytest ]]; then
     printf '%s\n' ".venv/bin/pytest"
+  elif command -v pytest >/dev/null 2>&1; then
+    printf '%s\n' "pytest"
   else
     return 1
   fi
@@ -32,13 +36,13 @@ choose_pytest() {
 
 PYTHON_BIN="$(choose_python)" || {
   echo "CI_SAFE_STAGE01_VALIDATION=fail"
-  echo "No python interpreter found. Set PYTHON or create .venv/bin/python."
+  echo "No python interpreter found. Set PYTHON_BIN/PYTHON or create .venv/bin/python."
   exit 2
 }
 
 PYTEST_BIN="$(choose_pytest)" || {
   echo "CI_SAFE_STAGE01_VALIDATION=fail"
-  echo "No pytest command found. Set PYTEST, install pytest, or create .venv/bin/pytest."
+  echo "No pytest command found. Set PYTEST_BIN/PYTEST, install pytest, or create .venv/bin/pytest."
   exit 2
 }
 

@@ -7,13 +7,15 @@ cd "$ROOT"
 choose_python() {
   if [[ -n "${PYTHON_BIN:-}" ]]; then
     printf '%s\n' "$PYTHON_BIN"
-  elif command -v python >/dev/null 2>&1; then
-    printf '%s\n' "python"
   elif [[ -x .venv/bin/python ]]; then
     printf '%s\n' ".venv/bin/python"
+  elif command -v python >/dev/null 2>&1; then
+    printf '%s\n' "python"
+  elif command -v python3 >/dev/null 2>&1; then
+    printf '%s\n' "python3"
   else
     echo "STAGE03R_EXIT_TARGET_GATE=fail"
-    echo "No python executable found. Expected python or .venv/bin/python."
+    echo "No python executable found. Expected PYTHON_BIN, .venv/bin/python, python, or python3."
     return 1
   fi
 }
@@ -21,13 +23,13 @@ choose_python() {
 choose_pytest() {
   if [[ -n "${PYTEST_BIN:-}" ]]; then
     printf '%s\n' "$PYTEST_BIN"
-  elif command -v pytest >/dev/null 2>&1; then
-    printf '%s\n' "pytest"
   elif [[ -x .venv/bin/pytest ]]; then
     printf '%s\n' ".venv/bin/pytest"
+  elif command -v pytest >/dev/null 2>&1; then
+    printf '%s\n' "pytest"
   else
     echo "STAGE03R_EXIT_TARGET_GATE=fail"
-    echo "No pytest executable found. Expected pytest or .venv/bin/pytest."
+    echo "No pytest executable found. Expected PYTEST_BIN, .venv/bin/pytest, or pytest."
     return 1
   fi
 }

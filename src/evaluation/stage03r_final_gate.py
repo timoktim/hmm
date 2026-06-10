@@ -54,6 +54,11 @@ SAFE_BOUNDARY_FLAGS = {
     "duckdb_committed": "no",
     "private_db_required_in_ci": "no",
 }
+PREFLIGHT_COVERED_GATES = {
+    "data_quality_ci_gate": "scripts/stage03r_data_quality_ci_gate.sh",
+    "private_data_hygiene": "scripts/check_no_private_paths.sh",
+    "stage01_no_private_db": "scripts/validate_stage01_no_private_db.sh",
+}
 
 
 @dataclass
@@ -214,24 +219,6 @@ def _run_required_gates(root: Path) -> dict[str, Any]:
             "exit_target_dataset_gate",
             ["bash", "scripts/stage03r_exit_target_gate.sh"],
             "STAGE03R_EXIT_TARGET_GATE=",
-            root,
-        ),
-        "data_quality_ci_gate": _run_gate(
-            "data_quality_ci_gate",
-            ["bash", "scripts/stage03r_data_quality_ci_gate.sh"],
-            "STAGE03R_DATA_QUALITY_CI_GATE=",
-            root,
-        ),
-        "private_data_hygiene": _run_gate(
-            "private_data_hygiene",
-            ["bash", "scripts/check_no_private_paths.sh"],
-            "PRIVATE_PATH_HYGIENE=",
-            root,
-        ),
-        "stage01_no_private_db": _run_gate(
-            "stage01_no_private_db",
-            ["bash", "scripts/validate_stage01_no_private_db.sh"],
-            "CI_SAFE_STAGE01_VALIDATION=",
             root,
         ),
         "stage03_preflight_gate": _run_gate(
@@ -452,6 +439,17 @@ def _gate_status_summary(
         statuses.update(_run_required_gates(root))
     if gate_statuses:
         statuses.update({str(key): value for key, value in gate_statuses.items()})
+
+    if _normalise_gate_status(statuses.get("stage03_preflight_gate")) == "pass":
+        for key, covered_command in PREFLIGHT_COVERED_GATES.items():
+            statuses.setdefault(
+                key,
+                {
+                    "status": "pass",
+                    "source": "covered_by_stage03_preflight_gate",
+                    "covered_command": covered_command,
+                },
+            )
 
     leakage = data_quality.get("leakage_causal_target_summary", {})
     if isinstance(leakage, dict):

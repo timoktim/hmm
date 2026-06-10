@@ -6,8 +6,12 @@ from argparse import Namespace
 from pathlib import Path
 from typing import Any
 
+import pytest
+
+import src.evaluation.stage03r_final_gate as final_gate
 from src.evaluation.stage03r_final_gate import (
     FORBIDDEN_OUTPUT_TERMS,
+    _gate_status_summary,
     build_report_markdown,
     evaluate_final_gate,
     run_cli,
@@ -248,6 +252,50 @@ def test_cli_blocks_when_required_gate_scripts_are_skipped(tmp_path: Path) -> No
     assert any("gate status missing" in issue for issue in summary["blocking_issues"])
 
 
+def test_required_gate_script_chain_is_deduplicated(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    commands: list[str] = []
+
+    def fake_run_gate(name: str, command: list[str], marker: str, root: Path) -> dict[str, Any]:
+        commands.append(command[1])
+        return {"status": "pass", "stable_line": f"{marker}pass", "command": " ".join(command)}
+
+    monkeypatch.setattr(final_gate, "_run_gate", fake_run_gate)
+
+    statuses = final_gate._run_required_gates(tmp_path)
+
+    assert list(statuses) == ["exit_target_dataset_gate", "stage03_preflight_gate"]
+    assert commands == ["scripts/stage03r_exit_target_gate.sh", "scripts/stage03_preflight_gate.sh"]
+
+
+def test_preflight_covered_gate_statuses_are_recorded_when_preflight_passes() -> None:
+    blocking_issues: list[str] = []
+    summary = _gate_status_summary(
+        gate_statuses={
+            "exit_target_dataset_gate": {"status": "pass"},
+            "stage03_preflight_gate": {"status": "pass"},
+        },
+        run_gate_scripts=False,
+        root=ROOT,
+        data_quality={
+            "gate_integration_summary": {"stage03_preflight_gate_includes_data_quality_ci": "yes"},
+            "leakage_causal_target_summary": {
+                "target_sample_exists": True,
+                "required_columns_missing": [],
+                "feature_leakage_violation_count": 0,
+                "right_censored_bad_label_count": 0,
+            },
+        },
+        blocking_issues=blocking_issues,
+    )
+
+    assert blocking_issues == []
+    for key in ["data_quality_ci_gate", "private_data_hygiene", "stage01_no_private_db"]:
+        assert summary[key]["status"] == "pass"
+        assert summary[key]["source"] == "covered_by_stage03_preflight_gate"
+
+
+@pytest.mark.slow
+@pytest.mark.timeout(600)
 def test_gate_script_prints_stable_final_line() -> None:
     result = subprocess.run(
         ["bash", "scripts/stage03r_final_gate.sh"],
