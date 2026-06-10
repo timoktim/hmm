@@ -21,7 +21,7 @@ choose_python() {
 }
 
 PYTHON_CMD="$(choose_python)"
-DB_PATH="${STAGE03V_SAMPLE_FEASIBILITY_DB:-data/db/a_share_hmm.duckdb}"
+DB_PATH="${STAGE03V_V7_DB:-${STAGE03V_SAMPLE_FEASIBILITY_DB:-data/db/a_share_hmm_tushare_v7.duckdb}}"
 OUTPUT_MD="${STAGE03V_SAMPLE_FEASIBILITY_OUTPUT:-reports/stage03v/sample_feasibility_report.md}"
 SUMMARY_JSON="${STAGE03V_SAMPLE_FEASIBILITY_SUMMARY_JSON:-reports/stage03v/sample_feasibility_report.json}"
 
@@ -35,9 +35,11 @@ status=$?
 set -e
 
 gate_status="fail"
+report_db_path="$DB_PATH"
 if [[ -f "$SUMMARY_JSON" ]]; then
   gate_status="$("$PYTHON_CMD" -c "import json, sys; print(json.load(open(sys.argv[1])).get('status', 'fail'))" "$SUMMARY_JSON")"
+  report_db_path="$("$PYTHON_CMD" -c "import json, sys; print(json.load(open(sys.argv[1])).get('db_path', sys.argv[2]))" "$SUMMARY_JSON" "$DB_PATH")"
 fi
 
-echo "STAGE03V_SAMPLE_FEASIBILITY_GATE=${gate_status} python=${PYTHON_CMD} no_fetch=yes"
+echo "STAGE03V_SAMPLE_FEASIBILITY_GATE=${gate_status} python=${PYTHON_CMD} db_path=${report_db_path} no_fetch=yes"
 exit "$status"

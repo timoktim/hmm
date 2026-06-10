@@ -11,6 +11,7 @@ from __future__ import annotations
 import argparse
 import json
 import math
+import os
 from dataclasses import dataclass
 from datetime import date, datetime
 from pathlib import Path
@@ -44,6 +45,7 @@ LONG_HORIZON_NOTE = (
 )
 
 ROOT = Path(__file__).resolve().parents[2]
+DEFAULT_V7_DB = ROOT / "data" / "db" / "a_share_hmm_tushare_v7.duckdb"
 SIGNAL_CONTRACT = ROOT / "configs" / "risk_event_signal_contract_v1.yaml"
 READINESS_POLICY = ROOT / "configs" / "readiness_policy_risk_event_v1.yaml"
 UNIVERSE_MANIFEST = ROOT / "configs" / "stage03v_sw_l2_universe_manifest_v1.yaml"
@@ -125,6 +127,12 @@ def _safe_path(path: Path | str | None) -> str | None:
         return candidate.relative_to(ROOT).as_posix()
     except ValueError:
         return candidate.name
+
+
+def _resolve_v7_db_path(db_path: Path | str | None = None) -> Path:
+    if db_path is not None:
+        return Path(db_path)
+    return Path(os.environ.get("STAGE03V_V7_DB", DEFAULT_V7_DB))
 
 
 def _load_machine_yaml(path: Path) -> dict[str, Any]:
@@ -615,7 +623,12 @@ def assign_feasibility_verdict(row: Mapping[str, Any]) -> str:
     primary_blocks = float(row.get("primary_market_event_block_count", 0) or 0)
     effective = float(row.get("effective_event_evidence_count_0_25", 0) or 0)
 
-    if data_status in {"partial_missing_db", "partial_missing_universe", "partial_missing_data"}:
+    if data_status in {
+        "blocked_missing_v7_db",
+        "partial_missing_db",
+        "partial_missing_universe",
+        "partial_missing_data",
+    }:
         return "partial_missing_data"
     if threshold_type != THRESHOLD_TYPE_FIXED:
         return "defer_threshold"
@@ -676,16 +689,38 @@ def _table_summary(con: Any, table_name: str) -> dict[str, Any]:
     }
 
 
+def _workspace_metadata(con: Any) -> dict[str, str]:
+    if not _table_exists(con, "database_workspace_metadata"):
+        return {}
+    try:
+        rows = con.execute("SELECT key, value FROM database_workspace_metadata").fetchall()
+    except Exception:
+        return {}
+    return {str(key): str(value) for key, value in rows if key is not None}
+
+
+def _yyyymmdd_to_timestamp(value: str | None) -> pd.Timestamp | None:
+    if not value:
+        return None
+    parsed = pd.to_datetime(str(value), format="%Y%m%d", errors="coerce")
+    if pd.isna(parsed):
+        return None
+    return pd.Timestamp(parsed).normalize()
+
+
 def _read_db_inputs(db_path: Path | str | None) -> DBInputs:
     safe_db_path = _safe_path(db_path)
     coverage: dict[str, Any] = {
         "db_path": safe_db_path,
+        "v7_db_required": True,
         "db_available": False,
         "db_opened_read_only": False,
         "v7_coverage_available": "unknown",
+        "v7_db_requirement_status": "unknown",
         "sw2021_l2_universe_coverage": "missing",
         "benchmark_target_status": "unavailable",
         "source_tables": {},
+        "workspace_metadata": {},
         "taxonomy_provider": "SW",
         "taxonomy_version": "SW2021",
         "taxonomy_level": "L2",
@@ -704,9 +739,12 @@ def _read_db_inputs(db_path: Path | str | None) -> DBInputs:
         "constituent_count_filter_status": "not_applicable_missing_constituents",
         "constituent_snapshot_available": False,
         "universe_source_status": "missing",
+        "blocking_reasons": [],
     }
     if db_path is None or not Path(db_path).exists():
-        coverage["status"] = "partial_missing_db"
+        coverage["status"] = "blocked_missing_v7_db"
+        coverage["v7_db_requirement_status"] = "blocked_missing_v7_db"
+        coverage["blocking_reasons"].append("STAGE03V_V7_DB/--db path is missing")
         return DBInputs(pd.DataFrame(), pd.DataFrame(), coverage)
 
     try:
@@ -726,6 +764,23 @@ def _read_db_inputs(db_path: Path | str | None) -> DBInputs:
     try:
         coverage["db_available"] = True
         coverage["db_opened_read_only"] = True
+        metadata = _workspace_metadata(con)
+        coverage["workspace_metadata"] = {
+            key: metadata.get(key)
+            for key in [
+                "label",
+                "db_profile",
+                "active_source",
+                "market_data_source",
+                "snapshot_start_date",
+                "snapshot_end_date",
+                "snapshot_effective_end_date",
+                "snapshot_skipped_trade_dates",
+                "build_status",
+                "validation_status",
+            ]
+            if key in metadata
+        }
         for table in ["sector_meta", "sector_ohlcv", "sector_constituents", "market_benchmark_ohlcv"]:
             coverage["source_tables"][table] = _table_summary(con, table)
 
@@ -733,9 +788,13 @@ def _read_db_inputs(db_path: Path | str | None) -> DBInputs:
             coverage["status"] = "partial_missing_universe"
             return DBInputs(pd.DataFrame(), pd.DataFrame(), coverage)
 
+        sector_columns = _table_columns(con, "sector_meta")
+        sector_select = ["sector_id", "sector_type", "sector_name", "source"]
+        if "sector_level" in sector_columns:
+            sector_select.append("sector_level")
         sector_meta = con.execute(
-            """
-            SELECT sector_id, sector_type, sector_name, source
+            f"""
+            SELECT {", ".join(sector_select)}
             FROM sector_meta
             WHERE sector_type = 'industry'
             """
@@ -748,10 +807,26 @@ def _read_db_inputs(db_path: Path | str | None) -> DBInputs:
         coverage["duplicate_entity_count"] = int(sector_meta.duplicated("sector_id").sum())
         sources = sorted(sector_meta.get("source", pd.Series(dtype="object")).dropna().astype(str).unique().tolist())
         coverage["universe_sources"] = sources
-        verified_sw_source = any("tushare" in source.lower() and "sw" in source.lower() for source in sources)
-        coverage["universe_source_status"] = "verified_sw2021_candidate" if verified_sw_source else "unverified_local_industry"
+        if "sector_level" in sector_meta.columns:
+            sector_meta["sector_level"] = sector_meta["sector_level"].fillna("").astype(str)
+        else:
+            sector_meta["sector_level"] = ""
+        sector_meta["source"] = sector_meta["source"].fillna("").astype(str)
+        verified_l2_mask = sector_meta["source"].str.lower().eq("tushare_sw_classify") & sector_meta[
+            "sector_level"
+        ].str.upper().eq("L2")
+        verified_l2_meta = sector_meta[verified_l2_mask].copy()
+        coverage["sw2021_l2_verified_entity_count"] = int(verified_l2_meta["sector_id"].nunique())
+        coverage["non_verified_or_non_l2_industry_count"] = int(
+            coverage["industry_count_total"] - coverage["sw2021_l2_verified_entity_count"]
+        )
+        verified_sw_source = not verified_l2_meta.empty
+        coverage["universe_source_status"] = (
+            "verified_sw2021_l2_tushare_classify" if verified_sw_source else "unverified_local_industry"
+        )
 
-        sector_ids = sector_meta["sector_id"].dropna().astype(str).drop_duplicates().tolist()
+        candidate_meta = verified_l2_meta if verified_sw_source else sector_meta
+        sector_ids = candidate_meta["sector_id"].dropna().astype(str).drop_duplicates().tolist()
         placeholders = ",".join(["?"] * len(sector_ids))
         ohlcv = con.execute(
             f"""
@@ -783,15 +858,41 @@ def _read_db_inputs(db_path: Path | str | None) -> DBInputs:
             (entity_summary["min_trade_date"] > pd.Timestamp("2021-07-01")).sum()
         )
         cutoff = pd.Timestamp(INFORMATION_CUTOFF_DATE)
-        coverage["v7_coverage_available"] = (
-            "yes" if pd.notna(coverage_start) and coverage_start <= pd.Timestamp("2014-01-01") else "no"
+        snapshot_start = _yyyymmdd_to_timestamp(metadata.get("snapshot_start_date"))
+        label = metadata.get("label", "")
+        profile = metadata.get("db_profile", "")
+        source = metadata.get("market_data_source", metadata.get("active_source", ""))
+        long_history_available = bool(pd.notna(coverage_start) and coverage_start <= pd.Timestamp("2014-01-03"))
+        metadata_confirms_v7 = bool(
+            "v7" in label.lower()
+            and profile == "clean_tushare_snapshot"
+            and source == "tushare"
+            and metadata.get("build_status") == "pass"
+            and metadata.get("validation_status") == "pass"
+            and snapshot_start is not None
+            and snapshot_start <= pd.Timestamp("2014-01-01")
         )
+        v7_available = long_history_available and metadata_confirms_v7
+        coverage["v7_coverage_available"] = "yes" if v7_available else "no"
+        coverage["v7_db_requirement_status"] = "pass" if v7_available else "blocked_missing_v7_db"
+        if not v7_available:
+            coverage["status"] = "blocked_missing_v7_db"
+            coverage["blocking_reasons"].append(
+                "DB does not satisfy Stage03V V7 long-history requirement: expected clean Tushare V7 snapshot with 2014 coverage"
+            )
+            return DBInputs(pd.DataFrame(), pd.DataFrame(), coverage)
         coverage["reform_window_continuity_status"] = (
             "pass"
             if pd.notna(coverage_start) and pd.notna(coverage_end) and coverage_start <= pd.Timestamp("2021-07-01") <= coverage_end
             else "partial"
         )
-        coverage["history_continuity_status"] = "partial_short_to_cutoff" if coverage_end < cutoff else "pass"
+        snapshot_effective_end = _yyyymmdd_to_timestamp(metadata.get("snapshot_effective_end_date"))
+        if pd.notna(coverage_end) and coverage_end >= cutoff:
+            coverage["history_continuity_status"] = "pass"
+        elif snapshot_effective_end is not None and pd.notna(coverage_end) and coverage_end >= snapshot_effective_end:
+            coverage["history_continuity_status"] = "pass_to_snapshot_effective_end"
+        else:
+            coverage["history_continuity_status"] = "partial_short_to_cutoff"
 
         gap_counts = []
         for _, group in ohlcv.sort_values(["sector_id", "trade_date"]).groupby("sector_id"):
@@ -821,11 +922,16 @@ def _read_db_inputs(db_path: Path | str | None) -> DBInputs:
             entity_summary["min_trade_date"] > pd.Timestamp("2021-07-01"), "sector_id"
         ].astype(str)
         quality_exclusions.update(short_history_ids.tolist())
+        non_verified_ids = set(sector_meta["sector_id"].dropna().astype(str)) - set(
+            verified_l2_meta["sector_id"].dropna().astype(str)
+        )
+        if verified_sw_source:
+            quality_exclusions.update(non_verified_ids)
         coverage["quality_filter_exclusion_count"] = int(len(quality_exclusions))
         qualified_ids = [sector_id for sector_id in sector_ids if sector_id not in quality_exclusions]
         coverage["industry_count_after_quality_filter"] = int(len(qualified_ids))
 
-        if verified_sw_source and qualified_ids:
+        if v7_available and verified_sw_source and qualified_ids:
             coverage["sw2021_l2_universe_coverage"] = "pass"
             coverage["status"] = "pass"
             usable_ids = qualified_ids
@@ -1069,7 +1175,7 @@ def _status_from_coverage(data_status: str, contract_issues: Sequence[str]) -> s
 
 def build_sample_feasibility_report(
     *,
-    db_path: Path | str | None = ROOT / "data" / "db" / "a_share_hmm.duckdb",
+    db_path: Path | str | None = None,
     output: Path | str | None = None,
     summary_json: Path | str | None = None,
     no_fetch: bool = True,
@@ -1079,14 +1185,15 @@ def build_sample_feasibility_report(
     """Build and optionally write the Stage03V WP0.5 feasibility report."""
 
     contracts, contract_issues = _load_contracts()
+    effective_db_path = _resolve_v7_db_path(db_path) if price_frame is None else db_path
     if price_frame is None:
-        db_inputs = _read_db_inputs(db_path)
+        db_inputs = _read_db_inputs(effective_db_path)
         price_frame = db_inputs.price_frame
         benchmark_frame = db_inputs.benchmark_frame
         coverage = db_inputs.coverage
     else:
         coverage = {
-            "db_path": _safe_path(db_path),
+            "db_path": _safe_path(effective_db_path),
             "db_available": False,
             "db_opened_read_only": False,
             "v7_coverage_available": "unknown",
@@ -1175,7 +1282,7 @@ def build_sample_feasibility_report(
             "ledger_template": _safe_path(LEDGER_TEMPLATE),
             "execution_index": _safe_path(EXECUTION_INDEX),
         },
-        "db_path": _safe_path(db_path),
+        "db_path": _safe_path(effective_db_path),
         "db_used": bool(coverage.get("db_available") and not (price_frame is None or price_frame.empty)),
         "db_availability": "available" if coverage.get("db_available") else "missing",
         "db_opened_read_only": "yes" if coverage.get("db_opened_read_only") else "no",
@@ -1265,7 +1372,9 @@ def render_markdown_report(report: Mapping[str, Any]) -> str:
         f"- DB availability: {report.get('db_availability')}",
         f"- DB opened read-only: {report.get('db_opened_read_only')}",
         f"- external data fetch: {report.get('external_data_fetch')}",
+        f"- V7 coverage available: {dict(report.get('source_coverage', {})).get('v7_coverage_available')}",
         f"- SW2021 L2 universe coverage: {report.get('sw2021_l2_universe_coverage')}",
+        f"- universe source status: {dict(report.get('source_coverage', {})).get('universe_source_status')}",
         f"- benchmark target status: {report.get('benchmark_target_status')}",
         f"- vol_scaled_feasibility_status: {report.get('vol_scaled_feasibility_status')}",
         "",
@@ -1281,9 +1390,16 @@ def render_markdown_report(report: Mapping[str, Any]) -> str:
             "",
             "## Source Coverage",
             "",
+            f"- v7_db_required: {coverage.get('v7_db_required')}",
+            f"- v7_db_requirement_status: {coverage.get('v7_db_requirement_status')}",
+            f"- v7_coverage_available: {coverage.get('v7_coverage_available')}",
             f"- taxonomy_provider: {coverage.get('taxonomy_provider')}",
             f"- taxonomy_version: {coverage.get('taxonomy_version')}",
             f"- taxonomy_level: {coverage.get('taxonomy_level')}",
+            f"- universe_source_status: {coverage.get('universe_source_status')}",
+            f"- universe_sources: {coverage.get('universe_sources')}",
+            f"- sw2021_l2_verified_entity_count: {coverage.get('sw2021_l2_verified_entity_count')}",
+            f"- non_verified_or_non_l2_industry_count: {coverage.get('non_verified_or_non_l2_industry_count')}",
             f"- industry_count_total: {coverage.get('industry_count_total')}",
             f"- industry_count_after_quality_filter: {coverage.get('industry_count_after_quality_filter')}",
             f"- min_trade_date: {coverage.get('min_trade_date')}",
@@ -1297,6 +1413,7 @@ def render_markdown_report(report: Mapping[str, Any]) -> str:
             f"- short_history_entity_count: {coverage.get('short_history_entity_count')}",
             f"- quality_filter_exclusion_count: {coverage.get('quality_filter_exclusion_count')}",
             f"- constituent_count_filter_status: {coverage.get('constituent_count_filter_status')}",
+            f"- workspace_metadata: {coverage.get('workspace_metadata')}",
             "",
             "## Cross-Cutoff Censoring",
             "",
@@ -1344,7 +1461,11 @@ def render_markdown_report(report: Mapping[str, Any]) -> str:
 
 def parse_args(argv: Sequence[str] | None = None) -> argparse.Namespace:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("--db", default="data/db/a_share_hmm.duckdb", help="Local DuckDB path. Read-only if present.")
+    parser.add_argument(
+        "--db",
+        default=os.environ.get("STAGE03V_V7_DB", "data/db/a_share_hmm_tushare_v7.duckdb"),
+        help="Stage03V V7 DuckDB path. May also be set with STAGE03V_V7_DB. Read-only if present.",
+    )
     parser.add_argument("--output", default="reports/stage03v/sample_feasibility_report.md")
     parser.add_argument("--summary-json", default="reports/stage03v/sample_feasibility_report.json")
     parser.add_argument(
@@ -1367,7 +1488,8 @@ def main(argv: Sequence[str] | None = None) -> int:
     status = str(report.get("status", "fail"))
     print(
         "STAGE03V_SAMPLE_FEASIBILITY="
-        f"{status} report={_safe_path(args.output)} summary_json={_safe_path(args.summary_json)} no_fetch=yes"
+        f"{status} db_path={_safe_path(args.db)} report={_safe_path(args.output)} "
+        f"summary_json={_safe_path(args.summary_json)} no_fetch=yes"
     )
     return 1 if status == "blocked_contract_missing" else 0
 

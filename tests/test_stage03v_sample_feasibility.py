@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import duckdb
 import pandas as pd
 
 from src.evaluation.stage03v_sample_feasibility import (
@@ -246,7 +247,7 @@ def test_low_evidence_slices_receive_expected_verdicts() -> None:
     assert assign_feasibility_verdict({"threshold_type": "vol_scaled", "historical_development_labeled_count": 10}) == "defer_threshold"
 
 
-def test_missing_db_path_produces_partial_report_without_crashing(tmp_path: Path) -> None:
+def test_missing_v7_db_path_blocks_formal_report_without_crashing(tmp_path: Path) -> None:
     output = tmp_path / "sample_feasibility_report.md"
     summary_json = tmp_path / "sample_feasibility_report.json"
 
@@ -257,8 +258,9 @@ def test_missing_db_path_produces_partial_report_without_crashing(tmp_path: Path
         no_fetch=True,
     )
 
-    assert report["status"] == "partial_missing_db"
+    assert report["status"] == "blocked_missing_v7_db"
     assert report["db_availability"] == "missing"
+    assert report["source_coverage"]["v7_db_requirement_status"] == "blocked_missing_v7_db"
     assert report["external_data_fetch"] == "no"
     assert report["boundary_flags"]["target_dataset_built"] == "no"
     assert output.exists()
@@ -267,6 +269,48 @@ def test_missing_db_path_produces_partial_report_without_crashing(tmp_path: Path
     assert all(
         row["feasibility_verdict"] == "partial_missing_data"
         for row in payload["fixed_threshold_feasibility_matrix"]
+    )
+
+
+def test_non_v7_db_is_blocked_instead_of_used_as_formal_conclusion(tmp_path: Path) -> None:
+    db_path = tmp_path / "old.duckdb"
+    with duckdb.connect(str(db_path)) as con:
+        con.execute(
+            """
+            CREATE TABLE sector_meta (
+              sector_id VARCHAR,
+              sector_type VARCHAR,
+              sector_name VARCHAR,
+              source VARCHAR
+            )
+            """
+        )
+        con.execute(
+            """
+            CREATE TABLE sector_ohlcv (
+              sector_id VARCHAR,
+              trade_date DATE,
+              close DOUBLE
+            )
+            """
+        )
+        con.execute("INSERT INTO sector_meta VALUES ('industry:old', 'industry', 'old', 'akshare')")
+        con.execute("INSERT INTO sector_ohlcv VALUES ('industry:old', DATE '2020-01-02', 100.0)")
+
+    report = build_sample_feasibility_report(
+        db_path=db_path,
+        output=tmp_path / "report.md",
+        summary_json=tmp_path / "report.json",
+        no_fetch=True,
+    )
+
+    assert report["status"] == "blocked_missing_v7_db"
+    assert report["source_coverage"]["v7_coverage_available"] == "no"
+    assert report["source_coverage"]["universe_source_status"] == "unverified_local_industry"
+    assert report["historical_development_labeled_count"] == 0
+    assert all(
+        row["feasibility_verdict"] == "partial_missing_data"
+        for row in report["fixed_threshold_feasibility_matrix"]
     )
 
 
