@@ -149,3 +149,4 @@ Stage03V reuses the Stage04 prospective validation ledger mechanism through a St
 | 2026-06-10 | Archived WP2 and activated STAGE03V-WP2.1-v1 full-target streaming audit. | ChatGPT |
 | 2026-06-10 | Implemented STAGE03V-WP2.1-v1 full-target streaming / blockwise audit. | Codex |
 | 2026-06-10 | Archived WP2.1 and activated STAGE03V-WP3-v1 baseline diagnostics. | ChatGPT |
+| 2026-06-10 | Implemented STAGE03V-WP3-v1 volatility, range-based, empirical, and continuous diagnostic baselines. | Codex |
