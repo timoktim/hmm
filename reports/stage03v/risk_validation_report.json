@@ -1,0 +1,156 @@
+{
+  "index_id": "STAGE03V-WP6-v1",
+  "report_version": "stage03v_risk_validation_v1",
+  "stage_id": "stage03v",
+  "status": "pass",
+  "wp1_support_status": "pass",
+  "wp2_controls_status": "pass",
+  "wp2_1_full_target_audit_status": "pass",
+  "wp3_baseline_diagnostics_status": "pass",
+  "wp3_5_vol_scaled_sanity_status": "pass",
+  "wp4_logistic_hazard_status": "pass",
+  "wp5_calibration_readiness_status": "pass",
+  "source_db_path": "data/db/a_share_hmm_tushare_v7.duckdb",
+  "db_opened_read_only": "yes",
+  "v7_coverage_available": "yes",
+  "sw2021_l2_universe_coverage": "pass",
+  "target_universe_status": "pass",
+  "fold_plan_status": "pass",
+  "policy_status": "pass",
+  "validation_protocol_status": "pass",
+  "historical_development_only": "yes",
+  "prospective_holdout_rows_evaluated": 0,
+  "readiness_rows_evaluated": 60,
+  "candidate_rows_evaluated": 60,
+  "validation_status_counts": {
+    "validation_pass_candidate": 4,
+    "validation_watchlist": 2,
+    "research_only_evidence": 34,
+    "insufficient_validation_support": 20,
+    "blocked_by_boundary_or_leakage": 0
+  },
+  "downshift_tier_counts": {
+    "research_downshift_watch": 2,
+    "research_downshift_candidate": 4,
+    "research_downshift_insufficient": 54,
+    "research_downshift_blocked": 0
+  },
+  "usable_probability_candidate_count": 4,
+  "ordinal_only_candidate_count": 2,
+  "baseline_only_candidate_count": 10,
+  "research_only_count": 24,
+  "validation_pass_candidate_count": 4,
+  "validation_watchlist_count": 2,
+  "research_only_evidence_count": 34,
+  "insufficient_validation_support_count": 20,
+  "blocked_by_boundary_or_leakage_count": 0,
+  "risk_validation_metrics_path": "reports/stage03v/risk_validation_metrics.csv",
+  "downshift_candidate_matrix_path": "reports/stage03v/downshift_candidate_matrix.csv",
+  "clustered_summary_path": "reports/stage03v/risk_validation_clustered_summary.csv",
+  "audit_sample_path": "reports/stage03v/risk_validation_audit_sample.csv",
+  "wp7_manifest_path": "reports/stage03v/wp7_final_gate_input_manifest.json",
+  "metric_summary": {
+    "row_count": 60,
+    "mean_mean_brier_score": 0.15606116075842968,
+    "min_mean_brier_score": 0.0241694767028953,
+    "max_mean_brier_score": 0.3710104575548621,
+    "mean_mean_log_loss": 0.6380773307901331,
+    "min_mean_log_loss": 0.1216548190520279,
+    "max_mean_log_loss": 1.7299680264991872,
+    "mean_mean_expected_calibration_error": 0.22108293400231932,
+    "min_mean_expected_calibration_error": 0.013573813002302,
+    "max_mean_expected_calibration_error": 0.4062824100045644,
+    "mean_mean_auc": 0.4786329261967128,
+    "min_mean_auc": 0.1984282807989488,
+    "max_mean_auc": 0.873972602739726,
+    "mean_mean_average_precision": 0.1256701515566799,
+    "min_mean_average_precision": 0.006578947368421,
+    "max_mean_average_precision": 0.3899736464617204,
+    "mean_event_lift_top_bin": 0.5433919639381198,
+    "min_event_lift_top_bin": 0.0,
+    "max_event_lift_top_bin": 1.224080267558528
+  },
+  "lead_time_summary": {
+    "insufficient": 30,
+    "watch": 12,
+    "pass": 18
+  },
+  "event_capture_summary": {
+    "insufficient": 24,
+    "watch": 12,
+    "pass": 24
+  },
+  "false_alarm_summary": {
+    "insufficient": 22,
+    "watch": 10,
+    "pass": 28
+  },
+  "clustered_concentration_summary": {
+    "entity": {
+      "pass": 40,
+      "watch": 20
+    },
+    "calendar_date": {
+      "pass": 40,
+      "watch": 20
+    }
+  },
+  "baseline_comparison_summary": {
+    "insufficient": 22,
+    "pass": 20,
+    "watch": 18
+  },
+  "leakage_violation_counts": {
+    "feature_asof_violation_count": 0,
+    "target_namespace_input_violation_count": 0,
+    "future_column_input_violation_count": 0,
+    "same_row_label_leakage_count": 0,
+    "evaluation_label_leakage_count": 0,
+    "prospective_holdout_score_count": 0,
+    "prospective_holdout_metric_count": 0,
+    "fixed_threshold_mainline_mutation_count": 0,
+    "persistent_db_write_count": 0,
+    "external_fetch_count": 0,
+    "leakage_violation_count_total": 0
+  },
+  "validation_boundary_violation_counts": {
+    "wp5_calibration_boundary_violation_count_total": 0,
+    "holdout_rows_validated_count": 0,
+    "recalibration_attempt_count": 0,
+    "new_model_training_count": 0,
+    "readiness_reassignment_count": 0,
+    "trading_or_decision_output_count": 0,
+    "validation_boundary_violation_count_total": 0
+  },
+  "ci_gate_status": "pass",
+  "boundary_flags": {
+    "external_data_fetch": "no",
+    "target_dataset_modified": "no",
+    "fixed_threshold_mainline_modified": "no",
+    "persistent_db_table_written": "no",
+    "full_target_matrix_committed": "no",
+    "full_feature_matrix_committed": "no",
+    "full_raw_score_matrix_committed": "no",
+    "full_calibrated_score_matrix_committed": "no",
+    "model_training": "no",
+    "probability_recalibration": "no",
+    "readiness_reassigned": "no",
+    "validation_protocol_created": "yes",
+    "research_report_created": "yes",
+    "holdout_consumed": "no",
+    "HMM_HSMM_training_modified": "no",
+    "stage03v2_implemented": "no",
+    "stage03v3_implemented": "no",
+    "trading_or_decision_output": "no"
+  },
+  "old_db_fallback": false,
+  "external_data_fetch": "no",
+  "no_fetch": true,
+  "created_at": "2026-06-11T05:01:07+00:00",
+  "blocking_reasons": [],
+  "remaining_risks": [
+    "WP6 validates historical-development evidence only; WP7 must run the final gate before any Stage03V1 acceptance claim.",
+    "Downshift tiers are research-only evidence labels and are not trading, sizing, portfolio, or execution outputs.",
+    "Volatility-scaled candidates remain tracked references and do not replace the fixed-threshold Stage03V1 target family."
+  ]
+}
