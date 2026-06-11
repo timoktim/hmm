@@ -169,3 +169,4 @@ Stage03V reuses the Stage04 prospective validation ledger mechanism through a St
 | 2026-06-10 | Archived WP2.1 and activated STAGE03V-WP3-v1 baseline diagnostics. | ChatGPT |
 | 2026-06-10 | Implemented STAGE03V-WP3-v1 volatility, range-based, empirical, and continuous diagnostic baselines. | Codex |
 | 2026-06-11 | Archived accepted WP3 and activated STAGE03V-WP3.5-v1 volatility-scaled threshold sanity gate. | ChatGPT |
+| 2026-06-11 | Implemented STAGE03V-WP3.5-v1 volatility-scaled threshold supplement and baseline metric sanity gate artifacts. | Codex |
