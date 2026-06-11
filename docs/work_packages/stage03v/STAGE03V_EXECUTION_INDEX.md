@@ -206,3 +206,4 @@ Stage03V reuses the Stage04 prospective validation ledger mechanism through a St
 | 2026-06-11 | Archived WP3.5 and activated STAGE03V-WP4-v1 logistic downside-risk hazard. | ChatGPT |
 | 2026-06-11 | Implemented STAGE03V-WP4-v1 logistic downside-risk hazard artifacts and gate. | Codex |
 | 2026-06-11 | Archived WP4 and activated STAGE03V-WP5-v1 calibration, clustered inference, and development-readiness. | ChatGPT |
+| 2026-06-11 | Implemented STAGE03V-WP5-v1 calibration diagnostics, clustered inference, and development-readiness artifacts. | Codex |
