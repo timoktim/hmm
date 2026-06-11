@@ -69,6 +69,11 @@ reports/stage03r/*_full.csv
 !reports/stage03v/vol_scaled_threshold_slice_summary.csv
 !reports/stage03v/baseline_metric_sanity_audit.csv
 !reports/stage03v/asof_shift_metric_sanity.csv
+!reports/stage03v/logistic_hazard_fold_metrics.csv
+!reports/stage03v/logistic_hazard_slice_metrics.csv
+!reports/stage03v/logistic_hazard_coefficients.csv
+!reports/stage03v/logistic_hazard_feature_audit.csv
+!reports/stage03v/logistic_hazard_audit_sample.csv
 !reports/stage04/
 !reports/stage04/*.md
 !reports/stage04/*.json

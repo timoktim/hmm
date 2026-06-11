@@ -1,0 +1,17 @@
+feature_name,feature_family,feature_source,allowed_in_wp4,asof_requirement,target_namespace_violation,future_column_violation
+rolling_close_to_close_vol_20,realized_volatility,price_history,yes,close_t <= trade_date; close_t_minus_1 < trade_date,no,no
+rolling_close_to_close_vol_60,realized_volatility,price_history,yes,close_t <= trade_date; close_t_minus_1 < trade_date,no,no
+ewma_close_to_close_vol,realized_volatility,price_history,yes,close_t <= trade_date; close_t_minus_1 < trade_date,no,no
+rolling_downside_vol_20,realized_volatility,price_history,yes,close_t <= trade_date; close_t_minus_1 < trade_date,no,no
+rolling_downside_vol_60,realized_volatility,price_history,yes,close_t <= trade_date; close_t_minus_1 < trade_date,no,no
+parkinson_vol_20,range_based_volatility,price_history,yes,close_t <= trade_date; close_t_minus_1 < trade_date,no,no
+parkinson_vol_60,range_based_volatility,price_history,yes,close_t <= trade_date; close_t_minus_1 < trade_date,no,no
+garman_klass_vol_20,range_based_volatility,price_history,yes,close_t <= trade_date; close_t_minus_1 < trade_date,no,no
+garman_klass_vol_60,range_based_volatility,price_history,yes,close_t <= trade_date; close_t_minus_1 < trade_date,no,no
+rogers_satchell_vol_20,range_based_volatility,price_history,yes,close_t <= trade_date; close_t_minus_1 < trade_date,no,no
+rogers_satchell_vol_60,range_based_volatility,price_history,yes,close_t <= trade_date; close_t_minus_1 < trade_date,no,no
+intraday_range_ratio_20,range_based_volatility,price_history,yes,close_t <= trade_date; close_t_minus_1 < trade_date,no,no
+rolling_max_drawdown_20,recent_drawdown,price_history,yes,close_t <= trade_date; close_t_minus_1 < trade_date,no,no
+rolling_max_drawdown_60,recent_drawdown,price_history,yes,close_t <= trade_date; close_t_minus_1 < trade_date,no,no
+rolling_distance_from_high_20,recent_drawdown,price_history,yes,close_t <= trade_date; close_t_minus_1 < trade_date,no,no
+rolling_distance_from_high_60,recent_drawdown,price_history,yes,close_t <= trade_date; close_t_minus_1 < trade_date,no,no

@@ -1,0 +1,63 @@
+{
+  "index_id": "STAGE03V-WP4-v1",
+  "policy_version": "stage03v_logistic_hazard_policy_v1",
+  "information_cutoff_date": "2026-06-10",
+  "holdout_start": "2026-06-11",
+  "source_target_controls": "reports/stage03v/target_controls_report.json",
+  "source_full_target_audit": "reports/stage03v/full_target_streaming_audit_report.json",
+  "source_baseline_diagnostics": "reports/stage03v/baseline_diagnostics_report.json",
+  "source_vol_scaled_sanity": "reports/stage03v/vol_scaled_threshold_sanity_report.json",
+  "fold_plan": "reports/stage03v/purge_embargo_fold_plan.json",
+  "primary_target_family": "fixed_threshold_stage03v1_downside_event",
+  "vol_scaled_candidate_policy": "tracked_reference_only",
+  "primary_asof_mode": "close_t_minus_1",
+  "diagnostic_asof_modes": [
+    "close_t_minus_1",
+    "close_t"
+  ],
+  "model_family": "logistic_regression",
+  "model_variant": "sklearn_logistic_regression_l2_lbfgs",
+  "solver": "lbfgs",
+  "penalty": "l2",
+  "max_iter": 1000,
+  "random_state": 20260611,
+  "class_weight": "balanced",
+  "min_train_positive_events": 2,
+  "min_train_negative_events": 2,
+  "calibration_policy": "forbidden_in_wp4",
+  "readiness_policy": "forbidden_in_wp4",
+  "final_holdout_policy": "withheld_not_scored",
+  "feature_families": [
+    "realized_volatility",
+    "range_based_volatility",
+    "recent_drawdown"
+  ],
+  "feature_asof_policy": {
+    "close_t": "feature_asof_date <= trade_date",
+    "close_t_minus_1": "feature_asof_date < trade_date"
+  },
+  "training_policy": "train_folds_only",
+  "validation_policy": "validation_folds_only",
+  "purge_embargo_policy": "accepted_wp2_fold_plan",
+  "full_feature_matrix_policy": "forbidden_to_commit",
+  "persistent_db_table_policy": "forbidden_by_default",
+  "external_fetch_policy": "forbidden",
+  "audit_sample_cap": 500,
+  "boundary_flags": {
+    "external_data_fetch": "no",
+    "target_dataset_modified": "no",
+    "fixed_threshold_mainline_modified": "no",
+    "persistent_db_table_written": "no",
+    "full_target_matrix_committed": "no",
+    "full_feature_matrix_committed": "no",
+    "full_score_matrix_committed": "no",
+    "model_training": "yes",
+    "probability_calibration": "no",
+    "readiness_assigned": "no",
+    "holdout_consumed": "no",
+    "HMM_HSMM_training_modified": "no",
+    "stage03v2_implemented": "no",
+    "stage03v3_implemented": "no",
+    "trading_or_decision_output": "no"
+  }
+}
