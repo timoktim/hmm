@@ -1,0 +1,72 @@
+{
+  "index_id": "STAGE03V-WP3.5-v1",
+  "policy_version": "stage03v_vol_scaled_threshold_sanity_policy_v1",
+  "information_cutoff_date": "2026-06-10",
+  "holdout_start": "2026-06-11",
+  "source_target_controls": "reports/stage03v/target_controls_report.json",
+  "source_full_target_audit": "reports/stage03v/full_target_streaming_audit_report.json",
+  "source_baseline_report": "reports/stage03v/baseline_diagnostics_report.json",
+  "fold_plan": "reports/stage03v/purge_embargo_fold_plan.json",
+  "fixed_threshold_mainline_policy": "unchanged_reference_only",
+  "volatility_scaled_threshold_policy": "supplement_only_not_replacement",
+  "volatility_estimators": [
+    "rolling_close_to_close_vol_20",
+    "rolling_close_to_close_vol_60",
+    "ewma_close_to_close_vol_20_or_equivalent"
+  ],
+  "horizons": [
+    1,
+    5,
+    10,
+    20
+  ],
+  "k_candidates": [
+    1.0,
+    1.5,
+    2.0,
+    2.5
+  ],
+  "clamp_min_abs_threshold": 0.02,
+  "clamp_max_abs_threshold": 0.15,
+  "threshold_formula": "threshold_abs = clamp(k * daily_vol * sqrt(horizon), 0.02, 0.15)",
+  "asof_modes": [
+    "close_t",
+    "close_t_minus_1"
+  ],
+  "feature_asof_policy": "feature_asof_date <= trade_date for close_t; feature_asof_date < trade_date for close_t_minus_1",
+  "evaluation_split_policy": "validation_rows_only",
+  "final_holdout_policy": "withheld_not_scored",
+  "calibration_policy": "forbidden_in_wp3_5",
+  "readiness_policy": "forbidden_in_wp3_5",
+  "model_training_policy": "forbidden_in_wp3_5",
+  "external_fetch_policy": "forbidden",
+  "full_matrix_commit_policy": "aggregate_or_capped_samples_only",
+  "metric_sanity_thresholds": {
+    "high_roc_auc": 0.9,
+    "high_average_precision": 0.25,
+    "high_abs_spearman_score_vs_future_mdd": 0.3,
+    "min_score_available_rate": 0.5,
+    "min_positive_event_count": 5,
+    "min_event_base_rate": 0.001,
+    "max_event_base_rate": 0.5,
+    "concentration_share_warning": 0.5,
+    "material_degradation_delta": 0.05
+  },
+  "boundary_flags": {
+    "external_data_fetch": "no",
+    "target_dataset_modified": "no",
+    "fixed_threshold_mainline_modified": "no",
+    "persistent_db_table_written": "no",
+    "full_target_matrix_committed": "no",
+    "full_feature_matrix_committed": "no",
+    "full_score_matrix_committed": "no",
+    "model_training": "no",
+    "probability_calibration": "no",
+    "readiness_assigned": "no",
+    "holdout_consumed": "no",
+    "HMM_HSMM_training_modified": "no",
+    "stage03v2_implemented": "no",
+    "stage03v3_implemented": "no",
+    "trading_or_decision_output": "no"
+  }
+}

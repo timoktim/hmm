@@ -66,7 +66,7 @@ def test_required_wp0_files_exist_and_machine_configs_parse() -> None:
     assert json.loads(REPORT_JSON.read_text(encoding="utf-8"))["index_id"] == "STAGE03V-WP0-v1"
 
 
-def test_execution_index_marks_wp3_active_and_later_packages_blocked() -> None:
+def test_execution_index_marks_wp3_5_active_and_later_packages_blocked() -> None:
     text = EXECUTION_INDEX.read_text(encoding="utf-8")
 
     assert "STAGE03V-WP0-v1 | Scope Freeze, Contracts, Ledger | archived" in text
@@ -74,9 +74,11 @@ def test_execution_index_marks_wp3_active_and_later_packages_blocked() -> None:
     assert "STAGE03V-WP1-v1 | Risk Event Target Dataset v1 | archived" in text
     assert "STAGE03V-WP2-v1 | Target Leakage, Purge, Embargo, and CI Gate | archived" in text
     assert "STAGE03V-WP2.1-v1 | Full Target Streaming Audit | archived" in text
-    assert "STAGE03V-WP3-v1 | Volatility, Range-Based, Empirical, and Continuous Diagnostic Baselines | active" in text
-    assert "Only STAGE03V-WP3-v1 is executable in the current Stage03V branch sequence." in text
-    assert "STAGE03V-WP3.5 and later packages are blocked until WP3 is accepted." in text
+    assert "STAGE03V-WP3-v1 | Volatility, Range-Based, Empirical, and Continuous Diagnostic Baselines | archived" in text
+    assert "STAGE03V-WP3.5-v1 | Volatility-Scaled Threshold Supplement and Baseline Metric Sanity Gate | active" in text
+    assert "STAGE03V-WP4 | Logistic Downside Risk Hazard v1 | blocked_until_wp3_5_accepted" in text
+    assert "Only STAGE03V-WP3.5-v1 is executable in the current Stage03V branch sequence." in text
+    assert "STAGE03V-WP4 and later packages are blocked until WP3.5 is accepted." in text
 
 
 def test_stage_boundary_and_placeholders_are_contractual() -> None:
