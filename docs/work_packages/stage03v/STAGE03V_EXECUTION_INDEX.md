@@ -2,13 +2,13 @@
 
 Status: active
 Stage: 03V / Volatility and downside-risk hazard
-Active package: STAGE03V-WP5-v1
+Active package: STAGE03V-WP6-v1
 
 ## Purpose
 
 Stage03V defines a volatility and downside-risk hazard route after the Stage03R hazard-first lifecycle work and Stage04 prospective validation discipline. WP0 froze the scope, contracts, taxonomy, readiness policy, and prospective holdout registration before any target building, model training, probability calibration, or empirical holdout consumption.
 
-WP0.5 completed sample-feasibility preflight on the V7 verified SW2021 L2 universe. WP1 completed the first formal Stage03V1 downside-risk target dataset builder and synthetic path-target tests. WP2 created the target-control gate for target leakage, permanent cross-cutoff censoring, purge/embargo, and feature/target namespace leakage policy. WP2.1 completed a full-target streaming / blockwise audit. WP3 completed causal baseline diagnostics. WP3.5 completed volatility-scaled threshold supplement and baseline metric sanity checks. WP4 completed logistic downside-risk hazard v1. WP5 is now active and implements calibration diagnostics, clustered inference, and development-only downside-risk readiness.
+WP0.5 completed sample-feasibility preflight on the V7 verified SW2021 L2 universe. WP1 completed the first formal Stage03V1 downside-risk target dataset builder and synthetic path-target tests. WP2 created the target-control gate for target leakage, permanent cross-cutoff censoring, purge/embargo, and feature/target namespace leakage policy. WP2.1 completed a full-target streaming / blockwise audit. WP3 completed causal baseline diagnostics. WP3.5 completed volatility-scaled threshold supplement and baseline metric sanity checks. WP4 completed logistic downside-risk hazard v1. WP5 completed calibration diagnostics, clustered inference, and development-only downside-risk readiness. WP6 is now active and prepares the historical-development risk validation protocol and research-only downshift evidence pack for a later WP7 final gate.
 
 ## Route Anchors
 
@@ -23,7 +23,8 @@ WP0.5 completed sample-feasibility preflight on the V7 verified SW2021 L2 univer
 - `docs/work_packages/stage03v/STAGE03V_WP3.5_volatility_scaled_threshold_sanity_gate.md`
 - `docs/work_packages/stage03v/STAGE03V_WP4_logistic_downside_risk_hazard_v1.md`
 - `docs/work_packages/stage03v/STAGE03V_WP5_calibration_clustered_inference_readiness.md`
-- `docs/codex_instructions/stage03v/CODEX_STAGE03V_WP5_calibration_clustered_inference_readiness.md`
+- `docs/work_packages/stage03v/STAGE03V_WP6_risk_validation_protocol_downshift_report.md`
+- `docs/codex_instructions/stage03v/CODEX_STAGE03V_WP6_risk_validation_protocol_downshift_report.md`
 - `reports/stage03v/sample_feasibility_report.json`
 - `reports/stage03v/risk_event_target_support.json`
 - `reports/stage03v/target_controls_report.json`
@@ -31,6 +32,7 @@ WP0.5 completed sample-feasibility preflight on the V7 verified SW2021 L2 univer
 - `reports/stage03v/baseline_diagnostics_report.json`
 - `reports/stage03v/vol_scaled_threshold_sanity_report.json`
 - `reports/stage03v/logistic_hazard_report.json`
+- `reports/stage03v/calibration_readiness_report.json`
 
 ## Package Sequence
 
@@ -44,25 +46,25 @@ WP0.5 completed sample-feasibility preflight on the V7 verified SW2021 L2 univer
 | STAGE03V-WP3-v1 | Volatility, Range-Based, Empirical, and Continuous Diagnostic Baselines | archived | stage03v/wp3-volatility-range-empirical-baselines | add causal baseline diagnostics after target controls and full-target audit pass |
 | STAGE03V-WP3.5-v1 | Volatility-Scaled Threshold Supplement and Baseline Metric Sanity Gate | archived | stage03v/wp3.5-volatility-scaled-threshold-sanity | evaluate volatility-scaled threshold supplement and audit WP3 metric artifacts before WP4 opens |
 | STAGE03V-WP4-v1 | Logistic Downside Risk Hazard v1 | archived | stage03v/wp4-logistic-downside-risk-hazard-v1 | train deterministic logistic downside-risk hazard on fixed-threshold Stage03V1 targets |
-| STAGE03V-WP5-v1 | Calibration, Clustered Inference, and Downside Risk Readiness Matrix | active | stage03v/wp5-calibration-clustered-readiness | calibrate logistic hazard outputs and assign development-only readiness after WP4 acceptance |
-| STAGE03V-WP6 | Risk Validation Protocol and Downshift Research Report | blocked_until_wp5_accepted | pending | validate research-only/downshift evidence after readiness matrix |
-| STAGE03V-WP7 | Stage03V1 Final Gate | blocked | pending | produce final Stage03V1 gate after all prior packages are accepted |
+| STAGE03V-WP5-v1 | Calibration, Clustered Inference, and Downside Risk Readiness Matrix | archived | stage03v/wp5-calibration-clustered-readiness | calibrate logistic hazard outputs and assign development-only readiness after WP4 acceptance |
+| STAGE03V-WP6-v1 | Risk Validation Protocol and Downshift Research Report | active | stage03v/wp6-risk-validation-downshift-report | validate historical-development research-only/downshift evidence after readiness matrix |
+| STAGE03V-WP7 | Stage03V1 Final Gate | blocked_until_wp6_accepted | pending | produce final Stage03V1 gate after all prior packages are accepted |
 
 ## Execution Rules
 
-1. Only STAGE03V-WP5-v1 is executable in the current Stage03V branch sequence.
-2. STAGE03V-WP6 and later packages are blocked until WP5 is accepted.
-3. WP5 must use the V7 DB path and accepted WP1 / WP2 / WP2.1 / WP3 / WP3.5 / WP4 artifacts as hard inputs.
-4. WP5 may fit calibration candidates and assign development-only readiness categories.
-5. WP5 must not consume or inspect prospective final holdout performance.
-6. WP5 must not modify WP1 target rows, labels, support reports, or target universe manifests.
-7. WP5 must not replace the fixed-threshold Stage03V1 target mainline with volatility-scaled labels.
-8. WP5 must not train new non-logistic model families.
-9. WP5 must not fetch external data.
-10. WP5 must not commit full target, feature, raw score, or calibrated score matrices.
-11. WP5 must not write persistent DB tables by default.
-12. WP5 must not modify HMM or HSMM training algorithms.
-13. WP5 must not create UI, trading, buy/sell, recommendation, sizing, or decision outputs.
+1. Only STAGE03V-WP6-v1 is executable in the current Stage03V branch sequence.
+2. STAGE03V-WP7 and later packages are blocked until WP6 is accepted.
+3. WP6 must use the V7 DB path and accepted WP1 / WP2 / WP2.1 / WP3 / WP3.5 / WP4 / WP5 artifacts as hard inputs.
+4. WP6 may create historical-development validation protocol statuses and research-only downshift evidence tiers.
+5. WP6 must not consume, score, inspect, or evaluate prospective final holdout performance.
+6. WP6 must not modify WP1 target rows, labels, support reports, or target universe manifests.
+7. WP6 must not replace the fixed-threshold Stage03V1 target mainline with volatility-scaled labels.
+8. WP6 must not train new model families or recalibrate probabilities beyond reading WP5 calibration artifacts.
+9. WP6 must not fetch external data.
+10. WP6 must not commit full target, feature, raw score, calibrated score, or event matrices.
+11. WP6 must not write persistent DB tables by default.
+12. WP6 must not modify HMM or HSMM training algorithms.
+13. WP6 must not create UI, trading, buy/sell, recommendation, sizing, portfolio action, execution, or decision outputs.
 14. Stage03V2 and Stage03V3 remain placeholders only unless a later reviewed package explicitly activates them.
 
 ## WP0 Accepted Deliverables
@@ -158,7 +160,7 @@ WP0.5 completed sample-feasibility preflight on the V7 verified SW2021 L2 univer
 - `reports/stage03v/logistic_hazard_feature_audit.csv`
 - `reports/stage03v/logistic_hazard_audit_sample.csv`
 
-## WP5 Expected Deliverables
+## WP5 Accepted Deliverables
 
 - `src/evaluation/stage03v_calibration_readiness.py`
 - `scripts/stage03v_calibration_readiness_gate.sh`
@@ -174,6 +176,24 @@ WP0.5 completed sample-feasibility preflight on the V7 verified SW2021 L2 univer
 - `reports/stage03v/downside_readiness_matrix.csv`
 - `reports/stage03v/calibration_model_manifest.json`
 - `reports/stage03v/calibration_audit_sample.csv`
+
+## WP6 Expected Deliverables
+
+- `src/evaluation/stage03v_risk_validation.py`
+- `scripts/stage03v_risk_validation_gate.sh`
+- `tests/test_stage03v_risk_validation.py`
+- `tests/test_stage03v_risk_validation_boundaries.py`
+- `configs/stage03v_risk_validation_protocol_policy_v1.yaml`
+- `reports/stage03v/risk_validation_protocol.md`
+- `reports/stage03v/risk_validation_report.md`
+- `reports/stage03v/risk_validation_report.json`
+- `reports/stage03v/risk_validation_metrics.csv`
+- `reports/stage03v/downshift_research_report.md`
+- `reports/stage03v/downshift_research_report.json`
+- `reports/stage03v/downshift_candidate_matrix.csv`
+- `reports/stage03v/risk_validation_clustered_summary.csv`
+- `reports/stage03v/risk_validation_audit_sample.csv`
+- `reports/stage03v/wp7_final_gate_input_manifest.json`
 
 ## Locked Dates
 
@@ -207,3 +227,4 @@ Stage03V reuses the Stage04 prospective validation ledger mechanism through a St
 | 2026-06-11 | Implemented STAGE03V-WP4-v1 logistic downside-risk hazard artifacts and gate. | Codex |
 | 2026-06-11 | Archived WP4 and activated STAGE03V-WP5-v1 calibration, clustered inference, and development-readiness. | ChatGPT |
 | 2026-06-11 | Implemented STAGE03V-WP5-v1 calibration diagnostics, clustered inference, and development-readiness artifacts. | Codex |
+| 2026-06-11 | Archived WP5 and activated STAGE03V-WP6-v1 risk validation protocol and downshift research report. | Codex |
