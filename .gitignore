@@ -74,6 +74,12 @@ reports/stage03r/*_full.csv
 !reports/stage03v/logistic_hazard_coefficients.csv
 !reports/stage03v/logistic_hazard_feature_audit.csv
 !reports/stage03v/logistic_hazard_audit_sample.csv
+!reports/stage03v/calibration_fold_metrics.csv
+!reports/stage03v/calibration_slice_metrics.csv
+!reports/stage03v/calibration_curve_bins.csv
+!reports/stage03v/clustered_inference_summary.csv
+!reports/stage03v/downside_readiness_matrix.csv
+!reports/stage03v/calibration_audit_sample.csv
 !reports/stage04/
 !reports/stage04/*.md
 !reports/stage04/*.json
