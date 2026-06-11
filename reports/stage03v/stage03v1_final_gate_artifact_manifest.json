@@ -1,0 +1,183 @@
+{
+  "index_id": "STAGE03V-WP7-v1",
+  "manifest_version": "stage03v1_final_gate_artifact_manifest_v1",
+  "status": "pass",
+  "final_gate_executed": "yes",
+  "final_gate_verdict": "PASS_ENGINEERING_HISTORICAL_DEFER_PROSPECTIVE",
+  "source_db_path": "data/db/a_share_hmm_tushare_v7.duckdb",
+  "stage03v2_implemented": "no",
+  "stage03v3_implemented": "no",
+  "prospective_holdout_rows_evaluated": 0,
+  "inputs": [
+    {
+      "path": "reports/stage03v/stage03v_wp0_scope_freeze_report.json",
+      "role": "input",
+      "exists": true,
+      "size_bytes": 4953,
+      "sha256": "84c94011bad3c9765e3efd74fa4c70d6cfccce16bbe2a559031e1b6082970db4"
+    },
+    {
+      "path": "reports/stage03v/sample_feasibility_report.json",
+      "role": "input",
+      "exists": true,
+      "size_bytes": 33217,
+      "sha256": "06b8ae1d9d867a3ccb88551797ba20fac17490812182f2680d0a62aff2baa776"
+    },
+    {
+      "path": "reports/stage03v/risk_event_target_support.json",
+      "role": "input",
+      "exists": true,
+      "size_bytes": 12268,
+      "sha256": "498f608730f8cd0cc66bf3f920a954c22141f6efc08ee5da3b285c785d2468e9"
+    },
+    {
+      "path": "reports/stage03v/target_controls_report.json",
+      "role": "input",
+      "exists": true,
+      "size_bytes": 4284,
+      "sha256": "24aed2f00cc59fe9b15dbed7b780759b83cdf62be5bf4134cc810f5206224080"
+    },
+    {
+      "path": "reports/stage03v/full_target_streaming_audit_report.json",
+      "role": "input",
+      "exists": true,
+      "size_bytes": 18903,
+      "sha256": "476028853ccf8c9efd2ec1759c4cbfb7eba32e991a360fa3b320ace8d4ec3100"
+    },
+    {
+      "path": "reports/stage03v/baseline_diagnostics_report.json",
+      "role": "input",
+      "exists": true,
+      "size_bytes": 4871,
+      "sha256": "e20f399b61b7f8fe5721c93a1aa0c67495fbbe7d140e375845b90c0281f81d6a"
+    },
+    {
+      "path": "reports/stage03v/vol_scaled_threshold_sanity_report.json",
+      "role": "input",
+      "exists": true,
+      "size_bytes": 4926,
+      "sha256": "d666c7f892068abde0e1964cda77939583f4b9d7856c3134629a34f443fe794a"
+    },
+    {
+      "path": "reports/stage03v/logistic_hazard_report.json",
+      "role": "input",
+      "exists": true,
+      "size_bytes": 6036,
+      "sha256": "6c12fa242c119dd636ba217e09c0f7e4f343c918466d629e1d0fbb4778a6f03a"
+    },
+    {
+      "path": "reports/stage03v/calibration_readiness_report.json",
+      "role": "input",
+      "exists": true,
+      "size_bytes": 6335,
+      "sha256": "1172a412c5cc34193f79846f67aa78b5251e379d2b2fa82085ff1c1f7985b980"
+    },
+    {
+      "path": "reports/stage03v/risk_validation_report.json",
+      "role": "input",
+      "exists": true,
+      "size_bytes": 5650,
+      "sha256": "478cbfe36c3c3c96ef32e8f97e1f18c04164a3882fc330d3522f2b1f46685602"
+    },
+    {
+      "path": "reports/stage03v/downshift_research_report.json",
+      "role": "input",
+      "exists": true,
+      "size_bytes": 2074,
+      "sha256": "b937594ab2881a2ac6ba88194a70becf50cd6a0c5cd15c681e64962ae6c2c341"
+    },
+    {
+      "path": "reports/stage03v/wp7_final_gate_input_manifest.json",
+      "role": "input",
+      "exists": true,
+      "size_bytes": 2996,
+      "sha256": "1ee542f9612a6f85102dd3cbb6da7861d6a2477654da2a1a4c1301953b01f1e1"
+    },
+    {
+      "path": "reports/stage04/prospective_validation_ledger.stage03v.template.jsonl",
+      "role": "input",
+      "exists": true,
+      "size_bytes": 1093,
+      "sha256": "cce6ddf56c91803aa9a569bb8844c6ebdc4ed91b06a8cbb19dc9322ecf2cc329"
+    },
+    {
+      "path": "configs/stage03v_final_gate_policy_v1.yaml",
+      "role": "input",
+      "exists": true,
+      "size_bytes": 2172,
+      "sha256": "53189c148fa08aab2b7c761c649e81520816fb0e933b48dabc1683b39ce86943"
+    }
+  ],
+  "outputs": [
+    {
+      "path": "reports/stage03v/stage03v1_final_gate_report.md",
+      "role": "output",
+      "exists": true,
+      "size_bytes": 1742,
+      "sha256": "3ecccf7ce583bb666d1880c596b3c7b42ed8015722966434f17a4636fd6bce68"
+    },
+    {
+      "path": "reports/stage03v/stage03v1_final_gate_report.json",
+      "role": "output",
+      "exists": true,
+      "size_bytes": 4657,
+      "sha256": "150ffa5fbc67a7642597ce7dccad289dbdf1dfc976a26d53bd2265218358b6e9"
+    },
+    {
+      "path": "reports/stage03v/stage03v1_final_gate_verdict.json",
+      "role": "output",
+      "exists": true,
+      "size_bytes": 1616,
+      "sha256": "78b0861b3043aaeb9ccce43a054aa5ac341881ee1fa77944f6385cb1dd36c824"
+    },
+    {
+      "path": "reports/stage03v/stage03v1_final_gate_evidence_matrix.csv",
+      "role": "output",
+      "exists": true,
+      "size_bytes": 1742,
+      "sha256": "6c74cfc226102bcade26e81c94d907c67240f3fa3525dc0413a07f6836d314e1"
+    },
+    {
+      "path": "reports/stage03v/stage03v1_prospective_holdout_status.json",
+      "role": "output",
+      "exists": true,
+      "size_bytes": 878,
+      "sha256": "31ecb7918719a3981253e38032c6b3fe7bcc7020064d388aa74f2f8335911e7d"
+    },
+    {
+      "path": "reports/stage03v/stage03v1_post_gate_action_plan.md",
+      "role": "output",
+      "exists": true,
+      "size_bytes": 619,
+      "sha256": "51701f588d379f73d58f5c0f67adebb1e1e803db1ae156dd951ac078073c3dd2"
+    },
+    {
+      "path": "reports/stage03v/stage03v1_final_gate_audit_sample.csv",
+      "role": "output",
+      "exists": true,
+      "size_bytes": 683,
+      "sha256": "2e1627dda0650285e6b2c1310315aa25ccd1e9a898b6079f630400e1b0c93fd7"
+    }
+  ],
+  "boundary_flags": {
+    "external_data_fetch": "no",
+    "target_dataset_modified": "no",
+    "fixed_threshold_mainline_modified": "no",
+    "persistent_db_table_written": "no",
+    "full_target_matrix_committed": "no",
+    "full_feature_matrix_committed": "no",
+    "full_raw_score_matrix_committed": "no",
+    "full_calibrated_score_matrix_committed": "no",
+    "model_training": "no",
+    "probability_recalibration": "no",
+    "readiness_reassigned": "no",
+    "final_gate_executed": "yes",
+    "prospective_holdout_performance_consumed": "no",
+    "holdout_consumed": "no",
+    "HMM_HSMM_training_modified": "no",
+    "stage03v2_implemented": "no",
+    "stage03v3_implemented": "no",
+    "trading_or_decision_output": "no"
+  },
+  "created_at": "2026-06-11T05:43:06+00:00"
+}

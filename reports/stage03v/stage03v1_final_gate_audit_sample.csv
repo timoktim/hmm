@@ -1,0 +1,7 @@
+audit_item,status,source_artifact,observed_value,requirement
+final_gate_verdict,pass,reports/stage03v/stage03v1_final_gate_report.json,PASS_ENGINEERING_HISTORICAL_DEFER_PROSPECTIVE,allowed final verdict
+source_db_path,pass,reports/stage03v/stage03v1_final_gate_report.json,data/db/a_share_hmm_tushare_v7.duckdb,V7 DB path
+holdout_rows_evaluated,pass,reports/stage03v/stage03v1_final_gate_report.json,0,0
+decision_support_gate,pass,reports/stage03v/stage03v1_final_gate_report.json,DEFER,DEFER unless holdout gate met
+stage03v2_placeholder,pass,reports/stage03v/stage03v1_final_gate_report.json,no,no
+stage03v3_placeholder,pass,reports/stage03v/stage03v1_final_gate_report.json,no,no

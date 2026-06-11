@@ -62,7 +62,7 @@ WP0.5 completed sample-feasibility preflight on the V7 verified SW2021 L2 univer
 | STAGE03V-WP4-v1 | Logistic Downside Risk Hazard v1 | archived | stage03v/wp4-logistic-downside-risk-hazard-v1 | train deterministic logistic downside-risk hazard on fixed-threshold Stage03V1 targets |
 | STAGE03V-WP5-v1 | Calibration, Clustered Inference, and Downside Risk Readiness Matrix | archived | stage03v/wp5-calibration-clustered-readiness | calibrate logistic hazard outputs and assign development-only readiness after WP4 acceptance |
 | STAGE03V-WP6-v1 | Risk Validation Protocol and Downshift Research Report | archived | stage03v/wp6-risk-validation-downshift-report | validate historical-development research-only/downshift evidence after readiness matrix |
-| STAGE03V-WP7 | Stage03V1 Final Gate | active | stage03v/wp7-stage03v1-final-gate | produce final Stage03V1 gate verdict after all prior packages are accepted |
+| STAGE03V-WP7-v1 | Stage03V1 Final Gate | active | stage03v/wp7-stage03v1-final-gate | produce final Stage03V1 gate verdict after all prior packages are accepted |
 
 ## Execution Rules
 
@@ -73,3 +73,19 @@ WP0.5 completed sample-feasibility preflight on the V7 verified SW2021 L2 univer
 5. WP7 must preserve fixed-threshold Stage03V1 target mainline and treat WP3.5 volatility-scaled candidates as reference only.
 6. WP7 may emit a defer verdict if prospective holdout requirements are not met.
 7. Stage03V2 and Stage03V3 remain placeholders.
+
+## WP7 Expected Deliverables
+
+- `src/evaluation/stage03v_final_gate.py`
+- `scripts/stage03v_final_gate.sh`
+- `tests/test_stage03v_final_gate.py`
+- `tests/test_stage03v_final_gate_boundaries.py`
+- `configs/stage03v_final_gate_policy_v1.yaml`
+- `reports/stage03v/stage03v1_final_gate_report.md`
+- `reports/stage03v/stage03v1_final_gate_report.json`
+- `reports/stage03v/stage03v1_final_gate_verdict.json`
+- `reports/stage03v/stage03v1_final_gate_evidence_matrix.csv`
+- `reports/stage03v/stage03v1_final_gate_artifact_manifest.json`
+- `reports/stage03v/stage03v1_prospective_holdout_status.json`
+- `reports/stage03v/stage03v1_post_gate_action_plan.md`
+- `reports/stage03v/stage03v1_final_gate_audit_sample.csv`

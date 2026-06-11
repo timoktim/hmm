@@ -1,0 +1,19 @@
+{
+  "index_id": "STAGE03V-WP7-v1",
+  "prospective_holdout_policy": "defer_if_minimum_not_met",
+  "information_cutoff_date": "2026-06-10",
+  "holdout_start": "2026-06-11",
+  "prospective_holdout_rows_available": 0,
+  "prospective_holdout_trade_dates_available": 0,
+  "prospective_holdout_rows_evaluated": 0,
+  "prospective_holdout_consumption_count": 0,
+  "prospective_holdout_evaluation_authorized": false,
+  "prospective_holdout_min_trade_dates": 60,
+  "prospective_holdout_min_positive_events": 10,
+  "prospective_holdout_min_stress_event_blocks": 1,
+  "prospective_holdout_minimum_requirement_status": "insufficient_unconsumed",
+  "prospective_holdout_stress_event_requirement_status": "not_evaluated_unconsumed",
+  "prospective_holdout_gate_status": "defer_or_insufficient",
+  "prospective_holdout_next_review_cadence": "quarterly",
+  "holdout_performance_consumed": "no"
+}
