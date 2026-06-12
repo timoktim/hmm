@@ -2,7 +2,7 @@
 
 Status: active
 Stage: 03V / Volatility and downside-risk hazard
-Active package: STAGE03V-FIX1-v1
+Active package: STAGE03V-RERUN1-v1
 
 ## Audit Notice (2026-06-11)
 
@@ -24,7 +24,7 @@ blocked until RERUN1 is accepted.
 
 Stage03V defines a volatility and downside-risk hazard route after the Stage03R hazard-first lifecycle work and Stage04 prospective validation discipline. WP0 froze the scope, contracts, taxonomy, readiness policy, and prospective holdout registration before any target building, model training, probability calibration, or empirical holdout consumption.
 
-WP0.5 completed sample-feasibility preflight on the V7 verified SW2021 L2 universe. WP1 completed the first formal Stage03V1 downside-risk target dataset builder and synthetic path-target tests. WP2 created the target-control gate for target leakage, permanent cross-cutoff censoring, purge/embargo, and feature/target namespace leakage policy. WP2.1 completed a full-target streaming / blockwise audit. WP3 completed causal baseline diagnostics. WP3.5 completed volatility-scaled threshold supplement and baseline metric sanity checks. WP4 completed logistic downside-risk hazard v1. WP5 completed calibration diagnostics, clustered inference, and development-only downside-risk readiness. WP6 completed historical-development risk validation protocol and research-only downshift evidence pack. WP7 is now active and produces the final Stage03V1 gate verdict.
+WP0.5 completed sample-feasibility preflight on the V7 verified SW2021 L2 universe. WP1 completed the first formal Stage03V1 downside-risk target dataset builder and synthetic path-target tests. WP2 created the target-control gate for target leakage, permanent cross-cutoff censoring, purge/embargo, and feature/target namespace leakage policy. WP2.1 completed a full-target streaming / blockwise audit. WP3 completed causal baseline diagnostics. WP3.5 completed volatility-scaled threshold supplement and baseline metric sanity checks. WP4 completed logistic downside-risk hazard v1. WP5 completed calibration diagnostics, clustered inference, and development-only downside-risk readiness. WP6 completed historical-development risk validation protocol and research-only downshift evidence pack; its empirical evidence is invalidated by the 2014 microfold audit. FIX1 is archived after contract repairs. RERUN1 is now active for full-scale revalidation. WP7 remains blocked until RERUN1 is accepted.
 
 ## Route Anchors
 
@@ -82,14 +82,14 @@ WP0.5 completed sample-feasibility preflight on the V7 verified SW2021 L2 univer
 | STAGE03V-WP4-v1 | Logistic Downside Risk Hazard v1 | archived | stage03v/wp4-logistic-downside-risk-hazard-v1 | train deterministic logistic downside-risk hazard on fixed-threshold Stage03V1 targets |
 | STAGE03V-WP5-v1 | Calibration, Clustered Inference, and Downside Risk Readiness Matrix | archived | stage03v/wp5-calibration-clustered-readiness | calibrate logistic hazard outputs and assign development-only readiness after WP4 acceptance |
 | STAGE03V-WP6-v1 | Risk Validation Protocol and Downshift Research Report | archived_evidence_invalidated | stage03v/wp6-risk-validation-downshift-report | validate historical-development research-only/downshift evidence after readiness matrix |
-| STAGE03V-FIX1-v1 | Contract Repairs | active | stage03v/fix1-contract-repairs | close audit findings F1-F6 in evaluation code before full-scale rerun |
-| STAGE03V-RERUN1-v1 | Full-Scale Revalidation (B0 fold plan v2, B1 WP4/WP5 rerun, B2 three-arm downshift) | blocked_until_fix1_accepted | stage03v/rerun1-full-scale-revalidation | rebuild fold plan from full labeled data with magnitude gates, re-execute WP4/WP5, implement and run three-arm downshift experiment |
+| STAGE03V-FIX1-v1 | Contract Repairs | archived | stage03v/fix1-contract-repairs | close audit findings F1-F6 in evaluation code before full-scale rerun |
+| STAGE03V-RERUN1-v1 | Full-Scale Revalidation (B0 fold plan v2, B1 WP4/WP5 rerun, B2 three-arm downshift) | active | stage03v/rerun1-full-scale-revalidation | rebuild fold plan from full labeled data with magnitude gates, re-execute WP4/WP5, implement and run three-arm downshift experiment |
 | STAGE03V-WP7 | Stage03V1 Final Gate | blocked_until_rerun1_accepted | stage03v/wp7-stage03v1-final-gate | produce final Stage03V1 gate verdict after all prior packages are accepted |
 
 ## Execution Rules
 
-1. Only STAGE03V-FIX1-v1 is executable in the current Stage03V branch sequence.
-2. STAGE03V-RERUN1-v1 becomes executable only after FIX1 is accepted and merged; its sub-stages run strictly B0 -> B1 -> B2.
+1. Only STAGE03V-RERUN1-v1 is executable in the current Stage03V branch sequence.
+2. STAGE03V-RERUN1-v1 sub-stages run strictly B0 -> B1 -> B2.
 3. WP4-WP6 empirical artifacts remain in place until RERUN1 supersedes them; they must not be cited as evidence of signal strength or weakness.
 4. WP7 is blocked until RERUN1 is accepted. WP7 may then read only WP0-WP3.5 and RERUN1 artifacts.
 5. WP7 must not train models, recalibrate probabilities, reassign readiness, or consume prospective holdout unless explicitly authorized.

@@ -7,8 +7,10 @@ cd "$ROOT_DIR"
 PYTHON_BIN="${PYTHON_BIN:-.venv/bin/python}"
 PYTEST_BIN="${PYTEST_BIN:-.venv/bin/pytest}"
 DB_PATH="${STAGE03V_V7_DB:-data/db/a_share_hmm_tushare_v7.duckdb}"
+FOLD_PLAN="${STAGE03V_FOLD_PLAN:-reports/stage03v/purge_embargo_fold_plan.json}"
 
 echo "STAGE03V_CALIBRATION_READINESS_GATE_DB=$DB_PATH"
+echo "STAGE03V_CALIBRATION_READINESS_GATE_FOLD_PLAN=$FOLD_PLAN"
 
 "$PYTHON_BIN" -m compileall -q src tests
 "$PYTEST_BIN" -q tests/test_stage03v_calibration_readiness.py tests/test_stage03v_calibration_causality.py
@@ -24,7 +26,7 @@ echo "STAGE03V_CALIBRATION_READINESS_GATE_DB=$DB_PATH"
   --logistic-fold-metrics reports/stage03v/logistic_hazard_fold_metrics.csv \
   --logistic-slice-metrics reports/stage03v/logistic_hazard_slice_metrics.csv \
   --logistic-model-manifest reports/stage03v/logistic_hazard_model_manifest.json \
-  --fold-plan reports/stage03v/purge_embargo_fold_plan.json \
+  --fold-plan "$FOLD_PLAN" \
   --policy configs/stage03v_calibration_readiness_policy_v1.yaml \
   --output reports/stage03v/calibration_readiness_report.md \
   --summary-json reports/stage03v/calibration_readiness_report.json \
