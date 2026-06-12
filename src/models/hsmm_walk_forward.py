@@ -986,6 +986,7 @@ def run_hsmm_walk_forward(
                     "fit_n_jobs": model.fit_n_jobs_,
                     "fit_parallel_enabled": model.fit_parallel_enabled_,
                     "fit_parallel_fallback": model.fit_parallel_fallback_,
+                    "fit_parallel_warning": model.fit_parallel_warning_,
                     "fit_iteration_count": model.fit_iteration_count_,
                     "fit_decode_seconds": model.fit_decode_seconds_,
                     "fit_update_seconds": model.fit_update_seconds_,

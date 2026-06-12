@@ -113,5 +113,10 @@ reports/stage04/*_full.csv
 reports/stage04/full_*.csv
 reports/stage04/*prediction*.csv
 reports/stage04/*local*.csv
+!reports/hsmm_diagnostics/
+!reports/hsmm_diagnostics/hsmm_performance_matrix_report.md
+!reports/hsmm_diagnostics/hsmm_performance_matrix_report.json
+!reports/hsmm_diagnostics/hsmm_performance_matrix_summary.csv
+reports/hsmm_diagnostics/local/
 
 *.zip
