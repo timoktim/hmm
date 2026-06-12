@@ -2,7 +2,23 @@
 
 Status: active
 Stage: 03V / Volatility and downside-risk hazard
-Active package: STAGE03V-WP7-v1
+Active package: STAGE03V-FIX1-v1
+
+## Audit Notice (2026-06-11)
+
+The Stage03V1 post-completion audit found that
+`reports/stage03v/purge_embargo_fold_plan.json` contains three micro-folds
+covering only 2014-01-13 to 2014-02-12, built from the WP2 500-row audit
+sample. All WP4-WP6 empirical metrics consumed this plan and are therefore
+recorded as `invalidated_due_to_fold_coverage`: they measure neither signal
+strength nor weakness. Engineering and boundary discipline of WP4-WP6 remain
+valid. The WP6 three-arm downshift experiment was additionally found to be
+unimplemented (tier aggregation only).
+
+Remediation sequence: `STAGE03V-FIX1-v1` (contract repairs, code-and-tests
+only) then `STAGE03V-RERUN1-v1` (fold plan v2 with magnitude gates, full-scale
+WP4/WP5 re-execution, three-arm downshift experiment). `STAGE03V-WP7-v1` is
+blocked until RERUN1 is accepted.
 
 ## Purpose
 
@@ -25,7 +41,11 @@ WP0.5 completed sample-feasibility preflight on the V7 verified SW2021 L2 univer
 - `docs/work_packages/stage03v/STAGE03V_WP5_calibration_clustered_inference_readiness.md`
 - `docs/work_packages/stage03v/STAGE03V_WP6_risk_validation_protocol_downshift_report.md`
 - `docs/work_packages/stage03v/STAGE03V_WP7_stage03v1_final_gate.md`
+- `docs/work_packages/stage03v/STAGE03V_FIX1_contract_repairs.md`
+- `docs/work_packages/stage03v/STAGE03V_RERUN1_full_scale_revalidation.md`
 - `docs/codex_instructions/stage03v/CODEX_STAGE03V_WP7_stage03v1_final_gate.md`
+- `docs/codex_instructions/stage03v/CODEX_STAGE03V_FIX1_contract_repairs.md`
+- `docs/codex_instructions/stage03v/CODEX_STAGE03V_RERUN1_full_scale_revalidation.md`
 - `configs/risk_event_signal_contract_v1.yaml`
 - `configs/readiness_policy_risk_event_v1.yaml`
 - `configs/stage03v_sw_l2_target_universe_v1.yaml`
@@ -61,15 +81,19 @@ WP0.5 completed sample-feasibility preflight on the V7 verified SW2021 L2 univer
 | STAGE03V-WP3.5-v1 | Volatility-Scaled Threshold Supplement and Baseline Metric Sanity Gate | archived | stage03v/wp3.5-volatility-scaled-threshold-sanity | evaluate volatility-scaled threshold supplement and audit WP3 metric artifacts before WP4 opens |
 | STAGE03V-WP4-v1 | Logistic Downside Risk Hazard v1 | archived | stage03v/wp4-logistic-downside-risk-hazard-v1 | train deterministic logistic downside-risk hazard on fixed-threshold Stage03V1 targets |
 | STAGE03V-WP5-v1 | Calibration, Clustered Inference, and Downside Risk Readiness Matrix | archived | stage03v/wp5-calibration-clustered-readiness | calibrate logistic hazard outputs and assign development-only readiness after WP4 acceptance |
-| STAGE03V-WP6-v1 | Risk Validation Protocol and Downshift Research Report | archived | stage03v/wp6-risk-validation-downshift-report | validate historical-development research-only/downshift evidence after readiness matrix |
-| STAGE03V-WP7 | Stage03V1 Final Gate | active | stage03v/wp7-stage03v1-final-gate | produce final Stage03V1 gate verdict after all prior packages are accepted |
+| STAGE03V-WP6-v1 | Risk Validation Protocol and Downshift Research Report | archived_evidence_invalidated | stage03v/wp6-risk-validation-downshift-report | validate historical-development research-only/downshift evidence after readiness matrix |
+| STAGE03V-FIX1-v1 | Contract Repairs | active | stage03v/fix1-contract-repairs | close audit findings F1-F6 in evaluation code before full-scale rerun |
+| STAGE03V-RERUN1-v1 | Full-Scale Revalidation (B0 fold plan v2, B1 WP4/WP5 rerun, B2 three-arm downshift) | blocked_until_fix1_accepted | stage03v/rerun1-full-scale-revalidation | rebuild fold plan from full labeled data with magnitude gates, re-execute WP4/WP5, implement and run three-arm downshift experiment |
+| STAGE03V-WP7 | Stage03V1 Final Gate | blocked_until_rerun1_accepted | stage03v/wp7-stage03v1-final-gate | produce final Stage03V1 gate verdict after all prior packages are accepted |
 
 ## Execution Rules
 
-1. Only STAGE03V-WP7-v1 is executable in the current Stage03V branch sequence.
-2. WP7 may read only WP0-WP6 artifacts and verify consistency, evidence sufficiency, and boundary adherence.
-3. WP7 must not train models, recalibrate probabilities, reassign readiness, or consume prospective holdout unless explicitly authorized.
-4. WP7 must produce final Stage03V1 gate report, verdict JSON, evidence matrix, artifact manifest, post-gate action plan, and audit sample.
-5. WP7 must preserve fixed-threshold Stage03V1 target mainline and treat WP3.5 volatility-scaled candidates as reference only.
-6. WP7 may emit a defer verdict if prospective holdout requirements are not met.
-7. Stage03V2 and Stage03V3 remain placeholders.
+1. Only STAGE03V-FIX1-v1 is executable in the current Stage03V branch sequence.
+2. STAGE03V-RERUN1-v1 becomes executable only after FIX1 is accepted and merged; its sub-stages run strictly B0 -> B1 -> B2.
+3. WP4-WP6 empirical artifacts remain in place until RERUN1 supersedes them; they must not be cited as evidence of signal strength or weakness.
+4. WP7 is blocked until RERUN1 is accepted. WP7 may then read only WP0-WP3.5 and RERUN1 artifacts.
+5. WP7 must not train models, recalibrate probabilities, reassign readiness, or consume prospective holdout unless explicitly authorized.
+6. WP7 must produce final Stage03V1 gate report, verdict JSON, evidence matrix, artifact manifest, post-gate action plan, and audit sample.
+7. All packages must preserve the fixed-threshold Stage03V1 target mainline and treat WP3.5 volatility-scaled candidates as reference only.
+8. WP7 may emit a defer verdict if prospective holdout requirements are not met.
+9. Stage03V2 and Stage03V3 remain placeholders.
