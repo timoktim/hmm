@@ -1,0 +1,16 @@
+{
+  "prospective_holdout_readiness_gate_status": "defer_or_insufficient",
+  "prospective_holdout_rows_available": 0,
+  "prospective_holdout_complete_20d_label_trade_dates": 0,
+  "prospective_holdout_market_event_block_count": 0,
+  "prospective_holdout_rows_evaluated": 0,
+  "prospective_holdout_consumption_count": 0,
+  "prospective_holdout_minimum_requirement_status": "insufficient_registered_minimum_not_met",
+  "prospective_holdout_stress_event_requirement_status": "insufficient_registered_stress_blocks_not_met",
+  "prospective_holdout_gate_status": "defer_or_insufficient",
+  "prospective_holdout_threshold_source": "registered_stage03v_ledger_policy_v2",
+  "prospective_holdout_min_complete_20d_label_trade_dates": 120,
+  "prospective_holdout_min_market_event_blocks": 2,
+  "prospective_holdout_evaluation_authorized": false,
+  "prospective_holdout_performance_consumed": "no"
+}

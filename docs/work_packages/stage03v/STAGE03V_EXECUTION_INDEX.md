@@ -2,7 +2,7 @@
 
 Status: active
 Stage: 03V / Volatility and downside-risk hazard
-Active package: STAGE03V-WP7-v2
+Active package: STAGE03V-WP7-v2 (implemented_pending_acceptance)
 
 ## Audit Notice and RERUN1 Supersession
 
@@ -63,7 +63,7 @@ WP7-v2 must express the actual RERUN1 result: model discrimination is valid, but
 | STAGE03V-FIX1-v1 | Contract Repairs | archived | stage03v/fix1-contract-repairs | close audit findings F1-F6 in evaluation code before full-scale rerun |
 | STAGE03V-RERUN1-v1 | Full-Scale Revalidation | archived | stage03v/rerun1-full-scale-revalidation | accepted full-scale fold plan v2, WP4/WP5 rerun, and B2 three-arm downshift experiment |
 | STAGE03V-WP7-v1 | Stage03V1 Final Gate | superseded_closed | stage03v/wp7-stage03v1-final-gate | old final gate superseded by RERUN1 and WP7-v2 delta requirements |
-| STAGE03V-WP7-v2 | Stage03V1 Final Gate after RERUN1 | active | stage03v/wp7-v2-stage03v1-final-gate-rerun1 | produce final gate verdict using RERUN1 artifacts, expanded B2 verdict states, and registered holdout thresholds |
+| STAGE03V-WP7-v2 | Stage03V1 Final Gate after RERUN1 | implemented_pending_acceptance | stage03v/wp7-v2-stage03v1-final-gate-rerun1 | produce final gate verdict using RERUN1 artifacts, expanded B2 verdict states, and registered holdout thresholds |
 
 ## Execution Rules
 
@@ -116,3 +116,4 @@ The 120 / 2 holdout minimum is registered and must not be silently relaxed.
 | 2026-06-11 | Implemented WP3.5-WP6 original packages; later empirical evidence invalidated by microfold audit. | Codex |
 | 2026-06-12 | Implemented FIX1 and accepted RERUN1 full-scale revalidation in PR89. | Codex |
 | 2026-06-12 | Activated STAGE03V-WP7-v2 after RERUN1 with RERUN1 inputs, expanded B2 verdict states, and corrected holdout thresholds. | ChatGPT |
+| 2026-06-12 | Implemented STAGE03V-WP7-v2 final gate artifacts with baseline-superior primary-risk verdict and registered 120/2 holdout thresholds. | Codex |

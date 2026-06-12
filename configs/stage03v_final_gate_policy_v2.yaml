@@ -1,0 +1,61 @@
+{
+  "index_id": "STAGE03V-WP7-v2",
+  "policy_version": "stage03v_final_gate_policy_v2",
+  "supersedes": "STAGE03V-WP7-v1",
+  "supersession_reason": "rerun1_full_scale_revalidation_replaced_invalidated_wp6_tier_aggregation",
+  "information_cutoff_date": "2026-06-10",
+  "holdout_start": "2026-06-11",
+  "primary_target_family": "fixed_threshold_stage03v1_downside_event",
+  "vol_scaled_candidate_policy": "tracked_reference_only",
+  "stage03v2_policy": "placeholder_only",
+  "stage03v3_policy": "placeholder_only",
+  "final_gate_scope": "stage03v1_downside_risk_only",
+  "required_inputs": {
+    "fold_plan": "reports/stage03v/purge_embargo_fold_plan_v2.json",
+    "trial_accounting": "reports/stage03v/validation_trial_accounting.json",
+    "logistic_hazard": "reports/stage03v/logistic_hazard_report.json",
+    "calibration_readiness": "reports/stage03v/calibration_readiness_report.json",
+    "downshift_experiment": "reports/stage03v/downshift_experiment_report.json",
+    "downshift_arm_metrics": "reports/stage03v/downshift_experiment_arm_metrics.csv"
+  },
+  "legacy_invalidated_inputs_forbidden_as_evidence": [
+    "reports/stage03v/risk_validation_report.json",
+    "reports/stage03v/downshift_research_report.json",
+    "reports/stage03v/wp7_final_gate_input_manifest.json"
+  ],
+  "prospective_holdout_policy": "defer_if_registered_minimum_not_met",
+  "prospective_holdout_evaluation_authorized": false,
+  "prospective_holdout_min_complete_20d_label_trade_dates": 120,
+  "prospective_holdout_min_market_event_blocks": 2,
+  "prospective_holdout_review_cadence": "quarterly",
+  "allow_decision_support_promotion_without_holdout": false,
+  "primary_risk_metrics": [
+    "max_drawdown",
+    "cvar_95",
+    "realized_volatility"
+  ],
+  "allowed_final_verdicts": [
+    "PASS_ENGINEERING_MODEL_DISCRIMINATION_BASELINE_SUPERIOR_DEFER_PROSPECTIVE",
+    "PASS_RESEARCH_ONLY_BASELINE_SUPERIOR_ON_PRIMARY_RISK_METRICS",
+    "DEFER_PROSPECTIVE_HOLDOUT_INSUFFICIENT",
+    "FAIL_BOUNDARY_OR_LEAKAGE",
+    "FAIL_INPUT_ARTIFACTS",
+    "FAIL_RERUN1_EVIDENCE_INCONSISTENT",
+    "FAIL_VALIDATION_EVIDENCE",
+    "BLOCKED_INPUTS_NOT_READY"
+  ],
+  "forbidden_active_holdout_minimums": {
+    "complete_20d_label_trade_dates": 60,
+    "market_event_blocks": 1
+  },
+  "forbidden_outputs": [
+    "buy",
+    "sell",
+    "position_sizing",
+    "execution_instruction",
+    "portfolio_recommendation"
+  ],
+  "external_fetch_policy": "forbidden",
+  "persistent_db_table_policy": "forbidden_by_default",
+  "full_score_matrix_policy": "forbidden_to_commit"
+}

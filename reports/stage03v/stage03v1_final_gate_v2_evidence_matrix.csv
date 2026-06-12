@@ -1,0 +1,8 @@
+component,status,evidence_path,detail,value
+wp0_scope_freeze,pass,reports/stage03v/stage03v_wp0_scope_freeze_report.json,scope freeze accepted,pass
+rerun1_fold_plan_v2,pass,reports/stage03v/purge_embargo_fold_plan_v2.json,fold plan v2 magnitude gates,pass
+rerun1_logistic_hazard,pass,reports/stage03v/logistic_hazard_report.json,model discrimination,model_discrimination_pass
+rerun1_calibration_readiness,pass,reports/stage03v/calibration_readiness_report.json,readiness candidates,5
+rerun1_downshift_experiment,pass,reports/stage03v/downshift_experiment_report.json,primary risk metric comparison,baseline_superior_on_primary_risk_metrics
+prospective_holdout,defer_or_insufficient,reports/stage04/prospective_validation_ledger.stage03v.template.jsonl,registered 120/2 holdout policy,0
+final_verdict,pass,reports/stage03v/stage03v1_final_gate_v2_verdict.json,WP7-v2 final gate,PASS_ENGINEERING_MODEL_DISCRIMINATION_BASELINE_SUPERIOR_DEFER_PROSPECTIVE
