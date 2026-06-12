@@ -66,7 +66,7 @@ def test_required_wp0_files_exist_and_machine_configs_parse() -> None:
     assert json.loads(REPORT_JSON.read_text(encoding="utf-8"))["index_id"] == "STAGE03V-WP0-v1"
 
 
-def test_execution_index_marks_wp7_v2_implemented_after_rerun1() -> None:
+def test_execution_index_marks_phase2_wp0_implemented_after_closeout() -> None:
     text = EXECUTION_INDEX.read_text(encoding="utf-8")
 
     assert "STAGE03V-WP0-v1 | Scope Freeze, Contracts, Ledger | archived" in text
@@ -82,8 +82,10 @@ def test_execution_index_marks_wp7_v2_implemented_after_rerun1() -> None:
     assert "STAGE03V-FIX1-v1 | Contract Repairs | archived" in text
     assert "STAGE03V-RERUN1-v1 | Full-Scale Revalidation | archived" in text
     assert "STAGE03V-WP7-v1 | Stage03V1 Final Gate | superseded_closed" in text
-    assert "STAGE03V-WP7-v2 | Stage03V1 Final Gate after RERUN1 | implemented_pending_acceptance" in text
-    assert "Only STAGE03V-WP7-v2 is executable in the current Stage03V branch sequence." in text
+    assert "STAGE03V-WP7-v2 | Stage03V1 Final Gate after RERUN1 | archived" in text
+    assert "STAGE03V-CLOSEOUT1-v1 | Stage03V1 Phase 1 Closeout and Artifact Freeze | archived" in text
+    assert "STAGE03V-PHASE2-WP0-v1 | Signal Panel Contract and Snapshot | implemented_pending_acceptance" in text
+    assert "STAGE03V-PHASE2-WP0-v1 is implemented pending acceptance" in text
     assert "registered 120/2 holdout thresholds" in text
 
 

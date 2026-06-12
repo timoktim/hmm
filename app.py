@@ -23,6 +23,7 @@ from src.ui.model_training_page import render_model_training
 from src.ui.navigation import DEFAULT_NAV_GROUP, DEFAULT_PAGE, NAV_GROUPS, page_labels_for_group
 from src.ui.lifecycle_page import render_lifecycle_page
 from src.ui.sector_detail import render_sector_detail
+from src.ui.signal_panel_page import render_signal_panel_page
 from src.ui.state_screener_page import render_state_screener
 from src.ui.stock_filter_page import render_stock_filter
 from src.ui.universe_manager import render_universe_manager
@@ -129,5 +130,7 @@ elif page == "回测":
     render_backtest(storage, universe_id=selected_universe_id)
 elif page == "大盘状态":
     render_market_regime(storage)
+elif page == "信号面板":
+    render_signal_panel_page(storage, universe_id=selected_universe_id)
 else:
     render_data_health(storage)

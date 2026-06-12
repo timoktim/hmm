@@ -2,7 +2,7 @@
 
 Status: active
 Stage: 03V / Volatility and downside-risk hazard
-Active package: STAGE03V-PHASE2-WP0-v1
+Active package: STAGE03V-PHASE2-WP0-v1 (implemented_pending_acceptance)
 
 ## Audit Notice and RERUN1 Supersession
 
@@ -82,7 +82,7 @@ PHASE2-WP0 creates the first read-only signal panel contract, snapshot adapter, 
 | STAGE03V-WP7-v1 | Stage03V1 Final Gate | superseded_closed | stage03v/wp7-stage03v1-final-gate | old final gate superseded by RERUN1 and WP7-v2 delta requirements |
 | STAGE03V-WP7-v2 | Stage03V1 Final Gate after RERUN1 | archived | stage03v/wp7-v2-stage03v1-final-gate-rerun1 | accepted final gate verdict using RERUN1 artifacts, expanded B2 verdict states, and registered holdout thresholds |
 | STAGE03V-CLOSEOUT1-v1 | Stage03V1 Phase 1 Closeout and Artifact Freeze | archived | stage03v/closeout1-artifact-freeze | freeze accepted Stage03V1 Phase 1 artifacts, invalidated-artifact rules, final interpretation, and Phase 2 handoff |
-| STAGE03V-PHASE2-WP0-v1 | Signal Panel Contract and Snapshot | active | stage03v/phase2-wp0-signal-panel-contract | add read-only signal panel contract, snapshot adapter, and UI page for baseline-first human review |
+| STAGE03V-PHASE2-WP0-v1 | Signal Panel Contract and Snapshot | implemented_pending_acceptance | stage03v/phase2-wp0-signal-panel-contract | add read-only signal panel contract, snapshot adapter, and UI page for baseline-first human review |
 | STAGE03V-PHASE2-WP1 | Volatility Baseline Risk Overlay Artifact | blocked_until_phase2_wp0_accepted | TBD | harden baseline volatility overlay after signal panel contract is accepted |
 | STAGE03V-PHASE2-WP2 | Hazard-as-Overlay Residual Research | blocked_until_phase2_wp1 | TBD | evaluate hazard as research-only overlay rather than primary downshift driver |
 | STAGE03V-PHASE2-WP3 | Prospective Holdout Ledger and Quarterly Review Harness | blocked_until_authorized_holdout_review | TBD | future authorized holdout review only after registered thresholds are met |
@@ -90,7 +90,7 @@ PHASE2-WP0 creates the first read-only signal panel contract, snapshot adapter, 
 
 ## Execution Rules
 
-1. Only STAGE03V-PHASE2-WP0-v1 is executable in the current Stage03V branch sequence.
+1. STAGE03V-PHASE2-WP0-v1 is implemented pending acceptance; Phase 2 WP1 remains blocked until WP0 is accepted.
 2. PHASE2-WP0 must add a read-only `信号面板` under `当前状态`.
 3. PHASE2-WP0 must use baseline volatility signals as the primary risk layer.
 4. HMM state and HSMM lifecycle signals are context only.
@@ -132,3 +132,4 @@ The 120 / 2 holdout minimum remains registered and must not be silently relaxed.
 | 2026-06-12 | Implemented STAGE03V-WP7-v2 final gate artifacts with baseline-superior primary-risk verdict and registered 120/2 holdout thresholds. | Codex |
 | 2026-06-12 | Implemented STAGE03V-CLOSEOUT1-v1 artifact freeze, invalidated-artifact registry, and Phase 2 baseline-first handoff. | Codex |
 | 2026-06-12 | Activated STAGE03V-PHASE2-WP0-v1 signal panel contract and snapshot package. | ChatGPT |
+| 2026-06-12 | Implemented STAGE03V-PHASE2-WP0-v1 read-only signal panel, snapshot adapter, contract report, and navigation wiring. | Codex |
