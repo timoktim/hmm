@@ -118,5 +118,10 @@ reports/stage04/*local*.csv
 !reports/hsmm_diagnostics/hsmm_performance_matrix_report.json
 !reports/hsmm_diagnostics/hsmm_performance_matrix_summary.csv
 reports/hsmm_diagnostics/local/
+!reports/gpt_exchange/
+!reports/gpt_exchange/README.md
+!reports/gpt_exchange/sample_manifest.json
+reports/gpt_exchange/latest/
+reports/gpt_exchange/archive/
 
 *.zip

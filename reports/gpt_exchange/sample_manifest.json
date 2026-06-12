@@ -1,0 +1,28 @@
+{
+  "index_id": "GPT-EXCHANGE-WP0-v1",
+  "bundle_version": "gpt_info_exchange_v1",
+  "sample_only": "yes",
+  "source_repo": "timoktim/hmm",
+  "exchange_repo": "timoktim/hmm-info-exchange",
+  "exchange_repo_status": "unavailable_or_not_configured",
+  "sync_status": "skipped_exchange_repo_unavailable",
+  "output_dir": "reports/gpt_exchange/latest",
+  "archive_dir": "reports/gpt_exchange/archive",
+  "snapshot_rows": 5,
+  "watchlists_generated": 4,
+  "not_trading_output": "yes",
+  "push_executed": "no",
+  "boundary_flags": {
+    "openai_api_called": "no",
+    "external_upload_automatic": "no",
+    "credentials_stored": "no",
+    "raw_duckdb_exported": "no",
+    "full_matrices_exported": "no",
+    "holdout_consumed": "no",
+    "stage03v_artifacts_modified": "no",
+    "model_training_recalibration": "no",
+    "trading_or_decision_output": "no",
+    "private_paths_leaked": "no",
+    "invalidated_artifacts_used_as_evidence": "no"
+  }
+}
