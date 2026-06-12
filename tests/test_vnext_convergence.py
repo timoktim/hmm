@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from pathlib import Path
+
 import pandas as pd
 
 from src.data_pipeline.storage import DuckDBStorage
@@ -9,7 +11,7 @@ from src.models.inference import latest_sector_states
 from src.scoring.stock_filter import filter_sector_stocks
 from src.ui.components.data_status_bar import build_data_status_bar_summary
 from src.ui.components.data_trust_card import build_data_trust_summary
-from src.ui.market_regime_page import FULL_MARKET_BREADTH_UI_ENABLED, can_update_full_market_breadth, market_width_visibility_by_coverage
+from src.ui.market_regime_page import market_width_visibility_by_coverage
 
 
 def test_sector_features_scope_isolated(tmp_path):
@@ -190,11 +192,13 @@ def test_market_width_visibility_by_coverage():
     assert "本地已抓取股票样本" in message
 
 
-def test_hidden_disabled_unimplemented_controls():
-    assert FULL_MARKET_BREADTH_UI_ENABLED is True
+def test_market_regime_delegates_global_data_updates_to_data_center():
+    source = Path("src/ui/market_regime_page.py").read_text(encoding="utf-8")
 
-
-def test_full_market_breadth_button_disabled_without_universe(tmp_path):
-    storage = DuckDBStorage(tmp_path / "test.duckdb")
-    storage.init_schema()
-    assert not can_update_full_market_breadth(storage)
+    assert "更新本地样本宽度" in source
+    assert "底层数据更新已统一归口到“数据中心”" in source
+    assert "更新大盘指数数据" not in source
+    assert "更新全 A 股票池" not in source
+    assert "更新全 A 市场宽度" not in source
+    assert "update_market_indices" not in source
+    assert "update_all_a_stock_universe" not in source
