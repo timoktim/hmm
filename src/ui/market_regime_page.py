@@ -7,9 +7,8 @@ import plotly.express as px
 import plotly.graph_objects as go
 import streamlit as st
 
-from src.data_pipeline.market_updater import DEFAULT_MARKET_INDEX_CODES, update_all_a_stock_universe, update_market_breadth, update_market_indices
+from src.data_pipeline.market_updater import update_market_breadth
 from src.data_pipeline.storage import DuckDBStorage
-from src.data_sources.tushare_client import MARKET_INDEXES
 from src.features.market_features import COVERAGE_MODE_FULL_MARKET, COVERAGE_MODE_LOCAL_SAMPLE, build_market_features, latest_market_index_status, normalize_breadth_coverage_columns
 from src.models.market_hmm import latest_market_regime, market_regime_history, train_market_hmm
 from src.ui.components.data_status_bar import render_data_status_bar
@@ -26,8 +25,6 @@ STATE_TEXT = {
     "Neutral": "市场处于震荡或结构性状态，应减少持仓数量，优先选择最强板块。",
     "RiskOff": "市场处于弱势或高波动状态，板块相对强势可能只是抗跌，不宜简单追涨。",
 }
-FULL_MARKET_BREADTH_UI_ENABLED = True
-
 
 def market_width_visibility_by_coverage(
     coverage_level: str | None,
@@ -48,11 +45,6 @@ def market_width_visibility_by_coverage(
     if mode == COVERAGE_MODE_FULL_MARKET:
         return False, "当前全 A 宽度覆盖率不可用或不足，不能按完整全市场宽度解读。"
     return False, "当前宽度覆盖模式未知，不能按完整全市场宽度解读。"
-
-
-def can_update_full_market_breadth(storage: DuckDBStorage) -> bool:
-    count = storage.read_df("SELECT count(*) AS n FROM all_a_stock_universe")
-    return False if count.empty else int(count.loc[0, "n"] or 0) > 0
 
 
 def latest60_full_market_breadth_available(storage: DuckDBStorage) -> tuple[bool, str]:
@@ -129,33 +121,19 @@ def render_market_regime(storage: DuckDBStorage) -> None:
     st.caption(HELP_TEXTS["market_regime"])
     render_data_status_bar(storage)
 
-    st.subheader("数据更新")
-    c1, c2, c3 = st.columns([1, 1, 2])
+    st.subheader("数据准备")
+    st.info("底层数据更新已统一归口到“数据中心”；本页只保留面板专用的本地样本宽度诊断和大盘 HMM 训练。")
+    c1, c2 = st.columns(2)
     start_date = c1.text_input("起始日期", value="20200101", help=HELP_TEXTS["market_start_date"])
     end_date = c2.text_input("结束日期", value=today_yyyymmdd(), help=HELP_TEXTS["market_end_date"])
-    index_options = [f"{code} {MARKET_INDEXES[code]['index_name']}" for code in DEFAULT_MARKET_INDEX_CODES]
-    selected = c3.multiselect("指数选择", index_options, default=index_options[:6], help=HELP_TEXTS["market_indices"])
-    index_codes = [item.split()[0] for item in selected]
-    incremental = st.checkbox("增量更新", value=True, help=HELP_TEXTS["incremental_update"])
-    lookback_days = st.number_input("回补天数", min_value=0, max_value=60, value=10, help=HELP_TEXTS["lookback_days"])
-    u1, u2, u3, u4 = st.columns(4)
-    if u1.button("更新大盘指数数据"):
-        with st.spinner("正在更新大盘指数数据..."):
-            summary = update_market_indices(start_date, end_date, index_codes=index_codes, incremental=incremental, lookback_days=int(lookback_days), storage=storage)
-            render_operation_result(summary, "指数更新完成")
-    if u2.button("更新本地样本宽度"):
+    c3, c4 = st.columns(2)
+    incremental = c3.checkbox("增量更新", value=True, help=HELP_TEXTS["incremental_update"])
+    lookback_days = c4.number_input("回补天数", min_value=0, max_value=60, value=10, help=HELP_TEXTS["lookback_days"])
+    if st.button("更新本地样本宽度"):
         with st.spinner("正在计算本地样本宽度..."):
             summary = update_market_breadth(start_date, end_date, incremental=incremental, lookback_days=int(lookback_days), mode="local_sample", storage=storage)
             render_operation_result(summary, "本地样本宽度更新完成")
-    if u3.button("更新全 A 股票池"):
-        summary = update_all_a_stock_universe(storage=storage, force_refresh=True)
-        render_operation_result(summary, "全 A 股票池更新完成")
-    if u4.button("更新全 A 市场宽度", disabled=not can_update_full_market_breadth(storage)):
-        with st.spinner("正在计算全 A 市场宽度..."):
-            summary = update_market_breadth(start_date, end_date, incremental=incremental, lookback_days=int(lookback_days), mode="full_market", storage=storage)
-            render_operation_result(summary, "全 A 市场宽度更新完成")
-    if not can_update_full_market_breadth(storage):
-        st.caption("尚未建立全 A 股票池，因此“更新全 A 市场宽度”暂不可用。可先在本页或数据中心更新全 A 股票池。")
+    st.caption("全 A 股票池、指数与市场基准、全 A 市场宽度请在“数据中心”更新。")
 
     st.subheader("模型训练")
     m1, m2, m3 = st.columns(3)

@@ -3,9 +3,11 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
+import pandas as pd
+
 from src.signals.signal_panel_snapshot import NO_CURRENT_STAGE03V_SCORE_SOURCE
 from src.ui.navigation import page_config, page_labels_for_group
-from src.ui.signal_panel_page import WARNING_TEXT
+from src.ui.signal_panel_page import WARNING_TEXT, _compact_counts, _display_value, _localize_readiness_text, _signal_display_frame
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -34,6 +36,41 @@ def test_app_routes_signal_panel_to_renderer() -> None:
 
 def test_signal_panel_warning_text_matches_contract() -> None:
     assert WARNING_TEXT == "此页面为研究信号与人工判断参考，不构成交易、仓位、买卖或执行建议。"
+
+
+def test_signal_panel_ui_labels_are_localized_for_display() -> None:
+    frame = pd.DataFrame(
+        [
+            {
+                "signal_date": "2026-01-02",
+                "volatility_band": "high",
+                "stage03v_probability_display_status": "hidden_no_current_per_entity_score_source",
+                "model_baseline_alignment_status": "baseline_high_model_low",
+                "human_review_note": "possible baseline false-alarm / overlay disagreement",
+                "not_trading_output": "yes",
+            }
+        ]
+    )
+
+    display = _signal_display_frame(frame)
+
+    assert "信号日期" in display.columns
+    assert "波动率分层" in display.columns
+    assert display.loc[0, "波动率分层"] == "高"
+    assert display.loc[0, "Stage03V 概率显示状态"] == "隐藏：缺少当前实体级分数来源"
+    assert display.loc[0, "模型-基准一致性"] == "基准高风险，模型偏低"
+    assert display.loc[0, "人工复核提示"] == "可能是基准误报，或模型覆盖不一致"
+    assert display.loc[0, "非交易输出"] == "是"
+
+
+def test_signal_panel_summary_values_are_localized() -> None:
+    snapshot = pd.DataFrame({"volatility_band": ["high", "unavailable", "high"]})
+
+    assert _display_value("available_current_per_entity_score_source") == "当前实体级分数来源可用"
+    assert _compact_counts(snapshot, "volatility_band") == "高:2 / 不可用:1"
+    assert _localize_readiness_text(
+        "usable_probability_candidate=1; ordinal_only_candidate=2; probability_source_status=unavailable_current_per_entity_score_source"
+    ) == "可显示概率候选=1；仅序数候选=2；概率来源状态=当前实体级分数来源不可用"
 
 
 def test_runtime_contract_artifacts_exist_and_keep_research_only_boundaries() -> None:
