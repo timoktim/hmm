@@ -51,6 +51,8 @@ REPORT_VERSION = "stage03v_calibration_readiness_v1"
 POLICY_VERSION = "stage03v_calibration_readiness_policy_v1"
 STAGE_ID = "stage03v"
 DEFAULT_SAMPLE_ROWS = 500
+PRIMARY_MARKET_EVENT_SHARE = 0.20
+MIN_MARKET_EVENT_BLOCKS_FOR_USABLE_PROBABILITY = 2
 CALIBRATION_METHODS = [
     "identity_uncalibrated_reference",
     "platt_logistic_calibration",
@@ -151,6 +153,9 @@ FOLD_METRIC_COLUMNS = [
     "negative_event_count",
     "event_base_rate",
     "brier_score",
+    "brier_identity_uncalibrated",
+    "brier_calibrated",
+    "brier_retention",
     "log_loss",
     "expected_calibration_error",
     "max_calibration_error",
@@ -160,6 +165,7 @@ FOLD_METRIC_COLUMNS = [
     "average_precision",
     "auc_retention_vs_identity",
     "ap_retention_vs_identity",
+    "validation_market_event_block_count",
     "monotonic_bin_status",
     "calibration_fit_status",
     "skip_reason",
@@ -219,6 +225,8 @@ READINESS_COLUMNS = [
     "positive_event_count",
     "negative_event_count",
     "mean_brier_score",
+    "mean_brier_retention",
+    "validation_market_event_block_count",
     "mean_log_loss",
     "mean_expected_calibration_error",
     "max_expected_calibration_error",
@@ -431,6 +439,9 @@ def default_policy() -> dict[str, Any]:
         "usable_probability_min_positive_events": 10,
         "usable_probability_max_ece": 0.05,
         "usable_probability_max_cluster_width": 0.25,
+        "primary_market_event_share": PRIMARY_MARKET_EVENT_SHARE,
+        "usable_probability_min_market_event_blocks": MIN_MARKET_EVENT_BLOCKS_FOR_USABLE_PROBABILITY,
+        "brier_retention_policy": "forbid_usable_probability_when_negative_vs_identity",
         "ordinal_min_evaluation_rows": 100,
         "ordinal_min_positive_events": 3,
         "ordinal_min_auc": 0.55,
@@ -465,6 +476,12 @@ def validate_policy(policy: Mapping[str, Any]) -> list[str]:
         issues.append("final_holdout_policy_not_withheld")
     if policy.get("readiness_scope") != "development_only_not_trading":
         issues.append("readiness_scope_not_development_only")
+    if float(policy.get("primary_market_event_share", -1.0)) != PRIMARY_MARKET_EVENT_SHARE:
+        issues.append("primary_market_event_share_mismatch")
+    if int(policy.get("usable_probability_min_market_event_blocks", 0)) != MIN_MARKET_EVENT_BLOCKS_FOR_USABLE_PROBABILITY:
+        issues.append("usable_probability_min_market_event_blocks_mismatch")
+    if policy.get("brier_retention_policy") != "forbid_usable_probability_when_negative_vs_identity":
+        issues.append("brier_retention_policy_mismatch")
     if set(policy.get("readiness_categories", [])) != set(READINESS_CATEGORIES):
         issues.append("readiness_categories_mismatch")
     if policy.get("external_fetch_policy") != "forbidden":
@@ -498,6 +515,7 @@ def validate_wp5_preconditions(
         ("wp3_5", vol_scaled_sanity),
         ("wp4", logistic_hazard),
     ]
+    holdout_issues: list[str] = []
     for label, doc in docs:
         if doc.get("status") != "pass":
             issues.append(f"{label}_status_not_pass")
@@ -505,6 +523,7 @@ def validate_wp5_preconditions(
             issues.append(f"{label}_v7_coverage_not_yes")
         if doc.get("sw2021_l2_universe_coverage") != "pass":
             issues.append(f"{label}_sw2021_l2_universe_not_pass")
+        holdout_issues.extend(holdout_consumption_issues(label, doc))
     if fold_plan.get("status") != "pass":
         issues.append("fold_plan_status_not_pass")
     if _as_int(fold_plan.get("fold_count"), default=0) <= 0:
@@ -544,6 +563,9 @@ def validate_wp5_preconditions(
     resolved_safe = _safe_path(db_path)
     if not os.environ.get("STAGE03V_V7_DB") and expected_paths and resolved_safe not in expected_paths:
         issues.append("resolved_db_path_does_not_match_accepted_stage03v_artifacts")
+    if holdout_issues:
+        issues.extend(issue for issue in holdout_issues if issue not in issues)
+        return "blocked_holdout_consumed", issues
     return ("pass", []) if not issues else ("blocked_wp4_not_ready", issues)
 
 
@@ -600,6 +622,75 @@ def detect_calibration_boundary_violations(calibration_rows: pd.DataFrame, evalu
         sum(value for key, value in counts.items() if key != "calibration_boundary_violation_count_total")
     )
     return counts
+
+
+def _merge_market_event_dates(active_dates: Sequence[pd.Timestamp], all_dates: Sequence[pd.Timestamp], *, horizon: int) -> int:
+    active = sorted({pd.Timestamp(value).normalize() for value in active_dates if pd.notna(value)})
+    if not active:
+        return 0
+    ordered = sorted({pd.Timestamp(value).normalize() for value in all_dates if pd.notna(value)})
+    if not ordered:
+        return 0
+    position = {value: idx for idx, value in enumerate(ordered)}
+    blocks = 1
+    previous = active[0]
+    for current in active[1:]:
+        inactive_gap = position.get(current, position.get(previous, 0) + 1) - position.get(previous, 0) - 1
+        if inactive_gap > int(horizon):
+            blocks += 1
+        previous = current
+    return blocks
+
+
+def validation_market_event_block_count(rows: pd.DataFrame, *, event_share_threshold: float = PRIMARY_MARKET_EVENT_SHARE) -> int:
+    if rows.empty or not {"trade_date", "entity_id", "event_label"}.issubset(rows.columns):
+        return 0
+    work = rows[rows["event_label"].notna()].copy()
+    if work.empty:
+        return 0
+    work["trade_date"] = pd.to_datetime(work["trade_date"], errors="coerce").dt.normalize()
+    work = work[work["trade_date"].notna()].copy()
+    if work.empty:
+        return 0
+    work["event_label_bool"] = work["event_label"].astype(bool)
+    daily = (
+        work.groupby("trade_date", dropna=False)
+        .agg(event_count=("event_label_bool", "sum"), entity_count=("entity_id", "nunique"))
+        .reset_index()
+    )
+    daily["event_share"] = daily["event_count"] / daily["entity_count"].replace({0: np.nan})
+    active_dates = daily.loc[daily["event_share"].ge(float(event_share_threshold)), "trade_date"].tolist()
+    horizon_values = pd.to_numeric(work.get("horizon"), errors="coerce").dropna() if "horizon" in work.columns else pd.Series(dtype=float)
+    horizon = int(horizon_values.iloc[0]) if not horizon_values.empty else 1
+    return _merge_market_event_dates(active_dates, daily["trade_date"].tolist(), horizon=horizon)
+
+
+HOLDOUT_CONSUMPTION_COUNTER_KEYS = {
+    "prospective_holdout_rows_evaluated",
+    "prospective_holdout_score_count",
+    "prospective_holdout_metric_count",
+    "holdout_rows_used_for_calibration_count",
+    "holdout_rows_used_for_evaluation_count",
+    "holdout_rows_validated_count",
+}
+
+
+def holdout_consumption_issues(label: str, doc: Mapping[str, Any]) -> list[str]:
+    issues: list[str] = []
+
+    def visit(prefix: str, value: Any) -> None:
+        if isinstance(value, Mapping):
+            for key, nested in value.items():
+                nested_prefix = f"{prefix}_{key}" if prefix else str(key)
+                if str(key) in HOLDOUT_CONSUMPTION_COUNTER_KEYS and _as_int(nested, 0) > 0:
+                    issues.append(f"{label}_{nested_prefix}_not_zero")
+                visit(nested_prefix, nested)
+        elif isinstance(value, list):
+            for idx, nested in enumerate(value):
+                visit(f"{prefix}_{idx}", nested)
+
+    visit("", doc)
+    return issues
 
 
 def _positive_negative_counts(rows: pd.DataFrame) -> tuple[int, int]:
@@ -765,14 +856,36 @@ def compute_calibration_metrics(
     skip_reason: str | None,
 ) -> dict[str, Any]:
     first = rows.head(1)
-    labels = rows["event_label"].astype(bool).astype(int).to_numpy(dtype=int) if not rows.empty else np.array([], dtype=int)
-    score = pd.to_numeric(rows.get("calibrated_score"), errors="coerce").to_numpy(dtype=float) if not rows.empty else np.array([], dtype=float)
-    finite = np.isfinite(score)
-    labels = labels[finite]
-    score = score[finite]
+    raw_labels = rows["event_label"].astype(bool).astype(int).to_numpy(dtype=int) if not rows.empty else np.array([], dtype=int)
+    calibrated_source = rows["calibrated_score"] if "calibrated_score" in rows else pd.Series([np.nan] * len(rows))
+    raw_source = rows["raw_score"] if "raw_score" in rows else pd.Series([np.nan] * len(rows))
+    calibrated_score = (
+        pd.to_numeric(calibrated_source, errors="coerce").to_numpy(dtype=float) if not rows.empty else np.array([], dtype=float)
+    )
+    raw_score = pd.to_numeric(raw_source, errors="coerce").to_numpy(dtype=float) if not rows.empty else np.array([], dtype=float)
+    finite = np.isfinite(calibrated_score)
+    labels = raw_labels[finite]
+    score = calibrated_score[finite]
     positives = int(labels.sum()) if len(labels) else 0
     negatives = int(len(labels) - positives)
     brier = float(np.mean((labels.astype(float) - score) ** 2)) if len(score) else None
+    finite_identity = np.isfinite(raw_score) & np.isfinite(calibrated_score)
+    identity_labels = raw_labels[finite_identity]
+    identity_score = np.clip(raw_score[finite_identity], 0.0, 1.0)
+    calibrated_for_identity = calibrated_score[finite_identity]
+    brier_identity = (
+        float(np.mean((identity_labels.astype(float) - identity_score) ** 2)) if len(identity_score) else None
+    )
+    brier_calibrated = (
+        float(np.mean((identity_labels.astype(float) - calibrated_for_identity) ** 2))
+        if len(calibrated_for_identity) == len(identity_labels) and len(identity_labels)
+        else brier
+    )
+    brier_retention = (
+        float(brier_identity - brier_calibrated)
+        if brier_identity is not None and brier_calibrated is not None
+        else None
+    )
     log_loss = None
     if len(score):
         clipped = np.clip(score, 1e-15, 1 - 1e-15)
@@ -799,6 +912,9 @@ def compute_calibration_metrics(
         "negative_event_count": negatives,
         "event_base_rate": _safe_div(positives, len(score)),
         "brier_score": brier,
+        "brier_identity_uncalibrated": brier_identity,
+        "brier_calibrated": brier_calibrated,
+        "brier_retention": brier_retention,
         "log_loss": log_loss,
         "expected_calibration_error": ece,
         "max_calibration_error": mce,
@@ -808,6 +924,7 @@ def compute_calibration_metrics(
         "average_precision": _average_precision(labels, score),
         "auc_retention_vs_identity": None,
         "ap_retention_vs_identity": None,
+        "validation_market_event_block_count": 0,
         "monotonic_bin_status": monotonic,
         "calibration_fit_status": fit_status,
         "skip_reason": skip_reason,
@@ -955,6 +1072,9 @@ def _aggregate_slice_metrics(fold_rows: Sequence[Mapping[str, Any]]) -> list[dic
         out["event_base_rate"] = _safe_div(out["positive_event_count"], out["scored_row_count"])
         for metric in [
             "brier_score",
+            "brier_identity_uncalibrated",
+            "brier_calibrated",
+            "brier_retention",
             "log_loss",
             "expected_calibration_error",
             "max_calibration_error",
@@ -967,6 +1087,8 @@ def _aggregate_slice_metrics(fold_rows: Sequence[Mapping[str, Any]]) -> list[dic
         ]:
             values = pd.to_numeric(group[metric], errors="coerce").dropna()
             out[metric] = float(values.mean()) if not values.empty else None
+        block_values = pd.to_numeric(group.get("validation_market_event_block_count"), errors="coerce").dropna()
+        out["validation_market_event_block_count"] = int(block_values.min()) if not block_values.empty else 0
         out["monotonic_bin_status"] = "pass" if all(group["monotonic_bin_status"].astype(str).eq("pass")) else "mixed_or_non_monotonic"
         out["calibration_fit_status"] = "aggregate"
         out["skip_reason"] = None
@@ -991,14 +1113,21 @@ def _readiness_category(row: Mapping[str, Any], *, policy: Mapping[str, Any], un
     ece = _as_float(row.get("expected_calibration_error"))
     auc = _as_float(row.get("roc_auc"))
     brier = _as_float(row.get("brier_score"))
-    if (
+    brier_retention = _as_float(row.get("brier_retention"))
+    market_blocks = _as_int(row.get("validation_market_event_block_count"), 0)
+    usable_gate_passes = (
         eval_rows >= int(policy.get("usable_probability_min_evaluation_rows", 500))
         and positives >= int(policy.get("usable_probability_min_positive_events", 10))
         and ece is not None
         and ece <= float(policy.get("usable_probability_max_ece", 0.05))
         and (uncertainty_width is None or uncertainty_width <= float(policy.get("usable_probability_max_cluster_width", 0.25)))
         and brier is not None
-    ):
+    )
+    if usable_gate_passes:
+        if market_blocks < int(policy.get("usable_probability_min_market_event_blocks", 2)):
+            return "ordinal_only_candidate", "market_event_block_evidence_below_minimum"
+        if brier_retention is not None and brier_retention < 0:
+            return "ordinal_only_candidate", "calibration_worsened_brier_score"
         return "usable_probability_candidate", "development_calibration_gate_pass"
     if (
         eval_rows >= int(policy.get("ordinal_min_evaluation_rows", 100))
@@ -1061,6 +1190,8 @@ def build_readiness_matrix(
                 "positive_event_count": _as_int(row.get("positive_event_count"), 0),
                 "negative_event_count": _as_int(row.get("negative_event_count"), 0),
                 "mean_brier_score": _as_float(row.get("brier_score")),
+                "mean_brier_retention": _as_float(row.get("brier_retention")),
+                "validation_market_event_block_count": _as_int(row.get("validation_market_event_block_count"), 0),
                 "mean_log_loss": _as_float(row.get("log_loss")),
                 "mean_expected_calibration_error": _as_float(row.get("expected_calibration_error")),
                 "max_expected_calibration_error": _as_float(row.get("max_calibration_error")),
@@ -1116,6 +1247,10 @@ def evaluate_calibration_for_folds(
                 if not isinstance(slice_key, tuple):
                     slice_key = (slice_key,)
                 horizon, threshold_type, threshold_value, target_usage = slice_key
+                market_event_blocks = validation_market_event_block_count(
+                    val_group,
+                    event_share_threshold=float(policy.get("primary_market_event_share", PRIMARY_MARKET_EVENT_SHARE)),
+                )
                 train_group = train_featured[
                     train_featured["horizon"].astype(int).eq(int(horizon))
                     & train_featured["threshold_type"].astype(str).eq(str(threshold_type))
@@ -1164,6 +1299,7 @@ def evaluate_calibration_for_folds(
                                 "threshold_type": str(threshold_type),
                                 "threshold_value": float(threshold_value),
                                 "target_usage": str(target_usage),
+                                "validation_market_event_block_count": int(market_event_blocks),
                             }
                         )
                         fold_metric_rows.append(empty_metrics)
@@ -1197,6 +1333,7 @@ def evaluate_calibration_for_folds(
                             "threshold_type": str(threshold_type),
                             "threshold_value": float(threshold_value),
                             "target_usage": str(target_usage),
+                            "validation_market_event_block_count": int(market_event_blocks),
                         }
                     )
                     fold_metric_rows.append(metrics)
@@ -1832,6 +1969,10 @@ def build_calibration_readiness_report(
     else:
         report["status"] = "fail"
         report["blocking_reasons"] = ["calibration leakage_or_boundary_violation_detected"]
+    holdout_issues = holdout_consumption_issues("wp5_report", report)
+    if holdout_issues:
+        report["status"] = "blocked_holdout_consumed"
+        report["blocking_reasons"] = holdout_issues
     report["ci_gate_status"] = "pass" if report["status"] == "pass" else report["status"]
     _write_markdown(output_path, report)
     _write_json(summary_path, report)

@@ -92,7 +92,11 @@ def test_cross_cutoff_rows_are_not_backfilled_after_post_cutoff_prices_exist() -
     row = rows[rows["trade_date"].astype(str).eq("2026-06-09")].iloc[0]
 
     assert pd.isna(row["event_label"])
+    assert pd.isna(row["future_return"])
     assert pd.isna(row["future_mae"])
+    assert pd.isna(row["future_mdd"])
+    assert pd.isna(row["future_realized_vol"])
+    assert pd.isna(row["future_downside_vol"])
     assert row["target_observation_end_date"].isoformat() == "2026-06-11"
     assert row["censoring_status"] == "cross_cutoff_censored"
 

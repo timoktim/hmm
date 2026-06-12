@@ -22,6 +22,8 @@
   "max_iter": 1000,
   "random_state": 20260611,
   "class_weight": "balanced",
+  "date_aware_sample_weighting": "enabled",
+  "date_aware_weighting_status": "implemented",
   "min_train_positive_events": 2,
   "min_train_negative_events": 2,
   "calibration_policy": "forbidden_in_wp4",

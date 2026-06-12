@@ -123,9 +123,15 @@
     "idiosyncratic_discount_default": 0.25,
     "idiosyncratic_discount_sensitivity": [0.10, 0.25, 0.50],
     "market_event_block_count_lt_2": "usable_probability_forbidden",
+    "validation_fold_market_event_block_count_lt_2": "usable_probability_forbidden",
     "effective_event_evidence_count_lt_5": "blocked_or_drop_threshold",
     "effective_event_evidence_count_5_to_9": "diagnostic_or_ordinal_only",
     "effective_event_evidence_count_gte_10": "modeling_eligible_not_auto_usable"
+  },
+  "calibration_quality_gating": {
+    "brier_retention_definition": "brier_identity_uncalibrated - brier_calibrated",
+    "brier_retention_lt_0": "usable_probability_forbidden",
+    "brier_retention_reason": "calibration_worsened_brier_score"
   },
   "readiness_evidence_scope": {
     "wp0_5_feasibility_counts_may_use": "historical_development",

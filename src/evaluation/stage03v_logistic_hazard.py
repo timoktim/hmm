@@ -48,6 +48,7 @@ POLICY_VERSION = "stage03v_logistic_hazard_policy_v1"
 STAGE_ID = "stage03v"
 MODEL_FAMILY = "logistic_regression"
 MODEL_VARIANT = "sklearn_logistic_regression_l2_lbfgs"
+DATE_AWARE_WEIGHTING_STATUS = "implemented"
 PRIMARY_TARGET_FAMILY = "fixed_threshold_stage03v1_downside_event"
 PRIMARY_ASOF_MODE = "close_t_minus_1"
 ASOF_MODES = ["close_t_minus_1", "close_t"]
@@ -384,6 +385,8 @@ def default_policy() -> dict[str, Any]:
         "max_iter": 1000,
         "random_state": 20260611,
         "class_weight": "balanced",
+        "date_aware_sample_weighting": "enabled",
+        "date_aware_weighting_status": DATE_AWARE_WEIGHTING_STATUS,
         "min_train_positive_events": 2,
         "min_train_negative_events": 2,
         "calibration_policy": "forbidden_in_wp4",
@@ -426,6 +429,10 @@ def validate_policy(policy: Mapping[str, Any]) -> list[str]:
             issues.append(f"{key}_not_forbidden_in_wp4")
     if policy.get("final_holdout_policy") != "withheld_not_scored":
         issues.append("final_holdout_policy_not_withheld")
+    if policy.get("date_aware_sample_weighting") != "enabled":
+        issues.append("date_aware_sample_weighting_not_enabled")
+    if policy.get("date_aware_weighting_status") != DATE_AWARE_WEIGHTING_STATUS:
+        issues.append("date_aware_weighting_status_not_implemented")
     if policy.get("training_policy") != "train_folds_only":
         issues.append("training_policy_not_train_folds_only")
     if policy.get("validation_policy") != "validation_folds_only":
@@ -699,6 +706,19 @@ def _positive_negative_counts(rows: pd.DataFrame) -> tuple[int, int]:
     return positives, negatives
 
 
+def date_aware_sample_weights(rows: pd.DataFrame) -> np.ndarray:
+    """Give each training trade date bounded total influence before class weighting."""
+
+    if rows.empty or "trade_date" not in rows.columns:
+        return np.array([], dtype=float)
+    dates = pd.to_datetime(rows["trade_date"], errors="coerce").dt.normalize()
+    counts = dates.value_counts(dropna=False)
+    weights = dates.map(counts).astype(float).replace({0.0: np.nan})
+    weights = 1.0 / weights
+    weights = weights.fillna(1.0)
+    return weights.to_numpy(dtype=float)
+
+
 def _metric_from_scored(
     scored_rows: pd.DataFrame,
     *,
@@ -789,7 +809,10 @@ def fit_logistic_model(
     if penalty != "l2":
         model_kwargs["penalty"] = penalty
     model = LogisticRegression(**model_kwargs)
-    model.fit(prep["X_train"], y_train)
+    sample_weight = None
+    if policy.get("date_aware_sample_weighting", "enabled") == "enabled":
+        sample_weight = date_aware_sample_weights(train_frame)
+    model.fit(prep["X_train"], y_train, sample_weight=sample_weight)
     score = model.predict_proba(prep["X_validation"])[:, 1]
     coefficients = model.coef_[0].astype(float)
     l1_norm = float(np.abs(coefficients).sum())
@@ -808,6 +831,10 @@ def fit_logistic_model(
         "preprocessor": prep,
         "training_positive_event_count": train_pos,
         "training_negative_event_count": train_neg,
+        "date_aware_weighting_status": DATE_AWARE_WEIGHTING_STATUS if sample_weight is not None else "disabled",
+        "date_weight_min": float(np.min(sample_weight)) if sample_weight is not None and len(sample_weight) else None,
+        "date_weight_max": float(np.max(sample_weight)) if sample_weight is not None and len(sample_weight) else None,
+        "date_weight_sum": float(np.sum(sample_weight)) if sample_weight is not None and len(sample_weight) else None,
     }
 
 
@@ -1065,6 +1092,10 @@ def evaluate_logistic_for_folds(
                         "validation_row_count": int(len(val_group)),
                         "training_positive_event_count": int(result["training_positive_event_count"]),
                         "training_negative_event_count": int(result["training_negative_event_count"]),
+                        "date_aware_weighting_status": result.get("date_aware_weighting_status"),
+                        "date_weight_min": result.get("date_weight_min"),
+                        "date_weight_max": result.get("date_weight_max"),
+                        "date_weight_sum": result.get("date_weight_sum"),
                         "coefficient_l1_norm": result["coefficient_l1_norm"],
                         "coefficient_l2_norm": result["coefficient_l2_norm"],
                         "convergence_status": result["convergence_status"],
@@ -1121,6 +1152,7 @@ def evaluate_logistic_for_folds(
         "insufficient_data_slice_count": int(insufficient_data_count),
         "feature_columns": list(feature_columns),
         "feature_families": sorted({_feature_family(column) for column in feature_columns}),
+        "date_aware_weighting_status": DATE_AWARE_WEIGHTING_STATUS,
     }
 
 
@@ -1575,6 +1607,7 @@ def build_logistic_hazard_report(
         "model_family": MODEL_FAMILY,
         "model_variant": MODEL_VARIANT,
         "serialized_model_written": "no",
+        "date_aware_weighting_status": evaluation["date_aware_weighting_status"],
         "probability_calibration": "no",
         "readiness_assigned": "no",
         "model_count": int(len(evaluation["model_manifest_entries"])),
@@ -1604,6 +1637,7 @@ def build_logistic_hazard_report(
         "policy_status": "pass",
         "model_family": MODEL_FAMILY,
         "model_variant_count": 1,
+        "date_aware_weighting_status": evaluation["date_aware_weighting_status"],
         "asof_modes_evaluated": selected_asof_modes,
         "primary_asof_mode": PRIMARY_ASOF_MODE,
         "slice_count_evaluated": evaluation["slice_count_evaluated"],

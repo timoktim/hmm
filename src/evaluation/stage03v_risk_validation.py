@@ -248,6 +248,34 @@ def _as_int(value: Any, default: int = 0) -> int:
         return int(default)
 
 
+HOLDOUT_CONSUMPTION_COUNTER_KEYS = {
+    "prospective_holdout_rows_evaluated",
+    "prospective_holdout_score_count",
+    "prospective_holdout_metric_count",
+    "holdout_rows_used_for_calibration_count",
+    "holdout_rows_used_for_evaluation_count",
+    "holdout_rows_validated_count",
+}
+
+
+def holdout_consumption_issues(label: str, doc: Mapping[str, Any]) -> list[str]:
+    issues: list[str] = []
+
+    def visit(prefix: str, value: Any) -> None:
+        if isinstance(value, Mapping):
+            for key, nested in value.items():
+                nested_prefix = f"{prefix}_{key}" if prefix else str(key)
+                if str(key) in HOLDOUT_CONSUMPTION_COUNTER_KEYS and _as_int(nested, 0) > 0:
+                    issues.append(f"{label}_{nested_prefix}_not_zero")
+                visit(nested_prefix, nested)
+        elif isinstance(value, list):
+            for idx, nested in enumerate(value):
+                visit(f"{prefix}_{idx}", nested)
+
+    visit("", doc)
+    return issues
+
+
 def _as_float(value: Any) -> float | None:
     try:
         number = float(value)
@@ -379,6 +407,7 @@ def validate_wp6_preconditions(
         ("wp4", logistic_hazard),
         ("wp5", calibration_readiness),
     ]
+    holdout_issues: list[str] = []
     for label, doc in docs:
         if doc.get("status") != "pass":
             issues.append(f"{label}_status_not_pass")
@@ -388,6 +417,7 @@ def validate_wp6_preconditions(
             issues.append(f"{label}_sw2021_l2_universe_not_pass")
         if _as_int(doc.get("prospective_holdout_rows_evaluated"), 0) != 0:
             issues.append(f"{label}_prospective_holdout_rows_evaluated_not_zero")
+        holdout_issues.extend(holdout_consumption_issues(label, doc))
     if fold_plan.get("status") != "pass":
         issues.append("fold_plan_status_not_pass")
     if _as_int(fold_plan.get("purge_violation_count"), -1) != 0:
@@ -423,6 +453,9 @@ def validate_wp6_preconditions(
     resolved_safe = _safe_path(db_path)
     if not os.environ.get("STAGE03V_V7_DB") and expected_paths and resolved_safe not in expected_paths:
         issues.append("resolved_db_path_does_not_match_accepted_stage03v_artifacts")
+    if holdout_issues:
+        issues.extend(issue for issue in holdout_issues if issue not in issues)
+        return "blocked_holdout_consumed", issues
     return ("pass", []) if not issues else ("blocked_wp5_not_ready", issues)
 
 
@@ -1314,6 +1347,10 @@ def build_risk_validation_report(
         report["blocking_reasons"] = ["no readiness rows available for validation"]
     else:
         report["status"] = "pass"
+    holdout_issues = holdout_consumption_issues("wp6_report", report)
+    if holdout_issues:
+        report["status"] = "blocked_holdout_consumed"
+        report["blocking_reasons"] = holdout_issues
     report["ci_gate_status"] = "pass" if report["status"] == "pass" else report["status"]
     _write_protocol(paths["protocol_output"], policy_doc, report)
     _write_markdown(paths["output"], report)
