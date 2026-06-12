@@ -1,0 +1,106 @@
+{
+  "index_id": "STAGE03V-CLOSEOUT1-v1",
+  "registry_version": "stage03v1_invalidated_artifact_registry_v1",
+  "status": "pass",
+  "invalidation_status": "invalidated_due_to_fold_coverage",
+  "global_rule": "Old WP4-WP6 empirical artifacts and old WP7-v1 artifacts must not be cited as evidence of signal strength or weakness.",
+  "not_invalidated_due_to_observed_results": true,
+  "invalidated_artifact_count": 7,
+  "invalidated_artifacts": [
+    {
+      "artifact_or_pattern": "reports/stage03v/purge_embargo_fold_plan.json",
+      "invalidated_reason": "invalidated_due_to_fold_coverage",
+      "not_invalidated_due_to_observed_results": true,
+      "superseded_by": [
+        "reports/stage03v/purge_embargo_fold_plan_v2.json",
+        "reports/stage03v/fold_plan_magnitude_overview.md"
+      ],
+      "allowed_future_usage": "historical audit reference only, with explicit invalidated_due_to_fold_coverage caveat",
+      "forbidden_future_usage": "must not be used as the Stage03V1 fold plan or cited as evidence of signal strength or weakness"
+    },
+    {
+      "artifact_or_pattern": "pre-RERUN1 original WP4 logistic_hazard_* empirical outputs produced from reports/stage03v/purge_embargo_fold_plan.json",
+      "invalidated_reason": "invalidated_due_to_fold_coverage",
+      "not_invalidated_due_to_observed_results": true,
+      "superseded_by": [
+        "reports/stage03v/logistic_hazard_report.json",
+        "reports/stage03v/logistic_hazard_fold_metrics.csv",
+        "reports/stage03v/logistic_hazard_slice_metrics.csv"
+      ],
+      "allowed_future_usage": "engineering-history reference only if clearly marked as pre-RERUN1 microfold-invalidated",
+      "forbidden_future_usage": "must not be cited for model discrimination, coefficient reliability, readiness, or signal strength or weakness"
+    },
+    {
+      "artifact_or_pattern": "pre-RERUN1 original WP5 calibration_* / downside_readiness_matrix / clustered_inference_summary empirical outputs produced from the 2014 microfold plan",
+      "invalidated_reason": "invalidated_due_to_fold_coverage",
+      "not_invalidated_due_to_observed_results": true,
+      "superseded_by": [
+        "reports/stage03v/calibration_readiness_report.json",
+        "reports/stage03v/downside_readiness_matrix.csv",
+        "reports/stage03v/clustered_inference_summary.csv"
+      ],
+      "allowed_future_usage": "engineering-history reference only if clearly marked as pre-RERUN1 microfold-invalidated",
+      "forbidden_future_usage": "must not be cited for calibration quality, usable probability readiness, or signal strength or weakness"
+    },
+    {
+      "artifact_or_pattern": "reports/stage03v/risk_validation_report.json and reports/stage03v/risk_validation_*.csv from original WP6",
+      "invalidated_reason": "invalidated_due_to_fold_coverage",
+      "not_invalidated_due_to_observed_results": true,
+      "superseded_by": [
+        "reports/stage03v/downshift_experiment_report.json",
+        "reports/stage03v/downshift_experiment_arm_metrics.csv"
+      ],
+      "allowed_future_usage": "legacy engineering reference only; not final evidence",
+      "forbidden_future_usage": "must not be cited as risk-validation evidence, downshift effectiveness evidence, or signal strength or weakness"
+    },
+    {
+      "artifact_or_pattern": "reports/stage03v/downshift_research_report.json and reports/stage03v/downshift_research_report.md from original WP6",
+      "invalidated_reason": "invalidated_due_to_fold_coverage",
+      "not_invalidated_due_to_observed_results": true,
+      "superseded_by": [
+        "reports/stage03v/downshift_experiment_report.json",
+        "reports/stage03v/downshift_experiment_arm_metrics.csv"
+      ],
+      "allowed_future_usage": "legacy engineering reference only; not final evidence",
+      "forbidden_future_usage": "must not be cited as three-arm downshift evidence or signal strength or weakness"
+    },
+    {
+      "artifact_or_pattern": "reports/stage03v/wp7_final_gate_input_manifest.json from old WP7-v1 path",
+      "invalidated_reason": "invalidated_due_to_fold_coverage",
+      "not_invalidated_due_to_observed_results": true,
+      "superseded_by": [
+        "reports/stage03v/stage03v1_final_gate_v2_rerun1_input_manifest.json"
+      ],
+      "allowed_future_usage": "legacy input-manifest reference only when explaining supersession",
+      "forbidden_future_usage": "must not be used as Stage03V1 final gate input evidence"
+    },
+    {
+      "artifact_or_pattern": "old WP7-v1 final gate outputs, if present, including any stage03v1_final_gate_report.* or stage03v1_final_gate_verdict.* without _v2",
+      "invalidated_reason": "invalidated_due_to_fold_coverage",
+      "not_invalidated_due_to_observed_results": true,
+      "superseded_by": [
+        "reports/stage03v/stage03v1_final_gate_v2_report.json",
+        "reports/stage03v/stage03v1_final_gate_v2_verdict.json"
+      ],
+      "allowed_future_usage": "legacy supersession reference only",
+      "forbidden_future_usage": "must not be cited as the accepted Stage03V1 final gate or as signal strength or weakness evidence"
+    }
+  ],
+  "replacement_evidence_policy": "Use RERUN1 full-scale artifacts and WP7-v2 final gate artifacts only for accepted Stage03V1 phase-one empirical interpretation.",
+  "boundary_flags": {
+    "external_data_fetch": "no",
+    "new_experiment_run": "no",
+    "model_training": "no",
+    "probability_recalibration": "no",
+    "readiness_reassigned": "no",
+    "target_dataset_modified": "no",
+    "fixed_threshold_mainline_modified": "no",
+    "prospective_holdout_performance_consumed": "no",
+    "holdout_consumed": "no",
+    "HMM_HSMM_training_modified": "no",
+    "stage03v2_implemented": "no",
+    "stage03v3_implemented": "no",
+    "trading_or_decision_output": "no"
+  },
+  "created_at": "2026-06-12T12:49:16+00:00"
+}

@@ -1,0 +1,1119 @@
+{
+  "index_id": "STAGE03V-CLOSEOUT1-v1",
+  "manifest_version": "stage03v1_artifact_freeze_manifest_v1",
+  "status": "pass",
+  "stage_id": "Stage03V1",
+  "phase": "phase1",
+  "freeze_scope": "accepted_first_phase_artifacts_after_wp7_v2",
+  "wp7_v2_merged": "yes",
+  "wp7_v2_final_gate_verdict": "PASS_ENGINEERING_MODEL_DISCRIMINATION_BASELINE_SUPERIOR_DEFER_PROSPECTIVE",
+  "source_db_path": "data/db/a_share_hmm_tushare_v7.duckdb",
+  "v7_coverage_available": "yes",
+  "sw2021_l2_universe_coverage": "pass",
+  "canonical_artifact_count": 91,
+  "canonical_artifacts": [
+    {
+      "path": "docs/roadmap/STAGE03V_VOLATILITY_DRAWDOWN_RISK_PLAN.md",
+      "artifact_class": "roadmap",
+      "source_stage_or_package": "STAGE03V-WP0-v1",
+      "role": "Stage03V route anchor and boundaries",
+      "status": "accepted",
+      "canonical_for_stage03v1_phase1": "yes",
+      "supersedes": [],
+      "superseded_by": [],
+      "usage_policy": "canonical contract and governance reference for Stage03V1 phase-one interpretation"
+    },
+    {
+      "path": "docs/roadmap/STAGE03V_ROUND3_FINAL_ADDENDUM_20260610.md",
+      "artifact_class": "binding_addendum",
+      "source_stage_or_package": "STAGE03V-WP0-v1",
+      "role": "cross-cutoff, benchmark, readiness, and holdout addendum",
+      "status": "accepted",
+      "canonical_for_stage03v1_phase1": "yes",
+      "supersedes": [],
+      "superseded_by": [],
+      "usage_policy": "canonical contract and governance reference for Stage03V1 phase-one interpretation"
+    },
+    {
+      "path": "docs/work_packages/stage03v/STAGE03V_WP0_scope_freeze_contracts_ledger.md",
+      "artifact_class": "work_package",
+      "source_stage_or_package": "STAGE03V-WP0-v1",
+      "role": "WP0 scope-freeze contract source",
+      "status": "accepted",
+      "canonical_for_stage03v1_phase1": "yes",
+      "supersedes": [],
+      "superseded_by": [],
+      "usage_policy": "canonical contract and governance reference for Stage03V1 phase-one interpretation"
+    },
+    {
+      "path": "configs/risk_event_signal_contract_v1.yaml",
+      "artifact_class": "contract_config",
+      "source_stage_or_package": "STAGE03V-WP0-v1",
+      "role": "Stage03V1 signal contract, with FIX1 calibration semantics",
+      "status": "accepted",
+      "canonical_for_stage03v1_phase1": "yes",
+      "supersedes": [],
+      "superseded_by": [],
+      "usage_policy": "canonical contract and governance reference for Stage03V1 phase-one interpretation"
+    },
+    {
+      "path": "configs/readiness_policy_risk_event_v1.yaml",
+      "artifact_class": "readiness_policy",
+      "source_stage_or_package": "STAGE03V-WP0-v1",
+      "role": "Stage03V1 readiness policy, with FIX1 hard checks",
+      "status": "accepted",
+      "canonical_for_stage03v1_phase1": "yes",
+      "supersedes": [],
+      "superseded_by": [],
+      "usage_policy": "canonical contract and governance reference for Stage03V1 phase-one interpretation"
+    },
+    {
+      "path": "configs/stage03v_sw_l2_universe_manifest_v1.yaml",
+      "artifact_class": "universe_manifest",
+      "source_stage_or_package": "STAGE03V-WP0-v1",
+      "role": "SW2021 L2 universe manifest",
+      "status": "accepted",
+      "canonical_for_stage03v1_phase1": "yes",
+      "supersedes": [],
+      "superseded_by": [],
+      "usage_policy": "canonical contract and governance reference for Stage03V1 phase-one interpretation"
+    },
+    {
+      "path": "configs/stage03v_sw_l2_target_universe_v1.yaml",
+      "artifact_class": "target_universe_manifest",
+      "source_stage_or_package": "STAGE03V-WP0-v1",
+      "role": "verified SW2021 L2 target universe manifest",
+      "status": "accepted",
+      "canonical_for_stage03v1_phase1": "yes",
+      "supersedes": [],
+      "superseded_by": [],
+      "usage_policy": "canonical contract and governance reference for Stage03V1 phase-one interpretation"
+    },
+    {
+      "path": "reports/stage04/prospective_validation_ledger.stage03v.template.jsonl",
+      "artifact_class": "prospective_ledger_template",
+      "source_stage_or_package": "STAGE03V-WP0-v1",
+      "role": "Stage03V prospective holdout registration template",
+      "status": "accepted",
+      "canonical_for_stage03v1_phase1": "yes",
+      "supersedes": [],
+      "superseded_by": [],
+      "usage_policy": "canonical contract and governance reference for Stage03V1 phase-one interpretation"
+    },
+    {
+      "path": "reports/stage03v/stage03v_wp0_scope_freeze_report.json",
+      "artifact_class": "report_json",
+      "source_stage_or_package": "STAGE03V-WP0-v1",
+      "role": "WP0 scope-freeze acceptance report",
+      "status": "accepted",
+      "canonical_for_stage03v1_phase1": "yes",
+      "supersedes": [],
+      "superseded_by": [],
+      "usage_policy": "canonical contract and governance reference for Stage03V1 phase-one interpretation"
+    },
+    {
+      "path": "reports/stage03v/stage03v_wp0_scope_freeze_report.md",
+      "artifact_class": "report_markdown",
+      "source_stage_or_package": "STAGE03V-WP0-v1",
+      "role": "WP0 human-readable scope-freeze report",
+      "status": "accepted",
+      "canonical_for_stage03v1_phase1": "yes",
+      "supersedes": [],
+      "superseded_by": [],
+      "usage_policy": "canonical contract and governance reference for Stage03V1 phase-one interpretation"
+    },
+    {
+      "path": "docs/work_packages/stage03v/STAGE03V_WP0.5_sample_feasibility_preflight.md",
+      "artifact_class": "work_package",
+      "source_stage_or_package": "STAGE03V-WP0.5-v1",
+      "role": "WP0.5 feasibility source",
+      "status": "accepted",
+      "canonical_for_stage03v1_phase1": "yes",
+      "supersedes": [],
+      "superseded_by": [],
+      "usage_policy": "canonical feasibility evidence; not a model-performance claim"
+    },
+    {
+      "path": "reports/stage03v/sample_feasibility_report.json",
+      "artifact_class": "report_json",
+      "source_stage_or_package": "STAGE03V-WP0.5-v1",
+      "role": "V7 sample feasibility result",
+      "status": "accepted",
+      "canonical_for_stage03v1_phase1": "yes",
+      "supersedes": [],
+      "superseded_by": [],
+      "usage_policy": "canonical feasibility evidence; not a model-performance claim"
+    },
+    {
+      "path": "reports/stage03v/sample_feasibility_report.md",
+      "artifact_class": "report_markdown",
+      "source_stage_or_package": "STAGE03V-WP0.5-v1",
+      "role": "V7 sample feasibility summary",
+      "status": "accepted",
+      "canonical_for_stage03v1_phase1": "yes",
+      "supersedes": [],
+      "superseded_by": [],
+      "usage_policy": "canonical feasibility evidence; not a model-performance claim"
+    },
+    {
+      "path": "docs/work_packages/stage03v/STAGE03V_WP1_risk_event_target_dataset_v1.md",
+      "artifact_class": "work_package",
+      "source_stage_or_package": "STAGE03V-WP1-v1",
+      "role": "WP1 target dataset source",
+      "status": "accepted",
+      "canonical_for_stage03v1_phase1": "yes",
+      "supersedes": [],
+      "superseded_by": [],
+      "usage_policy": "canonical target construction evidence and capped audit sample only"
+    },
+    {
+      "path": "reports/stage03v/risk_event_target_support.json",
+      "artifact_class": "report_json",
+      "source_stage_or_package": "STAGE03V-WP1-v1",
+      "role": "target support and label-control summary",
+      "status": "accepted",
+      "canonical_for_stage03v1_phase1": "yes",
+      "supersedes": [],
+      "superseded_by": [],
+      "usage_policy": "canonical target construction evidence and capped audit sample only"
+    },
+    {
+      "path": "reports/stage03v/risk_event_target_support.md",
+      "artifact_class": "report_markdown",
+      "source_stage_or_package": "STAGE03V-WP1-v1",
+      "role": "target support narrative",
+      "status": "accepted",
+      "canonical_for_stage03v1_phase1": "yes",
+      "supersedes": [],
+      "superseded_by": [],
+      "usage_policy": "canonical target construction evidence and capped audit sample only"
+    },
+    {
+      "path": "reports/stage03v/risk_event_target_dataset_sample.csv",
+      "artifact_class": "capped_audit_sample",
+      "source_stage_or_package": "STAGE03V-WP1-v1",
+      "role": "capped target dataset audit sample",
+      "status": "accepted",
+      "canonical_for_stage03v1_phase1": "yes",
+      "supersedes": [],
+      "superseded_by": [],
+      "usage_policy": "canonical target construction evidence and capped audit sample only"
+    },
+    {
+      "path": "docs/work_packages/stage03v/STAGE03V_WP2_target_leakage_purge_embargo_ci_gate.md",
+      "artifact_class": "work_package",
+      "source_stage_or_package": "STAGE03V-WP2-v1",
+      "role": "WP2 leakage/purge/embargo source",
+      "status": "accepted",
+      "canonical_for_stage03v1_phase1": "yes",
+      "supersedes": [],
+      "superseded_by": [],
+      "usage_policy": "canonical target-control and leakage-boundary evidence"
+    },
+    {
+      "path": "configs/stage03v_purge_embargo_policy_v1.yaml",
+      "artifact_class": "policy_config",
+      "source_stage_or_package": "STAGE03V-WP2-v1",
+      "role": "purge and embargo policy",
+      "status": "accepted",
+      "canonical_for_stage03v1_phase1": "yes",
+      "supersedes": [],
+      "superseded_by": [],
+      "usage_policy": "canonical target-control and leakage-boundary evidence"
+    },
+    {
+      "path": "reports/stage03v/target_controls_report.json",
+      "artifact_class": "report_json",
+      "source_stage_or_package": "STAGE03V-WP2-v1",
+      "role": "target-control gate report",
+      "status": "accepted",
+      "canonical_for_stage03v1_phase1": "yes",
+      "supersedes": [],
+      "superseded_by": [],
+      "usage_policy": "canonical target-control and leakage-boundary evidence"
+    },
+    {
+      "path": "reports/stage03v/target_controls_report.md",
+      "artifact_class": "report_markdown",
+      "source_stage_or_package": "STAGE03V-WP2-v1",
+      "role": "target-control narrative",
+      "status": "accepted",
+      "canonical_for_stage03v1_phase1": "yes",
+      "supersedes": [],
+      "superseded_by": [],
+      "usage_policy": "canonical target-control and leakage-boundary evidence"
+    },
+    {
+      "path": "reports/stage03v/target_controls_audit_sample.csv",
+      "artifact_class": "capped_audit_sample",
+      "source_stage_or_package": "STAGE03V-WP2-v1",
+      "role": "target-control audit sample",
+      "status": "accepted",
+      "canonical_for_stage03v1_phase1": "yes",
+      "supersedes": [],
+      "superseded_by": [],
+      "usage_policy": "canonical target-control and leakage-boundary evidence"
+    },
+    {
+      "path": "docs/work_packages/stage03v/STAGE03V_WP2.1_full_target_streaming_audit.md",
+      "artifact_class": "work_package",
+      "source_stage_or_package": "STAGE03V-WP2.1-v1",
+      "role": "WP2.1 full-target audit source",
+      "status": "accepted",
+      "canonical_for_stage03v1_phase1": "yes",
+      "supersedes": [],
+      "superseded_by": [],
+      "usage_policy": "canonical full-target audit evidence; no full target matrix committed"
+    },
+    {
+      "path": "reports/stage03v/full_target_streaming_audit_report.json",
+      "artifact_class": "report_json",
+      "source_stage_or_package": "STAGE03V-WP2.1-v1",
+      "role": "full-target streaming audit report",
+      "status": "accepted",
+      "canonical_for_stage03v1_phase1": "yes",
+      "supersedes": [],
+      "superseded_by": [],
+      "usage_policy": "canonical full-target audit evidence; no full target matrix committed"
+    },
+    {
+      "path": "reports/stage03v/full_target_streaming_audit_report.md",
+      "artifact_class": "report_markdown",
+      "source_stage_or_package": "STAGE03V-WP2.1-v1",
+      "role": "full-target streaming audit narrative",
+      "status": "accepted",
+      "canonical_for_stage03v1_phase1": "yes",
+      "supersedes": [],
+      "superseded_by": [],
+      "usage_policy": "canonical full-target audit evidence; no full target matrix committed"
+    },
+    {
+      "path": "reports/stage03v/full_target_streaming_audit_chunk_summary.csv",
+      "artifact_class": "audit_summary_csv",
+      "source_stage_or_package": "STAGE03V-WP2.1-v1",
+      "role": "chunk-level streaming audit summary",
+      "status": "accepted",
+      "canonical_for_stage03v1_phase1": "yes",
+      "supersedes": [],
+      "superseded_by": [],
+      "usage_policy": "canonical full-target audit evidence; no full target matrix committed"
+    },
+    {
+      "path": "reports/stage03v/full_target_streaming_audit_error_sample.csv",
+      "artifact_class": "capped_audit_sample",
+      "source_stage_or_package": "STAGE03V-WP2.1-v1",
+      "role": "streaming audit error sample",
+      "status": "accepted",
+      "canonical_for_stage03v1_phase1": "yes",
+      "supersedes": [],
+      "superseded_by": [],
+      "usage_policy": "canonical full-target audit evidence; no full target matrix committed"
+    },
+    {
+      "path": "docs/work_packages/stage03v/STAGE03V_WP3_volatility_range_empirical_baselines.md",
+      "artifact_class": "work_package",
+      "source_stage_or_package": "STAGE03V-WP3-v1",
+      "role": "WP3 baseline diagnostics source",
+      "status": "accepted",
+      "canonical_for_stage03v1_phase1": "yes",
+      "supersedes": [],
+      "superseded_by": [],
+      "usage_policy": "canonical causal baseline diagnostics evidence"
+    },
+    {
+      "path": "configs/stage03v_baseline_diagnostics_policy_v1.yaml",
+      "artifact_class": "policy_config",
+      "source_stage_or_package": "STAGE03V-WP3-v1",
+      "role": "baseline diagnostics policy",
+      "status": "accepted",
+      "canonical_for_stage03v1_phase1": "yes",
+      "supersedes": [],
+      "superseded_by": [],
+      "usage_policy": "canonical causal baseline diagnostics evidence"
+    },
+    {
+      "path": "reports/stage03v/baseline_diagnostics_report.json",
+      "artifact_class": "report_json",
+      "source_stage_or_package": "STAGE03V-WP3-v1",
+      "role": "baseline diagnostics report",
+      "status": "accepted",
+      "canonical_for_stage03v1_phase1": "yes",
+      "supersedes": [],
+      "superseded_by": [],
+      "usage_policy": "canonical causal baseline diagnostics evidence"
+    },
+    {
+      "path": "reports/stage03v/baseline_diagnostics_report.md",
+      "artifact_class": "report_markdown",
+      "source_stage_or_package": "STAGE03V-WP3-v1",
+      "role": "baseline diagnostics narrative",
+      "status": "accepted",
+      "canonical_for_stage03v1_phase1": "yes",
+      "supersedes": [],
+      "superseded_by": [],
+      "usage_policy": "canonical causal baseline diagnostics evidence"
+    },
+    {
+      "path": "reports/stage03v/baseline_diagnostics_fold_metrics.csv",
+      "artifact_class": "summary_csv",
+      "source_stage_or_package": "STAGE03V-WP3-v1",
+      "role": "baseline fold metrics",
+      "status": "accepted",
+      "canonical_for_stage03v1_phase1": "yes",
+      "supersedes": [],
+      "superseded_by": [],
+      "usage_policy": "canonical causal baseline diagnostics evidence"
+    },
+    {
+      "path": "reports/stage03v/baseline_diagnostics_slice_metrics.csv",
+      "artifact_class": "summary_csv",
+      "source_stage_or_package": "STAGE03V-WP3-v1",
+      "role": "baseline slice metrics",
+      "status": "accepted",
+      "canonical_for_stage03v1_phase1": "yes",
+      "supersedes": [],
+      "superseded_by": [],
+      "usage_policy": "canonical causal baseline diagnostics evidence"
+    },
+    {
+      "path": "reports/stage03v/baseline_diagnostics_audit_sample.csv",
+      "artifact_class": "capped_audit_sample",
+      "source_stage_or_package": "STAGE03V-WP3-v1",
+      "role": "baseline diagnostics audit sample",
+      "status": "accepted",
+      "canonical_for_stage03v1_phase1": "yes",
+      "supersedes": [],
+      "superseded_by": [],
+      "usage_policy": "canonical causal baseline diagnostics evidence"
+    },
+    {
+      "path": "docs/work_packages/stage03v/STAGE03V_WP3.5_volatility_scaled_threshold_sanity_gate.md",
+      "artifact_class": "work_package",
+      "source_stage_or_package": "STAGE03V-WP3.5-v1",
+      "role": "WP3.5 volatility-scaled sanity source",
+      "status": "accepted",
+      "canonical_for_stage03v1_phase1": "yes",
+      "supersedes": [],
+      "superseded_by": [],
+      "usage_policy": "canonical sanity evidence; fixed-threshold mainline remains unchanged"
+    },
+    {
+      "path": "configs/stage03v_vol_scaled_threshold_sanity_policy_v1.yaml",
+      "artifact_class": "policy_config",
+      "source_stage_or_package": "STAGE03V-WP3.5-v1",
+      "role": "volatility-scaled sanity policy",
+      "status": "accepted",
+      "canonical_for_stage03v1_phase1": "yes",
+      "supersedes": [],
+      "superseded_by": [],
+      "usage_policy": "canonical sanity evidence; fixed-threshold mainline remains unchanged"
+    },
+    {
+      "path": "reports/stage03v/vol_scaled_threshold_sanity_report.json",
+      "artifact_class": "report_json",
+      "source_stage_or_package": "STAGE03V-WP3.5-v1",
+      "role": "volatility-scaled threshold sanity report",
+      "status": "accepted",
+      "canonical_for_stage03v1_phase1": "yes",
+      "supersedes": [],
+      "superseded_by": [],
+      "usage_policy": "canonical sanity evidence; fixed-threshold mainline remains unchanged"
+    },
+    {
+      "path": "reports/stage03v/vol_scaled_threshold_sanity_report.md",
+      "artifact_class": "report_markdown",
+      "source_stage_or_package": "STAGE03V-WP3.5-v1",
+      "role": "volatility-scaled threshold sanity narrative",
+      "status": "accepted",
+      "canonical_for_stage03v1_phase1": "yes",
+      "supersedes": [],
+      "superseded_by": [],
+      "usage_policy": "canonical sanity evidence; fixed-threshold mainline remains unchanged"
+    },
+    {
+      "path": "reports/stage03v/vol_scaled_threshold_slice_summary.csv",
+      "artifact_class": "summary_csv",
+      "source_stage_or_package": "STAGE03V-WP3.5-v1",
+      "role": "volatility-scaled slice summary",
+      "status": "accepted",
+      "canonical_for_stage03v1_phase1": "yes",
+      "supersedes": [],
+      "superseded_by": [],
+      "usage_policy": "canonical sanity evidence; fixed-threshold mainline remains unchanged"
+    },
+    {
+      "path": "reports/stage03v/baseline_metric_sanity_audit.csv",
+      "artifact_class": "capped_audit_sample",
+      "source_stage_or_package": "STAGE03V-WP3.5-v1",
+      "role": "baseline metric sanity audit",
+      "status": "accepted",
+      "canonical_for_stage03v1_phase1": "yes",
+      "supersedes": [],
+      "superseded_by": [],
+      "usage_policy": "canonical sanity evidence; fixed-threshold mainline remains unchanged"
+    },
+    {
+      "path": "reports/stage03v/asof_shift_metric_sanity.csv",
+      "artifact_class": "audit_csv",
+      "source_stage_or_package": "STAGE03V-WP3.5-v1",
+      "role": "as-of shift metric sanity audit",
+      "status": "accepted",
+      "canonical_for_stage03v1_phase1": "yes",
+      "supersedes": [],
+      "superseded_by": [],
+      "usage_policy": "canonical sanity evidence; fixed-threshold mainline remains unchanged"
+    },
+    {
+      "path": "docs/work_packages/stage03v/STAGE03V_FIX1_contract_repairs.md",
+      "artifact_class": "work_package",
+      "source_stage_or_package": "STAGE03V-FIX1-v1",
+      "role": "FIX1 repair source",
+      "status": "accepted",
+      "canonical_for_stage03v1_phase1": "yes",
+      "supersedes": [],
+      "superseded_by": [],
+      "usage_policy": "canonical contract-repair implementation reference; not empirical evidence by itself"
+    },
+    {
+      "path": "src/evaluation/stage03v_calibration_readiness.py",
+      "artifact_class": "source_module",
+      "source_stage_or_package": "STAGE03V-FIX1-v1",
+      "role": "FIX1 readiness hard-ban and holdout hard-block implementation",
+      "status": "accepted",
+      "canonical_for_stage03v1_phase1": "yes",
+      "supersedes": [],
+      "superseded_by": [],
+      "usage_policy": "canonical contract-repair implementation reference; not empirical evidence by itself"
+    },
+    {
+      "path": "src/evaluation/stage03v_logistic_hazard.py",
+      "artifact_class": "source_module",
+      "source_stage_or_package": "STAGE03V-FIX1-v1",
+      "role": "FIX1 date-aware logistic weighting implementation",
+      "status": "accepted",
+      "canonical_for_stage03v1_phase1": "yes",
+      "supersedes": [],
+      "superseded_by": [],
+      "usage_policy": "canonical contract-repair implementation reference; not empirical evidence by itself"
+    },
+    {
+      "path": "src/evaluation/stage03v_risk_target_dataset.py",
+      "artifact_class": "source_module",
+      "source_stage_or_package": "STAGE03V-FIX1-v1",
+      "role": "FIX1 cross-cutoff censoring defence-in-depth",
+      "status": "accepted",
+      "canonical_for_stage03v1_phase1": "yes",
+      "supersedes": [],
+      "superseded_by": [],
+      "usage_policy": "canonical contract-repair implementation reference; not empirical evidence by itself"
+    },
+    {
+      "path": "src/evaluation/stage03v_risk_validation.py",
+      "artifact_class": "source_module",
+      "source_stage_or_package": "STAGE03V-FIX1-v1",
+      "role": "FIX1 risk-validation holdout hard-block",
+      "status": "accepted",
+      "canonical_for_stage03v1_phase1": "yes",
+      "supersedes": [],
+      "superseded_by": [],
+      "usage_policy": "canonical contract-repair implementation reference; not empirical evidence by itself"
+    },
+    {
+      "path": "tests/test_stage03v_fix1_market_block_ban.py",
+      "artifact_class": "test",
+      "source_stage_or_package": "STAGE03V-FIX1-v1",
+      "role": "FIX1 market-block hard-ban regression",
+      "status": "accepted",
+      "canonical_for_stage03v1_phase1": "yes",
+      "supersedes": [],
+      "superseded_by": [],
+      "usage_policy": "canonical contract-repair implementation reference; not empirical evidence by itself"
+    },
+    {
+      "path": "tests/test_stage03v_fix1_brier_retention.py",
+      "artifact_class": "test",
+      "source_stage_or_package": "STAGE03V-FIX1-v1",
+      "role": "FIX1 brier-retention regression",
+      "status": "accepted",
+      "canonical_for_stage03v1_phase1": "yes",
+      "supersedes": [],
+      "superseded_by": [],
+      "usage_policy": "canonical contract-repair implementation reference; not empirical evidence by itself"
+    },
+    {
+      "path": "tests/test_stage03v_fix1_date_weighting.py",
+      "artifact_class": "test",
+      "source_stage_or_package": "STAGE03V-FIX1-v1",
+      "role": "FIX1 date-aware weighting regression",
+      "status": "accepted",
+      "canonical_for_stage03v1_phase1": "yes",
+      "supersedes": [],
+      "superseded_by": [],
+      "usage_policy": "canonical contract-repair implementation reference; not empirical evidence by itself"
+    },
+    {
+      "path": "tests/test_stage03v_fix1_holdout_hard_block.py",
+      "artifact_class": "test",
+      "source_stage_or_package": "STAGE03V-FIX1-v1",
+      "role": "FIX1 holdout hard-block regression",
+      "status": "accepted",
+      "canonical_for_stage03v1_phase1": "yes",
+      "supersedes": [],
+      "superseded_by": [],
+      "usage_policy": "canonical contract-repair implementation reference; not empirical evidence by itself"
+    },
+    {
+      "path": "docs/work_packages/stage03v/STAGE03V_RERUN1_full_scale_revalidation.md",
+      "artifact_class": "work_package",
+      "source_stage_or_package": "STAGE03V-RERUN1-v1",
+      "role": "RERUN1 source package",
+      "status": "accepted",
+      "canonical_for_stage03v1_phase1": "yes",
+      "supersedes": [],
+      "superseded_by": [],
+      "usage_policy": "canonical RERUN1 full-scale validation evidence; prospective holdout remains unconsumed"
+    },
+    {
+      "path": "reports/stage03v/purge_embargo_fold_plan_v2.json",
+      "artifact_class": "fold_plan_json",
+      "source_stage_or_package": "STAGE03V-RERUN1-v1",
+      "role": "full-scale fold plan v2",
+      "status": "accepted",
+      "canonical_for_stage03v1_phase1": "yes",
+      "supersedes": [
+        "reports/stage03v/purge_embargo_fold_plan.json"
+      ],
+      "superseded_by": [],
+      "usage_policy": "canonical RERUN1 full-scale validation evidence; prospective holdout remains unconsumed"
+    },
+    {
+      "path": "reports/stage03v/fold_plan_magnitude_overview.md",
+      "artifact_class": "report_markdown",
+      "source_stage_or_package": "STAGE03V-RERUN1-v1",
+      "role": "fold-plan magnitude overview",
+      "status": "accepted",
+      "canonical_for_stage03v1_phase1": "yes",
+      "supersedes": [
+        "reports/stage03v/purge_embargo_fold_plan.json"
+      ],
+      "superseded_by": [],
+      "usage_policy": "canonical RERUN1 full-scale validation evidence; prospective holdout remains unconsumed"
+    },
+    {
+      "path": "reports/stage03v/fold_plan_magnitude_overview.csv",
+      "artifact_class": "summary_csv",
+      "source_stage_or_package": "STAGE03V-RERUN1-v1",
+      "role": "fold-plan magnitude table",
+      "status": "accepted",
+      "canonical_for_stage03v1_phase1": "yes",
+      "supersedes": [
+        "reports/stage03v/purge_embargo_fold_plan.json"
+      ],
+      "superseded_by": [],
+      "usage_policy": "canonical RERUN1 full-scale validation evidence; prospective holdout remains unconsumed"
+    },
+    {
+      "path": "reports/stage03v/validation_trial_accounting.json",
+      "artifact_class": "trial_accounting_json",
+      "source_stage_or_package": "STAGE03V-RERUN1-v1",
+      "role": "trial-accounting invalidation record",
+      "status": "accepted",
+      "canonical_for_stage03v1_phase1": "yes",
+      "supersedes": [
+        "stage03v_wp4_wp6_2014_microfold_trial"
+      ],
+      "superseded_by": [],
+      "usage_policy": "canonical RERUN1 full-scale validation evidence; prospective holdout remains unconsumed"
+    },
+    {
+      "path": "reports/stage03v/logistic_hazard_report.json",
+      "artifact_class": "report_json",
+      "source_stage_or_package": "STAGE03V-RERUN1-v1",
+      "role": "RERUN1 regenerated WP4 logistic report",
+      "status": "accepted",
+      "canonical_for_stage03v1_phase1": "yes",
+      "supersedes": [
+        "stage03v_wp4_v1_2014_microfold"
+      ],
+      "superseded_by": [],
+      "usage_policy": "canonical RERUN1 full-scale validation evidence; prospective holdout remains unconsumed"
+    },
+    {
+      "path": "reports/stage03v/logistic_hazard_report.md",
+      "artifact_class": "report_markdown",
+      "source_stage_or_package": "STAGE03V-RERUN1-v1",
+      "role": "RERUN1 regenerated WP4 logistic narrative",
+      "status": "accepted",
+      "canonical_for_stage03v1_phase1": "yes",
+      "supersedes": [
+        "stage03v_wp4_v1_2014_microfold"
+      ],
+      "superseded_by": [],
+      "usage_policy": "canonical RERUN1 full-scale validation evidence; prospective holdout remains unconsumed"
+    },
+    {
+      "path": "reports/stage03v/logistic_hazard_fold_metrics.csv",
+      "artifact_class": "summary_csv",
+      "source_stage_or_package": "STAGE03V-RERUN1-v1",
+      "role": "RERUN1 WP4 fold metrics",
+      "status": "accepted",
+      "canonical_for_stage03v1_phase1": "yes",
+      "supersedes": [
+        "stage03v_wp4_v1_2014_microfold"
+      ],
+      "superseded_by": [],
+      "usage_policy": "canonical RERUN1 full-scale validation evidence; prospective holdout remains unconsumed"
+    },
+    {
+      "path": "reports/stage03v/logistic_hazard_slice_metrics.csv",
+      "artifact_class": "summary_csv",
+      "source_stage_or_package": "STAGE03V-RERUN1-v1",
+      "role": "RERUN1 WP4 slice metrics",
+      "status": "accepted",
+      "canonical_for_stage03v1_phase1": "yes",
+      "supersedes": [
+        "stage03v_wp4_v1_2014_microfold"
+      ],
+      "superseded_by": [],
+      "usage_policy": "canonical RERUN1 full-scale validation evidence; prospective holdout remains unconsumed"
+    },
+    {
+      "path": "reports/stage03v/logistic_hazard_coefficients.csv",
+      "artifact_class": "summary_csv",
+      "source_stage_or_package": "STAGE03V-RERUN1-v1",
+      "role": "RERUN1 WP4 coefficients summary",
+      "status": "accepted",
+      "canonical_for_stage03v1_phase1": "yes",
+      "supersedes": [
+        "stage03v_wp4_v1_2014_microfold"
+      ],
+      "superseded_by": [],
+      "usage_policy": "canonical RERUN1 full-scale validation evidence; prospective holdout remains unconsumed"
+    },
+    {
+      "path": "reports/stage03v/logistic_hazard_model_manifest.json",
+      "artifact_class": "model_manifest_json",
+      "source_stage_or_package": "STAGE03V-RERUN1-v1",
+      "role": "RERUN1 WP4 model manifest",
+      "status": "accepted",
+      "canonical_for_stage03v1_phase1": "yes",
+      "supersedes": [
+        "stage03v_wp4_v1_2014_microfold"
+      ],
+      "superseded_by": [],
+      "usage_policy": "canonical RERUN1 full-scale validation evidence; prospective holdout remains unconsumed"
+    },
+    {
+      "path": "reports/stage03v/logistic_hazard_feature_audit.csv",
+      "artifact_class": "audit_csv",
+      "source_stage_or_package": "STAGE03V-RERUN1-v1",
+      "role": "RERUN1 WP4 feature audit",
+      "status": "accepted",
+      "canonical_for_stage03v1_phase1": "yes",
+      "supersedes": [
+        "stage03v_wp4_v1_2014_microfold"
+      ],
+      "superseded_by": [],
+      "usage_policy": "canonical RERUN1 full-scale validation evidence; prospective holdout remains unconsumed"
+    },
+    {
+      "path": "reports/stage03v/logistic_hazard_audit_sample.csv",
+      "artifact_class": "capped_audit_sample",
+      "source_stage_or_package": "STAGE03V-RERUN1-v1",
+      "role": "RERUN1 WP4 audit sample",
+      "status": "accepted",
+      "canonical_for_stage03v1_phase1": "yes",
+      "supersedes": [
+        "stage03v_wp4_v1_2014_microfold"
+      ],
+      "superseded_by": [],
+      "usage_policy": "canonical RERUN1 full-scale validation evidence; prospective holdout remains unconsumed"
+    },
+    {
+      "path": "reports/stage03v/calibration_readiness_report.json",
+      "artifact_class": "report_json",
+      "source_stage_or_package": "STAGE03V-RERUN1-v1",
+      "role": "RERUN1 regenerated WP5 calibration/readiness report",
+      "status": "accepted",
+      "canonical_for_stage03v1_phase1": "yes",
+      "supersedes": [
+        "stage03v_wp5_v1_2014_microfold"
+      ],
+      "superseded_by": [],
+      "usage_policy": "canonical RERUN1 full-scale validation evidence; prospective holdout remains unconsumed"
+    },
+    {
+      "path": "reports/stage03v/calibration_readiness_report.md",
+      "artifact_class": "report_markdown",
+      "source_stage_or_package": "STAGE03V-RERUN1-v1",
+      "role": "RERUN1 regenerated WP5 narrative",
+      "status": "accepted",
+      "canonical_for_stage03v1_phase1": "yes",
+      "supersedes": [
+        "stage03v_wp5_v1_2014_microfold"
+      ],
+      "superseded_by": [],
+      "usage_policy": "canonical RERUN1 full-scale validation evidence; prospective holdout remains unconsumed"
+    },
+    {
+      "path": "reports/stage03v/calibration_fold_metrics.csv",
+      "artifact_class": "summary_csv",
+      "source_stage_or_package": "STAGE03V-RERUN1-v1",
+      "role": "RERUN1 WP5 fold metrics",
+      "status": "accepted",
+      "canonical_for_stage03v1_phase1": "yes",
+      "supersedes": [
+        "stage03v_wp5_v1_2014_microfold"
+      ],
+      "superseded_by": [],
+      "usage_policy": "canonical RERUN1 full-scale validation evidence; prospective holdout remains unconsumed"
+    },
+    {
+      "path": "reports/stage03v/calibration_slice_metrics.csv",
+      "artifact_class": "summary_csv",
+      "source_stage_or_package": "STAGE03V-RERUN1-v1",
+      "role": "RERUN1 WP5 slice metrics",
+      "status": "accepted",
+      "canonical_for_stage03v1_phase1": "yes",
+      "supersedes": [
+        "stage03v_wp5_v1_2014_microfold"
+      ],
+      "superseded_by": [],
+      "usage_policy": "canonical RERUN1 full-scale validation evidence; prospective holdout remains unconsumed"
+    },
+    {
+      "path": "reports/stage03v/calibration_curve_bins.csv",
+      "artifact_class": "summary_csv",
+      "source_stage_or_package": "STAGE03V-RERUN1-v1",
+      "role": "RERUN1 WP5 calibration curve bins",
+      "status": "accepted",
+      "canonical_for_stage03v1_phase1": "yes",
+      "supersedes": [
+        "stage03v_wp5_v1_2014_microfold"
+      ],
+      "superseded_by": [],
+      "usage_policy": "canonical RERUN1 full-scale validation evidence; prospective holdout remains unconsumed"
+    },
+    {
+      "path": "reports/stage03v/clustered_inference_summary.csv",
+      "artifact_class": "summary_csv",
+      "source_stage_or_package": "STAGE03V-RERUN1-v1",
+      "role": "RERUN1 WP5 clustered inference summary",
+      "status": "accepted",
+      "canonical_for_stage03v1_phase1": "yes",
+      "supersedes": [
+        "stage03v_wp5_v1_2014_microfold"
+      ],
+      "superseded_by": [],
+      "usage_policy": "canonical RERUN1 full-scale validation evidence; prospective holdout remains unconsumed"
+    },
+    {
+      "path": "reports/stage03v/downside_readiness_matrix.csv",
+      "artifact_class": "summary_csv",
+      "source_stage_or_package": "STAGE03V-RERUN1-v1",
+      "role": "RERUN1 WP5 downside readiness matrix",
+      "status": "accepted",
+      "canonical_for_stage03v1_phase1": "yes",
+      "supersedes": [
+        "stage03v_wp5_v1_2014_microfold"
+      ],
+      "superseded_by": [],
+      "usage_policy": "canonical RERUN1 full-scale validation evidence; prospective holdout remains unconsumed"
+    },
+    {
+      "path": "reports/stage03v/calibration_model_manifest.json",
+      "artifact_class": "model_manifest_json",
+      "source_stage_or_package": "STAGE03V-RERUN1-v1",
+      "role": "RERUN1 WP5 calibration manifest",
+      "status": "accepted",
+      "canonical_for_stage03v1_phase1": "yes",
+      "supersedes": [
+        "stage03v_wp5_v1_2014_microfold"
+      ],
+      "superseded_by": [],
+      "usage_policy": "canonical RERUN1 full-scale validation evidence; prospective holdout remains unconsumed"
+    },
+    {
+      "path": "reports/stage03v/calibration_audit_sample.csv",
+      "artifact_class": "capped_audit_sample",
+      "source_stage_or_package": "STAGE03V-RERUN1-v1",
+      "role": "RERUN1 WP5 audit sample",
+      "status": "accepted",
+      "canonical_for_stage03v1_phase1": "yes",
+      "supersedes": [
+        "stage03v_wp5_v1_2014_microfold"
+      ],
+      "superseded_by": [],
+      "usage_policy": "canonical RERUN1 full-scale validation evidence; prospective holdout remains unconsumed"
+    },
+    {
+      "path": "reports/stage03v/downshift_experiment_report.json",
+      "artifact_class": "report_json",
+      "source_stage_or_package": "STAGE03V-RERUN1-v1",
+      "role": "RERUN1 B2 three-arm downshift report",
+      "status": "accepted",
+      "canonical_for_stage03v1_phase1": "yes",
+      "supersedes": [
+        "stage03v_wp6_v1_microfold_tier_aggregation"
+      ],
+      "superseded_by": [],
+      "usage_policy": "canonical RERUN1 full-scale validation evidence; prospective holdout remains unconsumed"
+    },
+    {
+      "path": "reports/stage03v/downshift_experiment_report.md",
+      "artifact_class": "report_markdown",
+      "source_stage_or_package": "STAGE03V-RERUN1-v1",
+      "role": "RERUN1 B2 three-arm downshift narrative",
+      "status": "accepted",
+      "canonical_for_stage03v1_phase1": "yes",
+      "supersedes": [
+        "stage03v_wp6_v1_microfold_tier_aggregation"
+      ],
+      "superseded_by": [],
+      "usage_policy": "canonical RERUN1 full-scale validation evidence; prospective holdout remains unconsumed"
+    },
+    {
+      "path": "reports/stage03v/downshift_experiment_arm_metrics.csv",
+      "artifact_class": "summary_csv",
+      "source_stage_or_package": "STAGE03V-RERUN1-v1",
+      "role": "RERUN1 B2 arm metrics",
+      "status": "accepted",
+      "canonical_for_stage03v1_phase1": "yes",
+      "supersedes": [
+        "stage03v_wp6_v1_microfold_tier_aggregation"
+      ],
+      "superseded_by": [],
+      "usage_policy": "canonical RERUN1 full-scale validation evidence; prospective holdout remains unconsumed"
+    },
+    {
+      "path": "reports/stage03v/downshift_experiment_daily_exposure_sample.csv",
+      "artifact_class": "capped_audit_sample",
+      "source_stage_or_package": "STAGE03V-RERUN1-v1",
+      "role": "RERUN1 B2 capped daily exposure sample",
+      "status": "accepted",
+      "canonical_for_stage03v1_phase1": "yes",
+      "supersedes": [
+        "stage03v_wp6_v1_microfold_tier_aggregation"
+      ],
+      "superseded_by": [],
+      "usage_policy": "canonical RERUN1 full-scale validation evidence; prospective holdout remains unconsumed"
+    },
+    {
+      "path": "docs/work_packages/stage03v/STAGE03V_WP7_v2_stage03v1_final_gate_rerun1.md",
+      "artifact_class": "work_package",
+      "source_stage_or_package": "STAGE03V-WP7-v2",
+      "role": "WP7-v2 final gate source",
+      "status": "accepted",
+      "canonical_for_stage03v1_phase1": "yes",
+      "supersedes": [
+        "STAGE03V-WP7-v1"
+      ],
+      "superseded_by": [],
+      "usage_policy": "canonical final Stage03V1 phase-one gate evidence; no decision-support promotion"
+    },
+    {
+      "path": "configs/stage03v_final_gate_policy_v2.yaml",
+      "artifact_class": "policy_config",
+      "source_stage_or_package": "STAGE03V-WP7-v2",
+      "role": "WP7-v2 final gate policy",
+      "status": "accepted",
+      "canonical_for_stage03v1_phase1": "yes",
+      "supersedes": [
+        "STAGE03V-WP7-v1"
+      ],
+      "superseded_by": [],
+      "usage_policy": "canonical final Stage03V1 phase-one gate evidence; no decision-support promotion"
+    },
+    {
+      "path": "src/evaluation/stage03v_final_gate_v2.py",
+      "artifact_class": "source_module",
+      "source_stage_or_package": "STAGE03V-WP7-v2",
+      "role": "WP7-v2 final gate implementation",
+      "status": "accepted",
+      "canonical_for_stage03v1_phase1": "yes",
+      "supersedes": [
+        "STAGE03V-WP7-v1"
+      ],
+      "superseded_by": [],
+      "usage_policy": "canonical final Stage03V1 phase-one gate evidence; no decision-support promotion"
+    },
+    {
+      "path": "scripts/stage03v_final_gate_v2.sh",
+      "artifact_class": "gate_script",
+      "source_stage_or_package": "STAGE03V-WP7-v2",
+      "role": "WP7-v2 final gate script",
+      "status": "accepted",
+      "canonical_for_stage03v1_phase1": "yes",
+      "supersedes": [
+        "STAGE03V-WP7-v1"
+      ],
+      "superseded_by": [],
+      "usage_policy": "canonical final Stage03V1 phase-one gate evidence; no decision-support promotion"
+    },
+    {
+      "path": "tests/test_stage03v_final_gate_v2.py",
+      "artifact_class": "test",
+      "source_stage_or_package": "STAGE03V-WP7-v2",
+      "role": "WP7-v2 final gate tests",
+      "status": "accepted",
+      "canonical_for_stage03v1_phase1": "yes",
+      "supersedes": [
+        "STAGE03V-WP7-v1"
+      ],
+      "superseded_by": [],
+      "usage_policy": "canonical final Stage03V1 phase-one gate evidence; no decision-support promotion"
+    },
+    {
+      "path": "tests/test_stage03v_final_gate_v2_boundaries.py",
+      "artifact_class": "test",
+      "source_stage_or_package": "STAGE03V-WP7-v2",
+      "role": "WP7-v2 boundary tests",
+      "status": "accepted",
+      "canonical_for_stage03v1_phase1": "yes",
+      "supersedes": [
+        "STAGE03V-WP7-v1"
+      ],
+      "superseded_by": [],
+      "usage_policy": "canonical final Stage03V1 phase-one gate evidence; no decision-support promotion"
+    },
+    {
+      "path": "reports/stage03v/stage03v1_final_gate_v2_report.md",
+      "artifact_class": "report_markdown",
+      "source_stage_or_package": "STAGE03V-WP7-v2",
+      "role": "Stage03V1 final gate v2 narrative",
+      "status": "accepted",
+      "canonical_for_stage03v1_phase1": "yes",
+      "supersedes": [
+        "STAGE03V-WP7-v1"
+      ],
+      "superseded_by": [],
+      "usage_policy": "canonical final Stage03V1 phase-one gate evidence; no decision-support promotion"
+    },
+    {
+      "path": "reports/stage03v/stage03v1_final_gate_v2_report.json",
+      "artifact_class": "report_json",
+      "source_stage_or_package": "STAGE03V-WP7-v2",
+      "role": "Stage03V1 final gate v2 machine-readable report",
+      "status": "accepted",
+      "canonical_for_stage03v1_phase1": "yes",
+      "supersedes": [
+        "STAGE03V-WP7-v1"
+      ],
+      "superseded_by": [],
+      "usage_policy": "canonical final Stage03V1 phase-one gate evidence; no decision-support promotion"
+    },
+    {
+      "path": "reports/stage03v/stage03v1_final_gate_v2_verdict.json",
+      "artifact_class": "verdict_json",
+      "source_stage_or_package": "STAGE03V-WP7-v2",
+      "role": "Stage03V1 final gate v2 verdict",
+      "status": "accepted",
+      "canonical_for_stage03v1_phase1": "yes",
+      "supersedes": [
+        "STAGE03V-WP7-v1"
+      ],
+      "superseded_by": [],
+      "usage_policy": "canonical final Stage03V1 phase-one gate evidence; no decision-support promotion"
+    },
+    {
+      "path": "reports/stage03v/stage03v1_final_gate_v2_evidence_matrix.csv",
+      "artifact_class": "summary_csv",
+      "source_stage_or_package": "STAGE03V-WP7-v2",
+      "role": "Stage03V1 final gate evidence matrix",
+      "status": "accepted",
+      "canonical_for_stage03v1_phase1": "yes",
+      "supersedes": [
+        "STAGE03V-WP7-v1"
+      ],
+      "superseded_by": [],
+      "usage_policy": "canonical final Stage03V1 phase-one gate evidence; no decision-support promotion"
+    },
+    {
+      "path": "reports/stage03v/stage03v1_final_gate_v2_artifact_manifest.json",
+      "artifact_class": "manifest_json",
+      "source_stage_or_package": "STAGE03V-WP7-v2",
+      "role": "WP7-v2 artifact manifest",
+      "status": "accepted",
+      "canonical_for_stage03v1_phase1": "yes",
+      "supersedes": [
+        "STAGE03V-WP7-v1"
+      ],
+      "superseded_by": [],
+      "usage_policy": "canonical final Stage03V1 phase-one gate evidence; no decision-support promotion"
+    },
+    {
+      "path": "reports/stage03v/stage03v1_final_gate_v2_rerun1_input_manifest.json",
+      "artifact_class": "manifest_json",
+      "source_stage_or_package": "STAGE03V-WP7-v2",
+      "role": "WP7-v2 RERUN1 input manifest",
+      "status": "accepted",
+      "canonical_for_stage03v1_phase1": "yes",
+      "supersedes": [
+        "STAGE03V-WP7-v1"
+      ],
+      "superseded_by": [],
+      "usage_policy": "canonical final Stage03V1 phase-one gate evidence; no decision-support promotion"
+    },
+    {
+      "path": "reports/stage03v/stage03v1_prospective_holdout_status_v2.json",
+      "artifact_class": "holdout_status_json",
+      "source_stage_or_package": "STAGE03V-WP7-v2",
+      "role": "WP7-v2 prospective holdout status",
+      "status": "accepted",
+      "canonical_for_stage03v1_phase1": "yes",
+      "supersedes": [
+        "STAGE03V-WP7-v1"
+      ],
+      "superseded_by": [],
+      "usage_policy": "canonical final Stage03V1 phase-one gate evidence; no decision-support promotion"
+    },
+    {
+      "path": "reports/stage03v/stage03v1_post_gate_action_plan_v2.md",
+      "artifact_class": "report_markdown",
+      "source_stage_or_package": "STAGE03V-WP7-v2",
+      "role": "WP7-v2 post-gate action plan",
+      "status": "accepted",
+      "canonical_for_stage03v1_phase1": "yes",
+      "supersedes": [
+        "STAGE03V-WP7-v1"
+      ],
+      "superseded_by": [],
+      "usage_policy": "canonical final Stage03V1 phase-one gate evidence; no decision-support promotion"
+    },
+    {
+      "path": "reports/stage03v/stage03v1_final_gate_v2_audit_sample.csv",
+      "artifact_class": "capped_audit_sample",
+      "source_stage_or_package": "STAGE03V-WP7-v2",
+      "role": "WP7-v2 audit sample",
+      "status": "accepted",
+      "canonical_for_stage03v1_phase1": "yes",
+      "supersedes": [
+        "STAGE03V-WP7-v1"
+      ],
+      "superseded_by": [],
+      "usage_policy": "canonical final Stage03V1 phase-one gate evidence; no decision-support promotion"
+    }
+  ],
+  "invalidated_artifact_registry_path": "reports/stage03v/stage03v1_invalidated_artifact_registry.json",
+  "usage_guardrails": [
+    "Use only canonical RERUN1 and WP7-v2 evidence for Stage03V1 phase-one interpretation.",
+    "Do not cite invalidated microfold WP4-WP6 or old WP7-v1 evidence as signal strength or weakness.",
+    "Prospective holdout performance remains unconsumed and deferred to a future authorized package."
+  ],
+  "boundary_flags": {
+    "external_data_fetch": "no",
+    "new_experiment_run": "no",
+    "model_training": "no",
+    "probability_recalibration": "no",
+    "readiness_reassigned": "no",
+    "target_dataset_modified": "no",
+    "fixed_threshold_mainline_modified": "no",
+    "prospective_holdout_performance_consumed": "no",
+    "holdout_consumed": "no",
+    "HMM_HSMM_training_modified": "no",
+    "stage03v2_implemented": "no",
+    "stage03v3_implemented": "no",
+    "trading_or_decision_output": "no"
+  },
+  "created_at": "2026-06-12T12:49:16+00:00"
+}
