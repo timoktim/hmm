@@ -66,3 +66,4 @@ It should contain capped, redacted, provenance-aware signal bundles only. It mus
 | date | change | by |
 |---|---|---|
 | 2026-06-12 | Activated GPT-EXCHANGE-WP0-v1 HMM info exchange bundle exporter package. | ChatGPT |
+| 2026-06-12 | Implemented WP0 local redacted bundle exporter, explicit exchange workspace sync flags, tests, gate, and runtime docs. | Codex |
