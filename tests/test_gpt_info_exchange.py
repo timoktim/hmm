@@ -134,6 +134,37 @@ def test_commit_without_write_exchange_is_rejected(tmp_path: Path) -> None:
     assert "--commit requires --write-exchange" in result.stdout
 
 
+def test_exchange_git_commit_leaves_temp_repo_clean(tmp_path: Path) -> None:
+    exchange_dir = tmp_path / "hmm-info-exchange"
+    subprocess.run(["git", "init", str(exchange_dir)], check=True, text=True, capture_output=True)
+    subprocess.run(["git", "-C", str(exchange_dir), "config", "user.email", "test@example.invalid"], check=True)
+    subprocess.run(["git", "-C", str(exchange_dir), "config", "user.name", "GPT Exchange Test"], check=True)
+
+    result, _output_dir = _run_export(
+        tmp_path / "source",
+        "--exchange-dir",
+        str(exchange_dir),
+        "--bootstrap-exchange-repo",
+        "--write-exchange",
+        "--commit",
+        "--no-push",
+    )
+
+    assert result.returncode == 0, result.stderr
+    status = subprocess.run(
+        ["git", "-C", str(exchange_dir), "status", "--porcelain"],
+        check=True,
+        text=True,
+        capture_output=True,
+    )
+    assert status.stdout == ""
+    manifest_path = exchange_dir / "latest/exchange_manifest.json"
+    assert manifest_path.exists()
+    manifest_text = manifest_path.read_text(encoding="utf-8")
+    for term in FORBIDDEN_OUTPUT_TERMS:
+        assert term not in manifest_text
+
+
 def test_bundle_contains_required_not_trading_warning(tmp_path: Path) -> None:
     result, output_dir = _run_export(tmp_path)
 

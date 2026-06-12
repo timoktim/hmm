@@ -569,7 +569,8 @@ def _copy_exchange_outputs(output_dir: Path, exchange_dir: Path, policy: dict[st
             exchange_dir.mkdir(parents=True, exist_ok=True)
         else:
             return "skipped_exchange_repo_unavailable"
-    if bootstrap and not any(exchange_dir.iterdir()):
+    non_git_entries = [entry for entry in exchange_dir.iterdir() if entry.name != ".git"]
+    if bootstrap and not (exchange_dir / "README.md").exists() and not non_git_entries:
         (exchange_dir / "README.md").write_text(
             "# HMM Info Exchange\n\nPrivate redacted signal bundles for human GPT Pro review.\n",
             encoding="utf-8",
@@ -583,6 +584,21 @@ def _copy_exchange_outputs(output_dir: Path, exchange_dir: Path, policy: dict[st
         shutil.rmtree(archive)
     shutil.copytree(output_dir, archive)
     return "pass"
+
+
+def _exchange_sync_status(exchange_dir: Path | None, bootstrap: bool) -> str:
+    if exchange_dir is None:
+        return "skipped_exchange_repo_unavailable"
+    if exchange_dir.exists() or bootstrap:
+        return "pass"
+    return "skipped_exchange_repo_unavailable"
+
+
+def _public_path(path: Path) -> str:
+    try:
+        return path.resolve().relative_to(Path.cwd().resolve()).as_posix()
+    except Exception:
+        return "<external-path-redacted>"
 
 
 def _rewrite_status_outputs(
@@ -612,7 +628,10 @@ def _git_commit(exchange_dir: Path, message: str) -> str:
     git_dir = exchange_dir / ".git"
     if not git_dir.exists():
         return "failed_exchange_dir_not_git_repo"
-    subprocess.run(["git", "-C", str(exchange_dir), "add", "README.md", "latest", "archive"], check=True)
+    add_paths = [name for name in ["README.md", "latest", "archive"] if (exchange_dir / name).exists()]
+    if not add_paths:
+        return "skipped_no_exchange_files"
+    subprocess.run(["git", "-C", str(exchange_dir), "add", *add_paths], check=True)
     status = subprocess.run(["git", "-C", str(exchange_dir), "status", "--porcelain"], check=True, text=True, capture_output=True)
     if not status.stdout.strip():
         return "skipped_no_changes"
@@ -672,21 +691,21 @@ def run_export(args: argparse.Namespace) -> ExchangeResult:
     )
 
     exchange_dir_arg = args.exchange_dir or os.environ.get("HMM_INFO_EXCHANGE_DIR")
+    exchange_dir = Path(exchange_dir_arg) if exchange_dir_arg else None
     exchange_repo_status = "unavailable_or_not_configured"
     sync_status = "skipped_exchange_repo_unavailable"
     exchange_workspace_export = "skipped"
     commit_status = "not_requested"
     push_status = "not_requested"
-    if exchange_dir_arg:
+    if exchange_dir is not None:
         exchange_repo_status = "provided_local_workspace"
         if args.write_exchange:
-            exchange_path = Path(exchange_dir_arg)
-            if exchange_path.exists() or args.bootstrap_exchange_repo:
-                sync_status = "pass"
-                exchange_workspace_export = "pass"
-            else:
-                sync_status = "skipped_exchange_repo_unavailable"
-                exchange_workspace_export = "skipped"
+            sync_status = _exchange_sync_status(exchange_dir, args.bootstrap_exchange_repo)
+            exchange_workspace_export = "pass" if sync_status == "pass" else "skipped"
+            if sync_status == "pass" and args.commit:
+                commit_status = "requested"
+            if sync_status == "pass" and args.push:
+                push_status = "requested"
         else:
             sync_status = "skipped_write_exchange_not_requested"
     manifest = {
@@ -701,8 +720,8 @@ def run_export(args: argparse.Namespace) -> ExchangeResult:
         "commit_status": commit_status,
         "push_status": push_status,
         "push_executed": "yes" if push_status == "pass" else "no",
-        "output_dir": output_dir.as_posix(),
-        "archive_dir": archive_dir.as_posix(),
+        "output_dir": _public_path(output_dir),
+        "archive_dir": _public_path(archive_dir),
         "snapshot_rows": int(len(lite)),
         "watchlists_generated": len(watchlists),
         "watchlist_rows": {name: int(len(df)) for name, df in watchlists.items()},
@@ -727,24 +746,15 @@ def run_export(args: argparse.Namespace) -> ExchangeResult:
         manifest=manifest,
         write_archive=True,
     )
-    if exchange_dir_arg and args.write_exchange:
-        sync_status = _copy_exchange_outputs(output_dir, Path(exchange_dir_arg), policy, timestamp, args.bootstrap_exchange_repo)
+    if exchange_dir is not None and args.write_exchange and sync_status == "pass":
+        sync_status = _copy_exchange_outputs(output_dir, exchange_dir, policy, timestamp, args.bootstrap_exchange_repo)
         manifest["sync_status"] = sync_status
         manifest["exchange_workspace_export"] = "pass" if sync_status == "pass" else "skipped"
         if args.commit and sync_status == "pass":
-            manifest["commit_status"] = _git_commit(Path(exchange_dir_arg), f"Update HMM info exchange bundle {timestamp}")
+            manifest["commit_status"] = _git_commit(exchange_dir, f"Update HMM info exchange bundle {timestamp}")
         if args.push and manifest["commit_status"] in {"pass", "skipped_no_changes"}:
-            manifest["push_status"] = _git_push(Path(exchange_dir_arg))
+            manifest["push_status"] = _git_push(exchange_dir)
             manifest["push_executed"] = "yes" if manifest["push_status"] == "pass" else "no"
-        _rewrite_status_outputs(
-            output_dir=output_dir,
-            archive_snapshot_dir=archive_snapshot_dir,
-            lite=lite,
-            bundle=bundle,
-            manifest=manifest,
-        )
-        if sync_status == "pass":
-            _copy_exchange_outputs(output_dir, Path(exchange_dir_arg), policy, timestamp, args.bootstrap_exchange_repo)
 
     generated_paths = [
         output_dir / "signal_bundle.md",
