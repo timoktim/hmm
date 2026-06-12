@@ -39,28 +39,33 @@ def _normalize_reason(value: object) -> str:
 
 def check_hsmm_numba_engine(required: bool = False) -> dict[str, object]:
     """Return a DB-free operational check for the optional numba engine."""
+    requested_engine = "numba"
     numba_importable = _numba_importable()
     status = "failed"
     engine_used = "failed"
+    resolved_engine = "failed"
     fallback_reason: str | None = None
     compile_warmed = False
 
     try:
         diagnostic = hsmm_core.warm_hsmm_numba_engine()
-        engine_used = str(diagnostic.get("resolved_engine") or "numba")
+        resolved_engine = str(diagnostic.get("resolved_engine") or "numba")
+        engine_used = resolved_engine
         fallback_reason = diagnostic.get("fallback_reason")
         compile_warmed = bool(diagnostic.get("compile_warmed"))
         status = "pass" if engine_used == "numba" and compile_warmed else "fallback"
     except Exception as exc:
         fallback_reason = "numba unavailable" if not numba_importable else str(exc)
         try:
-            engine_used = hsmm_core.resolve_hsmm_engine("auto")
+            resolved_engine = hsmm_core.resolve_hsmm_engine("auto")
+            engine_used = resolved_engine
             diagnostic = hsmm_core.last_hsmm_engine_diagnostic()
             fallback_reason = fallback_reason or str(diagnostic.get("fallback_reason") or "")
             compile_warmed = bool(diagnostic.get("compile_warmed"))
             status = "fallback" if engine_used == "python" else "failed"
         except Exception as fallback_exc:
             engine_used = "failed"
+            resolved_engine = "failed"
             fallback_reason = str(fallback_exc)
             compile_warmed = False
             status = "failed"
@@ -70,7 +75,10 @@ def check_hsmm_numba_engine(required: bool = False) -> dict[str, object]:
 
     return {
         "status": status,
+        "requested_engine": requested_engine,
+        "resolved_engine": resolved_engine,
         "numba_importable": numba_importable,
+        "numba_available": status == "pass" and engine_used == "numba",
         "engine_used": engine_used,
         "fallback_reason": _normalize_reason(fallback_reason),
         "compile_warmed": compile_warmed,
@@ -81,7 +89,10 @@ def check_hsmm_numba_engine(required: bool = False) -> dict[str, object]:
 def format_numba_check_lines(result: dict[str, object]) -> list[str]:
     return [
         f"HSMM_NUMBA_CHECK_STATUS={result['status']}",
+        f"requested_engine={result.get('requested_engine', 'numba')}",
+        f"resolved_engine={result.get('resolved_engine', result.get('engine_used', 'unknown'))}",
         f"numba_importable={_yes_no(bool(result['numba_importable']))}",
+        f"numba_available={_yes_no(bool(result.get('numba_available', False)))}",
         f"engine_used={result['engine_used']}",
         f"fallback_reason={_normalize_reason(result.get('fallback_reason'))}",
         f"compile_warmed={_yes_no(bool(result['compile_warmed']))}",

@@ -14,6 +14,7 @@ Performance diagnostics are returned in the walk-forward result and written to p
 - `fit_n_jobs`
 - `fit_parallel_enabled`
 - `fit_parallel_fallback`
+- `fit_parallel_warning`
 - `fit_iteration_count`
 - `fit_decode_seconds`
 - `fit_update_seconds`
@@ -62,6 +63,8 @@ bash scripts/check_hsmm_numba_engine.sh
 
 The check reports whether numba can be imported, which engine was actually warmed, the fallback reason, and whether compilation was warmed. Missing numba exits successfully as `HSMM_NUMBA_CHECK_STATUS=fallback` unless `HSMM_ENGINE_REQUIRED=1` is set.
 
+The no-DB check also emits `requested_engine`, `resolved_engine`, `numba_available`, `fallback_reason`, and `compile_warmed` so a fallback from `auto` or unavailable numba is visible in CI logs and reports.
+
 For a small benchmark matrix that is safe to run without DuckDB:
 
 ```bash
@@ -99,3 +102,21 @@ Standard maintenance:
 Full maintenance should be reserved for explicit research maintenance windows where longer duration support or higher iteration counts are needed.
 
 HSMM remains lifecycle interpretation infrastructure. These settings only affect runtime and diagnostics; they do not change lifecycle probability meaning, readiness policy, thresholds, or downstream outputs.
+
+The committed maintenance preset contract lives at `configs/hsmm_performance_presets_v1.yaml`. It is JSON-compatible YAML so the gate can validate it with `python -m json.tool` while still serving as a YAML config path. The presets keep exact Viterbi semantics and do not enable approximate or pruned decode paths.
+
+## Performance Matrix Gate
+
+The PERF0/1/2 gate runs a deterministic synthetic profile matrix without requiring DuckDB and writes committed diagnostics:
+
+```bash
+bash scripts/hsmm_perf0_1_2_gate.sh
+```
+
+The report artifacts are:
+
+- `reports/hsmm_diagnostics/hsmm_performance_matrix_report.md`
+- `reports/hsmm_diagnostics/hsmm_performance_matrix_report.json`
+- `reports/hsmm_diagnostics/hsmm_performance_matrix_summary.csv`
+
+Local DB profiling is intentionally explicit and its outputs stay under `reports/hsmm_diagnostics/local/`, which is gitignored. Synthetic and profile-only matrix runs report `no_db_write=yes` and `persistent_db_writes=no`.
