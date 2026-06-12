@@ -66,7 +66,7 @@ def test_required_wp0_files_exist_and_machine_configs_parse() -> None:
     assert json.loads(REPORT_JSON.read_text(encoding="utf-8"))["index_id"] == "STAGE03V-WP0-v1"
 
 
-def test_execution_index_marks_wp6_active_and_later_packages_blocked() -> None:
+def test_execution_index_marks_fix1_active_and_later_packages_blocked() -> None:
     text = EXECUTION_INDEX.read_text(encoding="utf-8")
 
     assert "STAGE03V-WP0-v1 | Scope Freeze, Contracts, Ledger | archived" in text
@@ -78,10 +78,12 @@ def test_execution_index_marks_wp6_active_and_later_packages_blocked() -> None:
     assert "STAGE03V-WP3.5-v1 | Volatility-Scaled Threshold Supplement and Baseline Metric Sanity Gate | archived" in text
     assert "STAGE03V-WP4-v1 | Logistic Downside Risk Hazard v1 | archived" in text
     assert "STAGE03V-WP5-v1 | Calibration, Clustered Inference, and Downside Risk Readiness Matrix | archived" in text
-    assert "STAGE03V-WP6-v1 | Risk Validation Protocol and Downshift Research Report | active" in text
-    assert "STAGE03V-WP7 | Stage03V1 Final Gate | blocked_until_wp6_accepted" in text
-    assert "Only STAGE03V-WP6-v1 is executable in the current Stage03V branch sequence." in text
-    assert "STAGE03V-WP7 and later packages are blocked until WP6 is accepted." in text
+    assert "STAGE03V-WP6-v1 | Risk Validation Protocol and Downshift Research Report | archived_evidence_invalidated" in text
+    assert "STAGE03V-FIX1-v1 | Contract Repairs | active" in text
+    assert "STAGE03V-RERUN1-v1 | Full-Scale Revalidation" in text
+    assert "blocked_until_fix1_accepted" in text
+    assert "STAGE03V-WP7 | Stage03V1 Final Gate | blocked_until_rerun1_accepted" in text
+    assert "Only STAGE03V-FIX1-v1 is executable in the current Stage03V branch sequence." in text
 
 
 def test_stage_boundary_and_placeholders_are_contractual() -> None:
@@ -136,6 +138,17 @@ def test_permanent_cross_cutoff_censoring_policy_forbids_backfill() -> None:
     invariant_text = "\n".join(policy["invariant"])
     assert "target_observation_end_date must be <= information_cutoff_date" in invariant_text
     assert "must not be backfilled" in invariant_text
+
+
+def test_calibration_split_policy_records_time_ordered_validation_semantics() -> None:
+    signal = _load_machine_yaml(SIGNAL_CONTRACT)
+    policy = signal["calibration_split_policy"]
+
+    assert policy["source"] == "validation_fold_rows_only"
+    assert policy["method"] == "time_ordered_prefix_fraction"
+    assert policy["calibration_fraction"] == 0.5
+    assert policy["evaluation_rows"] == "time_ordered_suffix_complement"
+    assert policy["independent_calibration_fold"] is False
 
 
 def test_benchmark_downside_target_uses_mae_and_slice_policies() -> None:

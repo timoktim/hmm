@@ -49,6 +49,21 @@
     "ad_hoc_holdout_peeking": "forbidden",
     "stage04_holdout_start_inherited": false
   },
+  "calibration_split_policy": {
+    "source": "validation_fold_rows_only",
+    "method": "time_ordered_prefix_fraction",
+    "calibration_fraction": 0.5,
+    "evaluation_rows": "time_ordered_suffix_complement",
+    "independent_calibration_fold": false
+  },
+  "model_training_contract": {
+    "date_aware_sample_weighting": {
+      "status": "implemented",
+      "row_weight": "1 / rows_on_same_trade_date_in_train_fold",
+      "combined_with_class_balance": true,
+      "scope": "logistic_hazard_train_fold_rows_only"
+    }
+  },
   "cross_cutoff_censoring": {
     "cross_cutoff_censoring_policy": "permanent",
     "information_cutoff_date": "2026-06-10",

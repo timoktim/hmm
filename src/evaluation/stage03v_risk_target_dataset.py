@@ -369,6 +369,9 @@ def compute_path_target_rows(
                 event_label: bool | None = None
                 if metrics is not None and censoring_status == "labeled":
                     event_label = bool(metrics["future_mae"] <= -float(spec.threshold_value))
+                if censoring_status == "cross_cutoff_censored":
+                    metrics = None
+                    event_label = None
                 rows.append(
                     {
                         "trade_date": trade_ts.date(),
@@ -839,6 +842,7 @@ def _aggregate_support_counts(
                 metrics = None
                 if end_date is not None and end_date > cutoff:
                     censoring_status = "cross_cutoff_censored"
+                    metrics = None
                 elif end_date is not None:
                     metrics = compute_path_metrics(closes, base_index=idx, horizon=horizon)
                     censoring_status = "labeled" if metrics is not None else "insufficient_future_prices"

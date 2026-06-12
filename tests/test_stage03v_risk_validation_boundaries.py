@@ -122,7 +122,7 @@ def test_failed_wp5_or_holdout_consumption_blocks_wp6() -> None:
         db_path="data/db/a_share_hmm_tushare_v7.duckdb",
     )
 
-    assert status == "blocked_wp5_not_ready"
+    assert status == "blocked_holdout_consumed"
     assert "wp5_status_not_pass" in issues
     assert "wp5_prospective_holdout_rows_evaluated_not_zero" in issues
 
