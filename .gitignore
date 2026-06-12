@@ -83,6 +83,8 @@ reports/stage03r/*_full.csv
 !reports/stage03v/fold_plan_magnitude_overview.csv
 !reports/stage03v/downshift_experiment_arm_metrics.csv
 !reports/stage03v/downshift_experiment_daily_exposure_sample.csv
+!reports/stage03v/stage03v1_final_gate_v2_evidence_matrix.csv
+!reports/stage03v/stage03v1_final_gate_v2_audit_sample.csv
 !reports/stage03v/risk_validation_metrics.csv
 !reports/stage03v/downshift_candidate_matrix.csv
 !reports/stage03v/risk_validation_clustered_summary.csv

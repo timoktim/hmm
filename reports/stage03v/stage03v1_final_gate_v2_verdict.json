@@ -1,0 +1,21 @@
+{
+  "index_id": "STAGE03V-WP7-v2",
+  "status": "pass",
+  "final_gate_verdict": "PASS_ENGINEERING_MODEL_DISCRIMINATION_BASELINE_SUPERIOR_DEFER_PROSPECTIVE",
+  "stage03v1_gate_status": "pass_engineering_model_discrimination_baseline_superior_defer_prospective",
+  "model_discrimination_status": "model_discrimination_pass",
+  "primary_risk_metric_comparison_status": "baseline_superior_on_primary_risk_metrics",
+  "secondary_return_status": "model_retains_more_return_secondary_metric",
+  "prospective_holdout_readiness_gate_status": "defer_or_insufficient",
+  "decision_support_promotion_gate_status": "defer_or_reject_model_as_primary_downshift_driver",
+  "allowed_final_verdicts": [
+    "PASS_ENGINEERING_MODEL_DISCRIMINATION_BASELINE_SUPERIOR_DEFER_PROSPECTIVE",
+    "PASS_RESEARCH_ONLY_BASELINE_SUPERIOR_ON_PRIMARY_RISK_METRICS",
+    "DEFER_PROSPECTIVE_HOLDOUT_INSUFFICIENT",
+    "FAIL_BOUNDARY_OR_LEAKAGE",
+    "FAIL_INPUT_ARTIFACTS",
+    "FAIL_RERUN1_EVIDENCE_INCONSISTENT",
+    "FAIL_VALIDATION_EVIDENCE",
+    "BLOCKED_INPUTS_NOT_READY"
+  ]
+}

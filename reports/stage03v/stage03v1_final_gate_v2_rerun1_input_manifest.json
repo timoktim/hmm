@@ -1,0 +1,42 @@
+{
+  "index_id": "STAGE03V-WP7-v2",
+  "manifest_version": "stage03v1_final_gate_v2_rerun1_input_manifest_v1",
+  "status": "pass",
+  "inputs": {
+    "fold_plan_v2": {
+      "path": "reports/stage03v/purge_embargo_fold_plan_v2.json",
+      "status": "pass"
+    },
+    "fold_magnitude_overview": {
+      "path": "reports/stage03v/fold_plan_magnitude_overview.csv",
+      "status": "pass"
+    },
+    "trial_accounting": {
+      "path": "reports/stage03v/validation_trial_accounting.json",
+      "invalidation_recorded": "yes"
+    },
+    "logistic_hazard": {
+      "path": "reports/stage03v/logistic_hazard_report.json",
+      "status": "pass"
+    },
+    "calibration_readiness": {
+      "path": "reports/stage03v/calibration_readiness_report.json",
+      "status": "pass"
+    },
+    "downshift_experiment": {
+      "path": "reports/stage03v/downshift_experiment_report.json",
+      "status": "pass"
+    },
+    "downshift_arm_metrics": {
+      "path": "reports/stage03v/downshift_experiment_arm_metrics.csv",
+      "status": "used_for_b2_summary"
+    }
+  },
+  "legacy_invalidated_inputs_forbidden_as_evidence": [
+    "reports/stage03v/risk_validation_report.json",
+    "reports/stage03v/downshift_research_report.json",
+    "reports/stage03v/wp7_final_gate_input_manifest.json"
+  ],
+  "legacy_invalidated_inputs_used_as_final_evidence": [],
+  "created_at": "2026-06-12T11:55:09+00:00"
+}

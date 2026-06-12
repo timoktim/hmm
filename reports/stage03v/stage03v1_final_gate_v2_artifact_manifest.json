@@ -1,0 +1,50 @@
+{
+  "index_id": "STAGE03V-WP7-v2",
+  "status": "pass",
+  "generated_artifacts": {
+    "output": "reports/stage03v/stage03v1_final_gate_v2_report.md",
+    "summary_json": "reports/stage03v/stage03v1_final_gate_v2_report.json",
+    "verdict_json": "reports/stage03v/stage03v1_final_gate_v2_verdict.json",
+    "evidence_matrix": "reports/stage03v/stage03v1_final_gate_v2_evidence_matrix.csv",
+    "artifact_manifest": "reports/stage03v/stage03v1_final_gate_v2_artifact_manifest.json",
+    "rerun1_input_manifest": "reports/stage03v/stage03v1_final_gate_v2_rerun1_input_manifest.json",
+    "holdout_status": "reports/stage03v/stage03v1_prospective_holdout_status_v2.json",
+    "post_gate_action_plan": "reports/stage03v/stage03v1_post_gate_action_plan_v2.md",
+    "audit_sample": "reports/stage03v/stage03v1_final_gate_v2_audit_sample.csv"
+  },
+  "source_artifacts": {
+    "fold_plan_v2": "reports/stage03v/purge_embargo_fold_plan_v2.json",
+    "trial_accounting": "reports/stage03v/validation_trial_accounting.json",
+    "logistic_hazard": "reports/stage03v/logistic_hazard_report.json",
+    "calibration_readiness": "reports/stage03v/calibration_readiness_report.json",
+    "downshift_experiment": "reports/stage03v/downshift_experiment_report.json",
+    "downshift_arm_metrics": "reports/stage03v/downshift_experiment_arm_metrics.csv"
+  },
+  "forbidden_legacy_inputs_not_used": [
+    "reports/stage03v/risk_validation_report.json",
+    "reports/stage03v/downshift_research_report.json",
+    "reports/stage03v/wp7_final_gate_input_manifest.json"
+  ],
+  "boundary_flags": {
+    "external_data_fetch": "no",
+    "target_dataset_modified": "no",
+    "fixed_threshold_mainline_modified": "no",
+    "persistent_db_table_written": "no",
+    "full_target_matrix_committed": "no",
+    "full_feature_matrix_committed": "no",
+    "full_raw_score_matrix_committed": "no",
+    "full_calibrated_score_matrix_committed": "no",
+    "full_exposure_matrix_committed": "no",
+    "model_training": "no",
+    "probability_recalibration": "no",
+    "readiness_reassigned": "no",
+    "final_gate_executed": "yes",
+    "prospective_holdout_performance_consumed": "no",
+    "holdout_consumed": "no",
+    "HMM_HSMM_training_modified": "no",
+    "stage03v2_implemented": "no",
+    "stage03v3_implemented": "no",
+    "trading_or_decision_output": "no"
+  },
+  "created_at": "2026-06-12T11:55:09+00:00"
+}

@@ -66,7 +66,7 @@ def test_required_wp0_files_exist_and_machine_configs_parse() -> None:
     assert json.loads(REPORT_JSON.read_text(encoding="utf-8"))["index_id"] == "STAGE03V-WP0-v1"
 
 
-def test_execution_index_marks_rerun1_active_and_wp7_blocked() -> None:
+def test_execution_index_marks_wp7_v2_implemented_after_rerun1() -> None:
     text = EXECUTION_INDEX.read_text(encoding="utf-8")
 
     assert "STAGE03V-WP0-v1 | Scope Freeze, Contracts, Ledger | archived" in text
@@ -76,14 +76,15 @@ def test_execution_index_marks_rerun1_active_and_wp7_blocked() -> None:
     assert "STAGE03V-WP2.1-v1 | Full Target Streaming Audit | archived" in text
     assert "STAGE03V-WP3-v1 | Volatility, Range-Based, Empirical, and Continuous Diagnostic Baselines | archived" in text
     assert "STAGE03V-WP3.5-v1 | Volatility-Scaled Threshold Supplement and Baseline Metric Sanity Gate | archived" in text
-    assert "STAGE03V-WP4-v1 | Logistic Downside Risk Hazard v1 | archived" in text
-    assert "STAGE03V-WP5-v1 | Calibration, Clustered Inference, and Downside Risk Readiness Matrix | archived" in text
-    assert "STAGE03V-WP6-v1 | Risk Validation Protocol and Downshift Research Report | archived_evidence_invalidated" in text
+    assert "STAGE03V-WP4-v1 | Logistic Downside Risk Hazard v1 | archived_invalidated_by_microfold_audit" in text
+    assert "STAGE03V-WP5-v1 | Calibration, Clustered Inference, and Downside Risk Readiness Matrix | archived_invalidated_by_microfold_audit" in text
+    assert "STAGE03V-WP6-v1 | Risk Validation Protocol and Downshift Research Report | archived_invalidated_by_microfold_audit" in text
     assert "STAGE03V-FIX1-v1 | Contract Repairs | archived" in text
-    assert "STAGE03V-RERUN1-v1 | Full-Scale Revalidation" in text
-    assert "STAGE03V-RERUN1-v1 | Full-Scale Revalidation (B0 fold plan v2, B1 WP4/WP5 rerun, B2 three-arm downshift) | active" in text
-    assert "STAGE03V-WP7 | Stage03V1 Final Gate | blocked_until_rerun1_accepted" in text
-    assert "Only STAGE03V-RERUN1-v1 is executable in the current Stage03V branch sequence." in text
+    assert "STAGE03V-RERUN1-v1 | Full-Scale Revalidation | archived" in text
+    assert "STAGE03V-WP7-v1 | Stage03V1 Final Gate | superseded_closed" in text
+    assert "STAGE03V-WP7-v2 | Stage03V1 Final Gate after RERUN1 | implemented_pending_acceptance" in text
+    assert "Only STAGE03V-WP7-v2 is executable in the current Stage03V branch sequence." in text
+    assert "registered 120/2 holdout thresholds" in text
 
 
 def test_stage_boundary_and_placeholders_are_contractual() -> None:
