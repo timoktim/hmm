@@ -17,6 +17,7 @@ DEFAULT_PAGE = "总览"
 PAGE_CONFIGS = [
     PageConfig("总览", "当前状态"),
     PageConfig("大盘状态", "当前状态"),
+    PageConfig("信号面板", "当前状态"),
     PageConfig("状态生命周期", "当前状态", advanced=True),
     PageConfig("数据中心", "数据与质量"),
     PageConfig("数据库工作区", "数据与质量"),

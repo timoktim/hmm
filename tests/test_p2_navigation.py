@@ -6,7 +6,7 @@ from src.ui.navigation import DEFAULT_NAV_GROUP, DEFAULT_PAGE, NAV_GROUPS, page_
 def test_p2_navigation_default_focuses_current_status():
     assert DEFAULT_NAV_GROUP == "当前状态"
     assert DEFAULT_PAGE == "总览"
-    assert page_labels_for_group(DEFAULT_NAV_GROUP) == ["总览", "大盘状态"]
+    assert page_labels_for_group(DEFAULT_NAV_GROUP) == ["总览", "大盘状态", "信号面板"]
 
 
 def test_p2_navigation_hides_advanced_pages_by_default():
