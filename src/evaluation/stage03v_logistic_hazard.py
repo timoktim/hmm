@@ -28,6 +28,7 @@ from src.evaluation.stage03v_baseline_diagnostics import (
     slice_specs_from_target_support,
     validate_baseline_input_columns,
 )
+from src.evaluation.stage03v_fold_plan_magnitude import magnitude_markdown_section
 from src.evaluation.stage03v_risk_target_dataset import (
     HOLDOUT_START,
     INFORMATION_CUTOFF_DATE,
@@ -49,6 +50,8 @@ STAGE_ID = "stage03v"
 MODEL_FAMILY = "logistic_regression"
 MODEL_VARIANT = "sklearn_logistic_regression_l2_lbfgs"
 DATE_AWARE_WEIGHTING_STATUS = "implemented"
+SUPERSEDES_MICROFOLD_RUN = "stage03v_wp4_v1_2014_microfold"
+SUPERSESSION_REASON = "invalidated_due_to_fold_coverage"
 PRIMARY_TARGET_FAMILY = "fixed_threshold_stage03v1_downside_event"
 PRIMARY_ASOF_MODE = "close_t_minus_1"
 ASOF_MODES = ["close_t_minus_1", "close_t"]
@@ -248,6 +251,8 @@ def _write_csv(path: Path | str, rows: Sequence[Mapping[str, Any]], columns: Seq
 
 def _write_markdown(path: Path | str, report: Mapping[str, Any]) -> None:
     lines = [
+        *magnitude_markdown_section(report),
+        "",
         "# Stage03V WP4 Logistic Downside-Risk Hazard",
         "",
         f"- index_id: {report.get('index_id')}",
@@ -583,29 +588,36 @@ def split_fold_rows(target_rows: pd.DataFrame, fold: Mapping[str, Any]) -> dict[
             "prospective_holdout_rows_withheld": 0,
             "training_boundary_violation_counts": dict(TRAINING_BOUNDARY_ZERO_COUNTS),
         }
-    work = target_rows.copy()
-    work["trade_date"] = pd.to_datetime(work["trade_date"], errors="coerce").dt.normalize()
-    work["target_observation_end_date"] = pd.to_datetime(
-        work["target_observation_end_date"], errors="coerce"
-    ).dt.normalize()
+    work = target_rows
+    trade_date = pd.to_datetime(work["trade_date"], errors="coerce").dt.normalize()
+    target_end = pd.to_datetime(work["target_observation_end_date"], errors="coerce").dt.normalize()
+    split_role = work["split_role"].astype(str)
+    labeled_mask = work["censoring_status"].astype(str).eq("labeled") & work["event_label"].notna()
     holdout = pd.Timestamp(HOLDOUT_START).normalize()
 
-    validation = work[work["trade_date"].between(validation_start, validation_end, inclusive="both")].copy()
-    holdout_mask = validation["trade_date"].ge(holdout) | validation["split_role"].astype(str).eq("prospective_final_holdout")
-    withheld = int(holdout_mask.sum())
-    validation = validation[~holdout_mask].copy()
-    validation = _labeled_rows(validation)
+    validation_window = trade_date.between(validation_start, validation_end, inclusive="both")
+    holdout_mask = trade_date.ge(holdout) | split_role.eq("prospective_final_holdout")
+    withheld = int((validation_window & holdout_mask).sum())
+    validation_mask = validation_window & ~holdout_mask & labeled_mask
+    validation = work.loc[validation_mask].copy()
+    if not validation.empty:
+        validation["trade_date"] = trade_date.loc[validation_mask].to_numpy()
+        validation["target_observation_end_date"] = target_end.loc[validation_mask].to_numpy()
 
     train_mask = (
-        work["trade_date"].lt(validation_start)
-        & work["target_observation_end_date"].lt(validation_start)
-        & work["split_role"].astype(str).eq("historical_development")
+        trade_date.lt(validation_start)
+        & target_end.lt(validation_start)
+        & split_role.eq("historical_development")
+        & labeled_mask
     )
     if train_start is not None:
-        train_mask &= work["trade_date"].ge(train_start)
+        train_mask &= trade_date.ge(train_start)
     if train_end is not None:
-        train_mask &= work["trade_date"].le(train_end)
-    train = _labeled_rows(work[train_mask].copy())
+        train_mask &= trade_date.le(train_end)
+    train = work.loc[train_mask].copy()
+    if not train.empty:
+        train["trade_date"] = trade_date.loc[train_mask].to_numpy()
+        train["target_observation_end_date"] = target_end.loc[train_mask].to_numpy()
     counts = detect_training_boundary_violations(train, fold)
     return {
         "train_rows": train,
@@ -1249,6 +1261,12 @@ def _blocked_report(
         "sw2021_l2_universe_coverage": "missing",
         "target_universe_status": "blocked",
         "fold_plan_status": "blocked",
+        "fold_plan_source": None,
+        "fold_plan_path": None,
+        "magnitude_overview": {},
+        "supersedes": None,
+        "supersession_reason": None,
+        "trial_accounting_invalidation_recorded": "no",
         "policy_status": "blocked",
         "model_family": MODEL_FAMILY,
         "model_variant_count": 0,
@@ -1634,6 +1652,17 @@ def build_logistic_hazard_report(
         "sw2021_l2_universe_coverage": v7.coverage.get("sw2021_l2_universe_coverage"),
         "target_universe_status": target_universe_status,
         "fold_plan_status": fold_doc.get("status"),
+        "fold_plan_source": fold_doc.get("fold_plan_source"),
+        "fold_plan_path": _safe_path(fold_plan),
+        "magnitude_overview": fold_doc.get("magnitude_overview", {}),
+        "supersedes": SUPERSEDES_MICROFOLD_RUN,
+        "supersession_reason": SUPERSESSION_REASON,
+        "trial_accounting_invalidation_recorded": "yes"
+        if fold_doc.get("index_id") == "STAGE03V-RERUN1-v1"
+        else "no",
+        "trial_accounting_path": "reports/stage03v/validation_trial_accounting.json"
+        if fold_doc.get("index_id") == "STAGE03V-RERUN1-v1"
+        else None,
         "policy_status": "pass",
         "model_family": MODEL_FAMILY,
         "model_variant_count": 1,

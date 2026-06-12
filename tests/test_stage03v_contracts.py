@@ -66,7 +66,7 @@ def test_required_wp0_files_exist_and_machine_configs_parse() -> None:
     assert json.loads(REPORT_JSON.read_text(encoding="utf-8"))["index_id"] == "STAGE03V-WP0-v1"
 
 
-def test_execution_index_marks_fix1_active_and_later_packages_blocked() -> None:
+def test_execution_index_marks_rerun1_active_and_wp7_blocked() -> None:
     text = EXECUTION_INDEX.read_text(encoding="utf-8")
 
     assert "STAGE03V-WP0-v1 | Scope Freeze, Contracts, Ledger | archived" in text
@@ -79,11 +79,11 @@ def test_execution_index_marks_fix1_active_and_later_packages_blocked() -> None:
     assert "STAGE03V-WP4-v1 | Logistic Downside Risk Hazard v1 | archived" in text
     assert "STAGE03V-WP5-v1 | Calibration, Clustered Inference, and Downside Risk Readiness Matrix | archived" in text
     assert "STAGE03V-WP6-v1 | Risk Validation Protocol and Downshift Research Report | archived_evidence_invalidated" in text
-    assert "STAGE03V-FIX1-v1 | Contract Repairs | active" in text
+    assert "STAGE03V-FIX1-v1 | Contract Repairs | archived" in text
     assert "STAGE03V-RERUN1-v1 | Full-Scale Revalidation" in text
-    assert "blocked_until_fix1_accepted" in text
+    assert "STAGE03V-RERUN1-v1 | Full-Scale Revalidation (B0 fold plan v2, B1 WP4/WP5 rerun, B2 three-arm downshift) | active" in text
     assert "STAGE03V-WP7 | Stage03V1 Final Gate | blocked_until_rerun1_accepted" in text
-    assert "Only STAGE03V-FIX1-v1 is executable in the current Stage03V branch sequence." in text
+    assert "Only STAGE03V-RERUN1-v1 is executable in the current Stage03V branch sequence." in text
 
 
 def test_stage_boundary_and_placeholders_are_contractual() -> None:

@@ -1,0 +1,21 @@
+{
+  "index_id": "STAGE03V-RERUN1-v1",
+  "report_version": "stage03v_rerun1_validation_trial_accounting_v1",
+  "stage_id": "stage03v",
+  "status": "pass",
+  "trial_accounting_invalidation_recorded": "yes",
+  "superseded_run": {
+    "run_id": "stage03v_wp4_v1_2014_microfold",
+    "status": "invalidated_due_to_fold_coverage",
+    "artifact": "reports/stage03v/purge_embargo_fold_plan.json",
+    "audit_defect": "committed fold plan covered only 2014-01-13 to 2014-02-12 and was built from the WP2 500-row audit sample",
+    "not_invalidated_due_to_observed_results": true
+  },
+  "replacement_run": {
+    "run_id": "stage03v_rerun1_full_scale_revalidation",
+    "index_id": "STAGE03V-RERUN1-v1",
+    "fold_plan": "reports/stage03v/purge_embargo_fold_plan_v2.json",
+    "counts_as_first_informative_trial": true
+  },
+  "created_at": "2026-06-12T07:49:04+00:00"
+}

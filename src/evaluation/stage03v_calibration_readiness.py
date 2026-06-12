@@ -25,6 +25,7 @@ from src.evaluation.stage03v_baseline_diagnostics import (
     read_ohlcv_inputs,
     slice_specs_from_target_support,
 )
+from src.evaluation.stage03v_fold_plan_magnitude import magnitude_markdown_section
 from src.evaluation.stage03v_logistic_hazard import (
     ASOF_MODES,
     MODEL_FEATURE_COLUMNS,
@@ -59,6 +60,8 @@ CALIBRATION_METHODS = [
     "isotonic_calibration",
 ]
 PRIMARY_CALIBRATION_METHOD = "platt_logistic_calibration"
+SUPERSEDES_MICROFOLD_RUN = "stage03v_wp4_v1_2014_microfold"
+SUPERSESSION_REASON = "invalidated_due_to_fold_coverage"
 READINESS_CATEGORIES = [
     "usable_probability_candidate",
     "ordinal_only_candidate",
@@ -295,6 +298,8 @@ def _write_csv(path: Path | str, rows: Sequence[Mapping[str, Any]], columns: Seq
 
 def _write_markdown(path: Path | str, report: Mapping[str, Any]) -> None:
     lines = [
+        *magnitude_markdown_section(report),
+        "",
         "# Stage03V WP5 Calibration Readiness",
         "",
         f"- index_id: {report.get('index_id')}",
@@ -1501,6 +1506,12 @@ def _blocked_report(
         "sw2021_l2_universe_coverage": "missing",
         "target_universe_status": "blocked",
         "fold_plan_status": "blocked",
+        "fold_plan_source": None,
+        "fold_plan_path": None,
+        "magnitude_overview": {},
+        "supersedes": None,
+        "supersession_reason": None,
+        "trial_accounting_invalidation_recorded": "no",
         "policy_status": "blocked",
         "calibration_methods_evaluated": CALIBRATION_METHODS,
         "primary_calibration_method": PRIMARY_CALIBRATION_METHOD,
@@ -1905,6 +1916,17 @@ def build_calibration_readiness_report(
         "sw2021_l2_universe_coverage": v7.coverage.get("sw2021_l2_universe_coverage"),
         "target_universe_status": target_universe_status,
         "fold_plan_status": fold_doc.get("status"),
+        "fold_plan_source": fold_doc.get("fold_plan_source"),
+        "fold_plan_path": _safe_path(fold_plan),
+        "magnitude_overview": fold_doc.get("magnitude_overview", {}),
+        "supersedes": SUPERSEDES_MICROFOLD_RUN,
+        "supersession_reason": SUPERSESSION_REASON,
+        "trial_accounting_invalidation_recorded": "yes"
+        if fold_doc.get("index_id") == "STAGE03V-RERUN1-v1"
+        else "no",
+        "trial_accounting_path": "reports/stage03v/validation_trial_accounting.json"
+        if fold_doc.get("index_id") == "STAGE03V-RERUN1-v1"
+        else None,
         "policy_status": "pass",
         "calibration_methods_evaluated": policy_doc.get("calibration_methods", CALIBRATION_METHODS),
         "primary_calibration_method": policy_doc.get("primary_calibration_method", PRIMARY_CALIBRATION_METHOD),

@@ -1,3 +1,28 @@
+## Magnitude Overview
+
+- fold_plan_source: full_labeled_historical_development_rows
+- fold_count: 10
+- validation_start_date: 2016-01-04
+- validation_end_date: 2026-06-08
+- total_validation_trade_dates: 2531
+- validation_date_span_ratio: 0.8386173491853809
+- min_fold_validation_trade_dates: 253
+- min_fold_slice_train_rows: 57479
+- prospective_holdout_label_consumed_count: 0
+
+| fold_id | train_start | train_end | validation_start | validation_end | validation_dates | train_rows | validation_rows | min_slice_train_rows |
+|---|---:|---:|---:|---:|---:|---:|---:|---:|
+| fold_1 | 2014-01-02 | 2015-12-31 | 2016-01-04 | 2017-01-16 | 254 | 1179592 | 626620 | 57479 |
+| fold_2 | 2014-01-02 | 2017-01-16 | 2017-01-17 | 2018-01-26 | 253 | 1806056 | 627440 | 88790 |
+| fold_3 | 2014-01-02 | 2018-01-26 | 2018-01-29 | 2019-02-18 | 253 | 2433496 | 627440 | 120162 |
+| fold_4 | 2014-01-02 | 2019-02-18 | 2019-02-19 | 2020-03-03 | 253 | 3060936 | 627440 | 151534 |
+| fold_5 | 2014-01-02 | 2020-03-03 | 2020-03-04 | 2021-03-17 | 253 | 3688376 | 627440 | 182906 |
+| fold_6 | 2014-01-02 | 2021-03-17 | 2021-03-18 | 2022-03-31 | 253 | 4315816 | 627440 | 214278 |
+| fold_7 | 2014-01-02 | 2022-03-31 | 2022-04-01 | 2023-04-17 | 253 | 4943256 | 627440 | 245650 |
+| fold_8 | 2014-01-02 | 2023-04-17 | 2023-04-18 | 2024-05-07 | 253 | 5570696 | 627440 | 277022 |
+| fold_9 | 2014-01-02 | 2024-05-07 | 2024-05-08 | 2025-05-22 | 253 | 6198136 | 627440 | 308394 |
+| fold_10 | 2014-01-02 | 2025-05-22 | 2025-05-23 | 2026-06-08 | 253 | 6825576 | 610576 | 339766 |
+
 # Stage03V WP4 Logistic Downside-Risk Hazard
 
 - index_id: STAGE03V-WP4-v1
@@ -12,10 +37,10 @@
 - wp3_5_vol_scaled_sanity_status: pass
 - model_family: logistic_regression
 - primary_asof_mode: close_t_minus_1
-- validation_row_count_evaluated: 43920
+- validation_row_count_evaluated: 6256716
 - prospective_holdout_rows_evaluated: 0
-- fitted_model_count: 52
-- insufficient_data_slice_count: 68
+- fitted_model_count: 400
+- insufficient_data_slice_count: 0
 - feature_count: 16
 - vol_scaled_candidate_tracking_status: tracked_reference_only
 - fixed_threshold_mainline_status: unchanged_primary_target
