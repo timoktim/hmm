@@ -50,6 +50,7 @@ class CombinedUpdateResult:
     rows: int = 0
     cache_hits: int = 0
     stale_reads: int = 0
+    skipped: int = 0
     failures: list[str] | None = None
     summaries: list[dict[str, Any]] | None = None
     message: str = ""
@@ -144,6 +145,7 @@ def _progress_widgets(data_source_label: str | None = None):
     stage_labels = {
         "board_hist": "板块行情",
         "board_hist_done": "板块行情完成",
+        "board_hist_skipped": "板块行情跳过",
         "board_constituents": "成分股",
         "board_constituents_done": "成分股完成",
         "stock_hist": "个股行情",
@@ -214,6 +216,7 @@ def _combine(task: str, summaries: list[Any], message: str = "") -> CombinedUpda
     rows = 0
     cache_hits = 0
     stale_reads = 0
+    skipped = 0
     failures: list[str] = []
     details: list[dict[str, Any]] = []
     for summary in summaries:
@@ -223,6 +226,7 @@ def _combine(task: str, summaries: list[Any], message: str = "") -> CombinedUpda
         rows += int(data.get("rows", 0) or 0)
         cache_hits += int(data.get("cache_hits", 0) or 0)
         stale_reads += int(data.get("stale_reads", int(bool(data.get("stale", False)))) or 0)
+        skipped += int(data.get("skipped", 0) or 0)
         raw_failures = data.get("failures", data.get("failure", []))
         if isinstance(raw_failures, list):
             failures.extend(str(item) for item in raw_failures if item)
@@ -234,6 +238,7 @@ def _combine(task: str, summaries: list[Any], message: str = "") -> CombinedUpda
         rows=rows,
         cache_hits=cache_hits,
         stale_reads=stale_reads,
+        skipped=skipped,
         failures=failures,
         summaries=details,
         message=message,
@@ -404,7 +409,25 @@ def retry_failed_tasks(
 
     summaries: list[Any] = []
     unsupported: list[str] = []
-    board_failures = failures_df[(failures_df["target_type"] == "sector") & failures_df["interface"].isin(["board_hist", "board_constituents"])]
+    errors = failures_df["last_error"].fillna("").astype(str)
+    empty_constituents = (
+        (failures_df["target_type"] == "sector")
+        & (failures_df["interface"] == "board_constituents")
+        & errors.str.contains("index_member_all 返回空数据", regex=False)
+    )
+    empty_keys = {
+        (str(row.target_type), str(row.board_type), str(row.target_name))
+        for row in failures_df.loc[empty_constituents, ["target_type", "board_type", "target_name"]].itertuples(index=False)
+    }
+    dependent_hist = (
+        (failures_df["target_type"] == "sector")
+        & (failures_df["interface"] == "board_hist")
+        & failures_df.apply(lambda row: (str(row.target_type), str(row.board_type), str(row.target_name)) in empty_keys, axis=1)
+    )
+    stable_skip = empty_constituents | dependent_hist
+    skipped_failures = failures_df.loc[stable_skip].copy()
+    retry_df = failures_df.loc[~stable_skip].copy()
+    board_failures = retry_df[(retry_df["target_type"] == "sector") & retry_df["interface"].isin(["board_hist", "board_constituents"])]
     updater = incremental_update_boards if incremental else update_boards
     for board_type, group in board_failures.groupby("board_type"):
         names = group["target_name"].dropna().astype(str).drop_duplicates().tolist()
@@ -422,17 +445,24 @@ def retry_failed_tasks(
             kwargs["lookback_days"] = lookback_days
         summaries.append(updater(str(board_type), start, end, **kwargs))
 
-    benchmark_failures = failures_df[failures_df["target_type"] == "benchmark"]
+    benchmark_failures = retry_df[retry_df["target_type"] == "benchmark"]
     for row in benchmark_failures.itertuples(index=False):
         summaries.append(update_market_benchmark(str(row.target_name), start, end, incremental=incremental, lookback_days=lookback_days, storage=storage))
 
     handled = pd.concat([board_failures, benchmark_failures], ignore_index=True) if not benchmark_failures.empty else board_failures
     handled_keys = set(zip(handled["target_type"], handled["board_type"], handled["target_name"], handled["interface"], strict=False)) if not handled.empty else set()
-    for row in failures_df.itertuples(index=False):
+    for row in retry_df.itertuples(index=False):
         key = (row.target_type, row.board_type, row.target_name, row.interface)
         if key not in handled_keys:
             unsupported.append(f"{row.target_type}/{row.interface}/{row.target_name}: 暂不支持自动重试")
-    result = _combine("重试失败任务", summaries, message=f"已按失败清单重试 {len(failures_df)} 条。")
+    skipped_names = skipped_failures["target_name"].dropna().astype(str).drop_duplicates().tolist()
+    message = f"已按失败清单重试 {len(retry_df)} 条。"
+    if skipped_names:
+        message += f" 跳过稳定失败 {len(skipped_failures)} 条：{'、'.join(skipped_names[:6])}"
+        if len(skipped_names) > 6:
+            message += " 等"
+    result = _combine("重试失败任务", summaries, message=message)
+    result.skipped += int(len(skipped_failures))
     result.failures = (result.failures or []) + unsupported
     return result
 
@@ -609,7 +639,9 @@ def render_data_update_tasks(storage: DuckDBStorage, universe_id: str | None = N
                     progress_text.caption(f"数据源：{source_display}；更新任务完成")
                 if stats_text is not None and hasattr(result, "failures"):
                     failures = getattr(result, "failures") or []
-                    stats_text.caption(f"失败 {len(failures)}")
+                    skipped = int(getattr(result, "skipped", 0) or 0)
+                    skipped_text = f"，跳过 {skipped}" if skipped else ""
+                    stats_text.caption(f"失败 {len(failures)}{skipped_text}")
                 render_operation_result(result, f"{task}完成")
             except Exception as exc:
                 st.error(f"更新失败：{exc}")

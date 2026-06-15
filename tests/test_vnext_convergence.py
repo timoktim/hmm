@@ -156,6 +156,7 @@ def test_data_status_uses_latest_breadth_date_before_full_market_preference(tmp_
 
     assert trust.market_width_level == "本地样本/部分样本"
     assert "宽度：本地样本/部分样本" in bar.message
+    assert any(item.label == "宽度" and item.value == "本地样本/部分样本" for item in bar.items)
 
 
 def test_historical_stale_cache_not_current_problem(tmp_path):

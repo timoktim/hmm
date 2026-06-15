@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+from concurrent.futures import ThreadPoolExecutor
+
 import pandas as pd
 
 from src.data_pipeline.storage import DuckDBStorage
@@ -57,6 +59,26 @@ class FakeStockClient:
     def stock_hist(self, stock_code: str, start_date: str, end_date: str) -> DataResult:
         self.calls.append((stock_code, start_date, end_date))
         return DataResult(pd.DataFrame([_stock_row(stock_code, start_date)]))
+
+
+class TushareClient(FakeBoardClient):
+    def board_constituents(self, board_type: str, sector_name: str) -> DataResult:
+        if sector_name == "b":
+            raise ValueError("index_member_all 返回空数据")
+        return DataResult(
+            pd.DataFrame(
+                [
+                    {
+                        "sector_id": f"{board_type}:{sector_name}",
+                        "stock_code": "000001",
+                        "stock_name": "A",
+                        "in_sector_date": pd.Timestamp("2024-01-01").date(),
+                        "source": "test",
+                        "fetched_at": pd.Timestamp("2024-03-01"),
+                    }
+                ]
+            )
+        )
 
 
 def test_incremental_update_boards_uses_local_max_trade_date(tmp_path):
@@ -139,6 +161,66 @@ def test_update_boards_marks_legacy_sector_meta_inactive(tmp_path):
     active = meta[meta["sector_name"] == "a"].iloc[0]
     assert bool(active["is_active"])
     assert not bool(legacy["is_active"])
+
+
+def test_tushare_local_aggregate_skips_hist_when_constituents_missing(tmp_path):
+    storage = DuckDBStorage(tmp_path / "test.duckdb")
+    storage.init_schema()
+    client = TushareClient()
+
+    summary = incremental_update_boards(
+        "industry",
+        "20200101",
+        "20240301",
+        include_constituents=True,
+        client=client,  # type: ignore[arg-type]
+        storage=storage,
+    )
+    failures = storage.read_df("SELECT target_name, interface FROM fetch_failures ORDER BY target_name, interface")
+
+    assert summary.sectors_updated == 1
+    assert summary.failures == ["b 成分股更新失败: index_member_all 返回空数据"]
+    assert ("a", "20200101", "20240301") in client.calls
+    assert not any(call[0] == "b" for call in client.calls)
+    assert failures.to_dict("records") == [{"target_name": "b", "interface": "board_constituents"}]
+
+
+def test_storage_read_df_serializes_concurrent_duckdb_file_reads(tmp_path):
+    storage = DuckDBStorage(tmp_path / "test.duckdb")
+    storage.init_schema()
+    storage.upsert_df(
+        "sector_constituents",
+        pd.DataFrame(
+            [
+                {
+                    "sector_id": "industry:a",
+                    "stock_code": "000001",
+                    "stock_name": "A",
+                    "in_sector_date": pd.Timestamp("2024-01-01").date(),
+                    "source": "test",
+                    "fetched_at": pd.Timestamp("2024-03-01"),
+                }
+            ]
+        ),
+        ["sector_id", "stock_code"],
+    )
+    storage.upsert_df(
+        "stock_ohlcv",
+        pd.DataFrame([_stock_row("000001", "2024-03-01")]),
+        ["stock_code", "trade_date"],
+    )
+    query = """
+        SELECT stock_code, trade_date, open, high, low, close, volume, amount
+        FROM stock_ohlcv
+        WHERE stock_code IN (
+          SELECT stock_code FROM sector_constituents WHERE sector_id = ?
+        )
+    """
+
+    with ThreadPoolExecutor(max_workers=3) as executor:
+        counts = list(executor.map(lambda _: len(storage.read_df(query, ["industry:a"])), range(9)))
+
+    assert counts == [1] * 9
 
 
 def test_update_stock_histories_incremental_and_missing_only(tmp_path):

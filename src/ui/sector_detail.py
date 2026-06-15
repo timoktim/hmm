@@ -22,6 +22,9 @@ from src.ui.state_colors import SECTOR_STATE_BG_COLORS, SECTOR_STATE_COLORS
 from src.utils.dates import today_yyyymmdd
 
 
+SECTOR_TYPE_LABELS = {"industry": "行业", "concept": "概念", "custom": "自定义股票池"}
+
+
 def _prefilled_sector_choice(meta: pd.DataFrame, preselected: object) -> tuple[str | None, str | None]:
     if preselected and not meta.empty and str(preselected) in set(meta["sector_id"].astype(str)):
         row = meta[meta["sector_id"].astype(str).eq(str(preselected))].iloc[0]
@@ -54,7 +57,14 @@ def _sector_transition_matrix(storage: DuckDBStorage, run_id: str | None) -> pd.
 
 
 def _select_sector(storage: DuckDBStorage, key_prefix: str = "sector", universe_id: str | None = None) -> str | None:
-    meta = storage.read_df("SELECT sector_id, sector_type, sector_name FROM sector_meta ORDER BY sector_type, sector_name")
+    meta = storage.read_df(
+        """
+        SELECT sector_id, sector_type, sector_name
+        FROM sector_meta
+        WHERE COALESCE(is_active, TRUE)
+        ORDER BY sector_type, sector_name
+        """
+    )
     custom_meta = custom_basket_sector_meta(storage)
     if not custom_meta.empty:
         meta = pd.concat([meta, custom_meta], ignore_index=True)
@@ -65,11 +75,14 @@ def _select_sector(storage: DuckDBStorage, key_prefix: str = "sector", universe_
         st.info("暂无板块元数据。")
         return None
     available_types = meta["sector_type"].dropna().astype(str).drop_duplicates().tolist()
-    labels = {"industry": "行业", "concept": "概念", "custom": "自定义股票池"}
-    preselected = st.session_state.get("selected_sector_id_for_detail")
+    pending_sector_id = st.session_state.pop("detail_overlay_pending_sector_id", None)
+    preselected = pending_sector_id or st.session_state.get("selected_sector_id_for_detail")
     default_type, default_name = _prefilled_sector_choice(meta, preselected)
+    if pending_sector_id and default_type and default_name:
+        st.session_state[f"{key_prefix}_type"] = default_type
+        st.session_state[f"{key_prefix}_name"] = default_name
     type_index = available_types.index(default_type) if default_type in available_types else 0
-    board_type = st.selectbox("板块类型", available_types, index=type_index, format_func=lambda x: labels.get(x, x), key=f"{key_prefix}_type")
+    board_type = st.selectbox("板块类型", available_types, index=type_index, format_func=lambda x: SECTOR_TYPE_LABELS.get(x, x), key=f"{key_prefix}_type")
     names = meta[meta["sector_type"] == board_type]["sector_name"].tolist()
     if not names:
         st.info("该类型暂无数据。")
@@ -98,22 +111,183 @@ def _constituents_for_detail(storage: DuckDBStorage, sector_id: str) -> pd.DataF
     if sector_id.startswith("custom:"):
         return storage.read_df(
             """
-            SELECT stock_code, stock_name
-            FROM custom_stock_basket_members
-            WHERE basket_id = ?
-            ORDER BY stock_code
+            SELECT
+              m.stock_code,
+              COALESCE(NULLIF(m.stock_name, ''), u.stock_name, m.stock_code) AS stock_name
+            FROM custom_stock_basket_members m
+            LEFT JOIN all_a_stock_universe u ON u.stock_code = m.stock_code
+            WHERE m.basket_id = ?
+            ORDER BY m.stock_code
             """,
             [sector_id],
         )
     return storage.read_df(
         """
-        SELECT stock_code, stock_name
-        FROM sector_constituents
-        WHERE sector_id = ?
-        ORDER BY stock_code
+        SELECT
+          c.stock_code,
+          COALESCE(NULLIF(c.stock_name, ''), u.stock_name, c.stock_code) AS stock_name
+        FROM sector_constituents c
+        LEFT JOIN all_a_stock_universe u ON u.stock_code = c.stock_code
+        WHERE c.sector_id = ?
+        ORDER BY c.stock_code
         """,
         [sector_id],
     )
+
+
+def _global_stock_sector_candidates(storage: DuckDBStorage) -> pd.DataFrame:
+    sector_candidates = storage.read_df(
+        """
+        SELECT DISTINCT
+          c.stock_code,
+          COALESCE(NULLIF(c.stock_name, ''), u.stock_name, c.stock_code) AS stock_name,
+          c.sector_id,
+          m.sector_type,
+          m.sector_name
+        FROM sector_constituents c
+        JOIN sector_meta m ON m.sector_id = c.sector_id
+        LEFT JOIN all_a_stock_universe u ON u.stock_code = c.stock_code
+        WHERE c.stock_code IS NOT NULL
+          AND COALESCE(m.is_active, TRUE)
+        ORDER BY c.stock_code, m.sector_type, m.sector_name
+        """
+    )
+    custom_meta = custom_basket_sector_meta(storage)
+    if not custom_meta.empty:
+        custom_ids = custom_meta["sector_id"].astype(str).drop_duplicates().tolist()
+        placeholders = ",".join(["?"] * len(custom_ids))
+        custom_candidates = storage.read_df(
+            f"""
+            SELECT DISTINCT
+              b.stock_code,
+              COALESCE(NULLIF(b.stock_name, ''), u.stock_name, b.stock_code) AS stock_name,
+              b.basket_id AS sector_id,
+              'custom' AS sector_type
+            FROM custom_stock_basket_members b
+            LEFT JOIN all_a_stock_universe u ON u.stock_code = b.stock_code
+            WHERE b.basket_id IN ({placeholders})
+            ORDER BY b.stock_code
+            """,
+            custom_ids,
+        )
+        if not custom_candidates.empty:
+            custom_candidates = custom_candidates.merge(
+                custom_meta[["sector_id", "sector_name"]],
+                on="sector_id",
+                how="left",
+            )
+            sector_candidates = pd.concat([sector_candidates, custom_candidates], ignore_index=True)
+    if sector_candidates.empty:
+        return sector_candidates
+    out = sector_candidates.copy()
+    out["stock_code"] = out["stock_code"].astype(str).str.extract(r"(\d{6})", expand=False).fillna(out["stock_code"].astype(str)).str.zfill(6)
+    out["stock_name"] = out["stock_name"].fillna("").astype(str)
+    out["sector_id"] = out["sector_id"].astype(str)
+    out["sector_type"] = out["sector_type"].fillna("").astype(str)
+    out["sector_name"] = out["sector_name"].fillna("").astype(str)
+    return out.drop_duplicates(["stock_code", "sector_id"]).sort_values(["stock_code", "sector_type", "sector_name"]).reset_index(drop=True)
+
+
+def _stock_option_label(stock_code: object, stock_name: object | None = None) -> str:
+    code = str(stock_code).strip().zfill(6)
+    name = "" if stock_name is None or pd.isna(stock_name) else str(stock_name).strip()
+    return f"{name}（{code}）" if name else code
+
+
+def _stock_sector_candidate_label(row: pd.Series | dict[str, object]) -> str:
+    code = row.get("stock_code", "")
+    name = row.get("stock_name", "")
+    sector_type = SECTOR_TYPE_LABELS.get(str(row.get("sector_type", "")), str(row.get("sector_type", "")))
+    sector_name = str(row.get("sector_name", "") or row.get("sector_id", ""))
+    return f"{_stock_option_label(code, name)} | {sector_type}：{sector_name}"
+
+
+def _filter_stock_sector_candidates(candidates: pd.DataFrame, query: str, limit: int = 50) -> pd.DataFrame:
+    if candidates.empty:
+        return candidates
+    text = str(query or "").strip()
+    if not text:
+        return candidates.head(0)
+    normalized_code = "".join(ch for ch in text if ch.isdigit())
+    haystack = (
+        candidates["stock_code"].astype(str)
+        + " "
+        + candidates["stock_name"].astype(str)
+        + " "
+        + candidates["sector_name"].astype(str)
+    )
+    mask = haystack.str.contains(text, case=False, regex=False, na=False)
+    if normalized_code:
+        mask = mask | candidates["stock_code"].astype(str).str.contains(normalized_code, regex=False, na=False)
+    out = candidates[mask].copy()
+    if out.empty:
+        return out
+    out["_rank"] = 3
+    out.loc[out["stock_code"].astype(str).eq(normalized_code.zfill(6)), "_rank"] = 0
+    out.loc[out["stock_name"].astype(str).eq(text), "_rank"] = 1
+    out.loc[out["stock_name"].astype(str).str.contains(text, case=False, regex=False, na=False), "_rank"] = out["_rank"].clip(upper=2)
+    return out.sort_values(["_rank", "sector_type", "sector_name", "stock_code"]).drop(columns=["_rank"]).head(limit)
+
+
+def _overlay_option_maps(cons: pd.DataFrame) -> tuple[list[str], dict[str, str], dict[str, str]]:
+    if cons.empty:
+        return [], {}, {}
+    work = cons.copy()
+    work["stock_code"] = work["stock_code"].astype(str).str.extract(r"(\d{6})", expand=False).fillna(work["stock_code"].astype(str)).str.zfill(6)
+    work["stock_name"] = work["stock_name"].fillna("").astype(str)
+    labels = work.apply(lambda r: _stock_option_label(r["stock_code"], r.get("stock_name")), axis=1).tolist()
+    label_to_code = dict(zip(labels, work["stock_code"], strict=False))
+    code_to_label = dict(zip(work["stock_code"], labels, strict=False))
+    return labels, label_to_code, code_to_label
+
+
+def _sync_overlay_selection_state(options: list[str], code_to_label: dict[str, str], key: str, pending_code: object | None) -> None:
+    existing = st.session_state.get(key, [])
+    selected = [item for item in existing if item in options] if isinstance(existing, list) else []
+    if pending_code is not None:
+        code = str(pending_code).strip().zfill(6)
+        label = code_to_label.get(code)
+        if label and label not in selected:
+            selected = [label, *selected]
+            st.session_state.pop("detail_overlay_pending_stock_code", None)
+    if selected != existing:
+        st.session_state[key] = selected[:5]
+
+
+def _render_stock_overlay_locator(
+    storage: DuckDBStorage,
+    current_sector_id: str,
+    selected_universe: str | None,
+) -> None:
+    candidates = _global_stock_sector_candidates(storage)
+    if candidates.empty:
+        return
+    left, right = st.columns([2, 3])
+    query = left.text_input("按代码或名称定位个股", value="", placeholder="例如 002709 或 天赐材料", help="输入股票代码或名称，选择所属板块后自动切到该板块并加入叠加。")
+    matches = _filter_stock_sector_candidates(candidates, query)
+    if query.strip() and matches.empty:
+        right.info("没有找到匹配个股。")
+        return
+    if matches.empty:
+        right.caption("输入股票代码或名称后，会显示可切换的所属板块。")
+        return
+    labels = [_stock_sector_candidate_label(row) for _, row in matches.iterrows()]
+    label_to_row = {label: row for label, (_, row) in zip(labels, matches.iterrows(), strict=False)}
+    selected_label = right.selectbox("匹配结果", labels, key="detail_overlay_stock_locator_result")
+    selected_row = label_to_row[selected_label]
+    target_sector_id = str(selected_row["sector_id"])
+    target_code = str(selected_row["stock_code"]).zfill(6)
+    if st.button("切换到所属板块并叠加", key="detail_overlay_jump_to_stock"):
+        st.session_state["selected_sector_id_for_detail"] = target_sector_id
+        st.session_state["detail_overlay_pending_sector_id"] = target_sector_id
+        st.session_state["detail_overlay_pending_stock_code"] = target_code
+        if selected_universe:
+            allowed_ids = set(universe_sector_ids(storage, selected_universe, include_custom_baskets=True))
+            if target_sector_id not in allowed_ids:
+                st.session_state["detail_use_universe"] = False
+        if target_sector_id == current_sector_id:
+            st.rerun()
+        st.rerun()
 
 
 def _stock_overlay_coverage(storage: DuckDBStorage, stock_codes: list[str], sector_ohlcv: pd.DataFrame) -> pd.DataFrame:
@@ -164,6 +338,56 @@ def _stock_overlay_coverage(storage: DuckDBStorage, stock_codes: list[str], sect
             }
         )
     return pd.DataFrame(rows)
+
+
+def _resolve_overlay_start(ohlcv: pd.DataFrame, segments: pd.DataFrame, mode: str) -> pd.Timestamp:
+    dates = pd.to_datetime(ohlcv["trade_date"], errors="coerce").dropna().sort_values().drop_duplicates()
+    if dates.empty:
+        return pd.Timestamp.today().normalize()
+    if mode == "最近一次状态切换日" and not segments.empty:
+        return pd.to_datetime(segments.iloc[-1]["start_date"])
+    if mode == "最近60个交易日":
+        return dates.iloc[max(len(dates) - 60, 0)]
+    if mode == "当前窗口起点":
+        return dates.iloc[0]
+    return dates.iloc[max(len(dates) - 260, 0)]
+
+
+def _overlay_scale_warning(overlay: pd.DataFrame) -> str:
+    if overlay.empty or "normalized_close" not in overlay.columns:
+        return ""
+    stats = overlay.groupby("label")["normalized_close"].max()
+    stats = pd.to_numeric(stats, errors="coerce").dropna()
+    stats = stats[stats > 0]
+    if len(stats) < 2:
+        return ""
+    ratio = float(stats.max() / stats.min())
+    if ratio < 20:
+        return ""
+    return (
+        f"当前窗口内不同曲线最大归一化净值相差约 {ratio:.1f} 倍，"
+        "线性坐标会把较小曲线压到图底。建议缩短起始窗口，或切换为对数纵轴。"
+    )
+
+
+def _sector_extreme_return_warning(ohlcv: pd.DataFrame, start_date: pd.Timestamp) -> str:
+    if ohlcv.empty:
+        return ""
+    work = ohlcv.copy()
+    work["trade_date"] = pd.to_datetime(work["trade_date"], errors="coerce")
+    work["close"] = pd.to_numeric(work["close"], errors="coerce")
+    work = work[work["trade_date"] >= pd.to_datetime(start_date)].sort_values("trade_date")
+    returns = work["close"].pct_change(fill_method=None).dropna()
+    if returns.empty:
+        return ""
+    extreme = float(returns.abs().max())
+    if extreme < 0.5:
+        return ""
+    date = work.loc[returns.abs().idxmax(), "trade_date"]
+    return (
+        f"当前窗口内板块本地聚合指数存在最大单日跳变 {extreme:.1%}（{date.date()}）。"
+        "这通常来自成分股历史复权、北交所/历史行情异常或极端跳变，会明显拉大长周期坐标。"
+    )
 
 
 def render_sector_detail(storage: DuckDBStorage, universe_id: str | None = None) -> None:
@@ -267,21 +491,29 @@ def render_sector_detail(storage: DuckDBStorage, universe_id: str | None = None)
     with tab_overlay:
         st.caption("归一化走势用于比较相对强弱，不代表价格绝对水平。")
         st.caption("涨跌停判断为近似估计，暂未精确区分 ST、创业板、科创板、北交所涨跌幅限制。")
+        _render_stock_overlay_locator(storage, sector_id, selected_universe)
         cons = _constituents_for_detail(storage, sector_id)
         if cons.empty:
             st.info("暂无成分股或自定义股票池成员。")
         else:
             cons["stock_code"] = cons["stock_code"].astype(str).str.zfill(6)
-            options = cons.apply(lambda r: f"{r['stock_code']} {r.get('stock_name') or ''}".strip(), axis=1).tolist()
-            selected = st.multiselect("选择个股", options, max_selections=5, help="最多叠加 5 只，避免图表过于拥挤。")
-            selected_codes = [item.split()[0] for item in selected]
-            start_options = ["当前窗口起点"]
+            options, label_to_code, code_to_label = _overlay_option_maps(cons)
+            overlay_key = "detail_overlay_selected_stocks"
+            _sync_overlay_selection_state(options, code_to_label, overlay_key, st.session_state.get("detail_overlay_pending_stock_code"))
+            selected = st.multiselect(
+                "选择个股",
+                options,
+                max_selections=5,
+                key=overlay_key,
+                help="可输入股票名称或代码搜索；最多叠加 5 只，避免图表过于拥挤。",
+            )
+            selected_codes = [label_to_code[item] for item in selected if item in label_to_code]
+            start_options = ["最近260个交易日", "最近60个交易日", "当前窗口起点"]
             if not segments.empty:
                 start_options.append("最近一次状态切换日")
-            start_mode = st.radio("起始日期", start_options, horizontal=True)
-            overlay_start = ohlcv["trade_date"].min()
-            if start_mode == "最近一次状态切换日" and not segments.empty:
-                overlay_start = segments.iloc[-1]["start_date"]
+            start_mode = st.radio("起始日期", start_options, horizontal=True, help="默认使用最近 260 个交易日，避免长周期本地聚合指数把个股曲线压扁。")
+            y_axis_mode = st.radio("纵轴尺度", ["线性", "对数"], horizontal=True, help="长周期倍率差很大时，对数纵轴更适合比较相对变化。")
+            overlay_start = _resolve_overlay_start(ohlcv, segments, start_mode)
             if st.button("更新所选个股行情", disabled=not selected_codes):
                 with st.spinner("正在更新所选个股行情..."):
                     summary = update_stock_histories(selected_codes, pd.to_datetime(overlay_start).strftime("%Y%m%d"), today_yyyymmdd(), incremental=True, lookback_days=10, storage=storage)
@@ -311,7 +543,15 @@ def render_sector_detail(storage: DuckDBStorage, universe_id: str | None = None)
                     for label, group in overlay.groupby("label"):
                         fig_overlay.add_trace(go.Scatter(x=group["trade_date"], y=group["normalized_close"], mode="lines", name=label))
                     fig_overlay.update_layout(height=420, title="板块与个股归一化走势", xaxis_title="交易日期", yaxis_title="归一化净值")
+                    if y_axis_mode == "对数" and (pd.to_numeric(overlay["normalized_close"], errors="coerce") > 0).all():
+                        fig_overlay.update_yaxes(type="log")
                     st.plotly_chart(fig_overlay, width="stretch")
+                    scale_warning = _overlay_scale_warning(overlay)
+                    if scale_warning:
+                        st.warning(scale_warning)
+                    extreme_warning = _sector_extreme_return_warning(ohlcv, pd.to_datetime(overlay_start))
+                    if extreme_warning:
+                        st.warning(extreme_warning)
                     coverage = _stock_overlay_coverage(storage, selected_codes, ohlcv)
                     if not coverage.empty:
                         st.dataframe(rename_columns_for_display(coverage), width="stretch")

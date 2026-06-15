@@ -286,6 +286,36 @@ def test_retry_failures_does_not_fetch_first_10_when_no_failures(tmp_path, monke
     assert result.failures == []
 
 
+def test_retry_failures_skips_stable_empty_tushare_constituents(tmp_path, monkeypatch):
+    storage = DuckDBStorage(tmp_path / "test.duckdb")
+    storage.init_schema()
+    storage.record_fetch_failure(
+        "sector",
+        "industry",
+        "社交Ⅱ",
+        "board_constituents",
+        "tushare_index_member_all 调用失败: ValueError: index_member_all 返回空数据",
+    )
+    storage.record_fetch_failure(
+        "sector",
+        "industry",
+        "社交Ⅱ",
+        "board_hist",
+        "缺少 industry:社交Ⅱ 成分股，无法生成 Tushare 本地聚合板块行情。",
+    )
+
+    def fail_if_called(*args, **kwargs):
+        raise AssertionError("稳定空成分股失败不应自动重试")
+
+    monkeypatch.setattr(data_center_page, "incremental_update_boards", fail_if_called)
+    result = data_center_page.retry_failed_tasks(storage, "20240101", "20240110", incremental=True, lookback_days=10, workers=1)
+
+    assert result.updated == 0
+    assert result.skipped == 2
+    assert result.failures == []
+    assert "跳过稳定失败 2 条" in result.message
+
+
 def test_data_center_tushare_labels_and_controls():
     source = inspect.getsource(data_center_page.render_data_update_tasks)
     assert "ASHARE_HMM_TUSHARE_TOKEN" in source
@@ -300,6 +330,15 @@ def test_sidebar_has_explicit_all_market_scope():
     assert "全市场（不使用板块池）" in app_source
     assert "当前观察范围" in app_source
     assert "选择“全市场”时" in app_source
+
+
+def test_market_regime_status_bar_uses_current_scope_run():
+    app_source = Path("app.py").read_text(encoding="utf-8")
+    page_source = Path("src/ui/market_regime_page.py").read_text(encoding="utf-8")
+
+    assert "render_market_regime(storage, universe_id=selected_universe_id)" in app_source
+    assert "latest_run_for_current_scope(universe_id)" in page_source
+    assert "render_data_status_bar(storage, run_id=run_id, universe_id=universe_id)" in page_source
 
 
 def test_all_a_width_pipeline_sequence(tmp_path, monkeypatch):

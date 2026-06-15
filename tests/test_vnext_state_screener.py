@@ -7,7 +7,8 @@ from src.analysis.sector_cycles import build_state_segments, build_stock_overlay
 from src.data_pipeline.storage import DuckDBStorage
 from src.evaluation.model_evaluation import evaluate_forward_returns
 from src.models.market_hmm import train_market_hmm
-from src.ui.sector_detail import _prefilled_sector_choice
+from src.ui.sector_detail import _overlay_scale_warning, _prefilled_sector_choice, _resolve_overlay_start, _sector_extreme_return_warning
+from src.ui.sector_detail import _constituents_for_detail, _filter_stock_sector_candidates, _global_stock_sector_candidates, _overlay_option_maps, _stock_option_label, _stock_sector_candidate_label
 from src.ui.state_screener_page import walk_forward_cache_options_for_scope
 
 
@@ -270,6 +271,130 @@ def test_stock_overlay_normalized_series():
 
     assert out.groupby("label")["normalized_close"].first().eq(100).all()
     assert "000001 测试" in set(out["label"])
+
+
+def test_stock_overlay_defaults_to_recent_trading_window():
+    dates = pd.date_range("2024-01-01", periods=300, freq="B")
+    ohlcv = pd.DataFrame({"trade_date": dates, "close": range(len(dates))})
+
+    start = _resolve_overlay_start(ohlcv, pd.DataFrame(), "最近260个交易日")
+
+    assert start == dates[40]
+
+
+def test_stock_overlay_warns_when_long_window_scale_is_dominated():
+    overlay = pd.DataFrame(
+        {
+            "label": ["板块指数", "板块指数", "000001 测试", "000001 测试"],
+            "normalized_close": [100.0, 25000.0, 100.0, 300.0],
+        }
+    )
+
+    warning = _overlay_scale_warning(overlay)
+
+    assert "相差约" in warning
+    assert "对数纵轴" in warning
+
+
+def test_stock_overlay_warns_on_extreme_sector_jump():
+    ohlcv = pd.DataFrame(
+        {
+            "trade_date": pd.date_range("2024-01-01", periods=3, freq="D"),
+            "close": [100.0, 210.0, 220.0],
+        }
+    )
+
+    warning = _sector_extreme_return_warning(ohlcv, pd.Timestamp("2024-01-01"))
+
+    assert "最大单日跳变" in warning
+
+
+def test_stock_overlay_stock_labels_show_name_before_code():
+    assert _stock_option_label("002709", "天赐材料") == "天赐材料（002709）"
+    assert _stock_sector_candidate_label(
+        {
+            "stock_code": "002709",
+            "stock_name": "天赐材料",
+            "sector_type": "industry",
+            "sector_name": "电池",
+        }
+    ) == "天赐材料（002709） | 行业：电池"
+
+
+def test_stock_overlay_search_matches_code_name_and_sector():
+    candidates = pd.DataFrame(
+        [
+            {"stock_code": "002709", "stock_name": "天赐材料", "sector_id": "industry:电池", "sector_type": "industry", "sector_name": "电池"},
+            {"stock_code": "300750", "stock_name": "宁德时代", "sector_id": "industry:电池", "sector_type": "industry", "sector_name": "电池"},
+        ]
+    )
+
+    assert _filter_stock_sector_candidates(candidates, "天赐").iloc[0]["stock_code"] == "002709"
+    assert _filter_stock_sector_candidates(candidates, "002709").iloc[0]["stock_name"] == "天赐材料"
+    assert len(_filter_stock_sector_candidates(candidates, "电池")) == 2
+
+
+def test_stock_overlay_global_candidates_ignore_inactive_sector(tmp_path):
+    storage = DuckDBStorage(tmp_path / "test.duckdb")
+    storage.init_schema()
+    storage.upsert_df(
+        "sector_meta",
+        pd.DataFrame(
+            [
+                {"sector_id": "industry:电力设备", "sector_type": "industry", "sector_name": "电力设备", "source": "test", "is_active": False},
+                {"sector_id": "industry:电池", "sector_type": "industry", "sector_name": "电池", "source": "test", "is_active": True},
+            ]
+        ),
+        ["sector_id"],
+    )
+    storage.upsert_df(
+        "sector_constituents",
+        pd.DataFrame(
+            [
+                {"sector_id": "industry:电力设备", "stock_code": "002709", "stock_name": "天赐材料"},
+                {"sector_id": "industry:电池", "stock_code": "002709", "stock_name": "天赐材料"},
+            ]
+        ),
+        ["sector_id", "stock_code"],
+    )
+
+    candidates = _global_stock_sector_candidates(storage)
+
+    assert candidates["sector_name"].tolist() == ["电池"]
+
+
+def test_stock_overlay_constituents_fill_names_from_universe(tmp_path):
+    storage = DuckDBStorage(tmp_path / "test.duckdb")
+    storage.init_schema()
+    storage.upsert_df(
+        "sector_constituents",
+        pd.DataFrame([{"sector_id": "industry:电池", "stock_code": "002709", "stock_name": ""}]),
+        ["sector_id", "stock_code"],
+    )
+    storage.upsert_df(
+        "all_a_stock_universe",
+        pd.DataFrame([{"stock_code": "002709", "stock_name": "天赐材料", "list_status": "active"}]),
+        ["stock_code"],
+    )
+
+    out = _constituents_for_detail(storage, "industry:电池")
+
+    assert out.iloc[0]["stock_name"] == "天赐材料"
+
+
+def test_stock_overlay_option_maps_keep_searchable_labels_and_codes():
+    cons = pd.DataFrame(
+        [
+            {"stock_code": "002709", "stock_name": "天赐材料"},
+            {"stock_code": "300750", "stock_name": "宁德时代"},
+        ]
+    )
+
+    labels, label_to_code, code_to_label = _overlay_option_maps(cons)
+
+    assert "天赐材料（002709）" in labels
+    assert label_to_code["天赐材料（002709）"] == "002709"
+    assert code_to_label["300750"] == "宁德时代（300750）"
 
 
 def test_sector_detail_prefills_selected_sector_from_session_state():
