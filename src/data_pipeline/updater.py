@@ -203,6 +203,7 @@ def _update_boards_impl(
     total = len(jobs) * (2 if include_constituents else 1)
     completed = 0
     constituents_prefetched = False
+    constituent_failed_names: set[str] = set()
 
     def emit(name: str, stage: str) -> None:
         if progress_callback is not None:
@@ -227,6 +228,8 @@ def _update_boards_impl(
             cache_hits += cached
             if error:
                 failures.append(error)
+                constituent_failed_names.add(str(job["sector_name"]))
+                storage.clear_fetch_failure("sector", board_type, str(job["sector_name"]), "board_hist")
             completed += 1
             emit(str(job["sector_name"]), "board_constituents_done")
         constituents_prefetched = True
@@ -241,6 +244,10 @@ def _update_boards_impl(
     if worker_count == 1:
         for job in jobs:
             emit(str(job["sector_name"]), "board_hist")
+            if str(job["sector_name"]) in constituent_failed_names:
+                completed += 1
+                emit(str(job["sector_name"]), "board_hist_skipped")
+                continue
             try:
                 job, hist_res = fetch_hist(job)
                 storage.upsert_df("sector_ohlcv", hist_res.data, ["sector_id", "trade_date"])
@@ -257,8 +264,16 @@ def _update_boards_impl(
             completed += 1
             emit(str(job["sector_name"]), "board_hist_done")
     else:
+        hist_jobs: list[dict[str, object]] = []
+        for job in jobs:
+            if str(job["sector_name"]) in constituent_failed_names:
+                emit(str(job["sector_name"]), "board_hist")
+                completed += 1
+                emit(str(job["sector_name"]), "board_hist_skipped")
+            else:
+                hist_jobs.append(job)
         with ThreadPoolExecutor(max_workers=worker_count) as executor:
-            future_map = {executor.submit(fetch_hist, job): job for job in jobs}
+            future_map = {executor.submit(fetch_hist, job): job for job in hist_jobs}
             for future in as_completed(future_map):
                 job = future_map[future]
                 try:

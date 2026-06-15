@@ -24,6 +24,7 @@ class Settings(BaseSettings):
     request_min_sleep: float = 0.5
     request_max_sleep: float = 1.5
     cache_ttl_seconds: int = 24 * 60 * 60
+    duckdb_threads: int = 4
     default_feature_version: str = "v1"
     default_source: str = "tushare"
     market_data_source: str = "tushare"

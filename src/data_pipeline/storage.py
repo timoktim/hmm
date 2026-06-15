@@ -82,6 +82,7 @@ class DuckDBStorage:
     def connect(self) -> duckdb.DuckDBPyConnection:
         con = duckdb.connect(str(self.db_path))
         con.execute("SET timezone='Asia/Shanghai'")
+        con.execute(f"SET threads={max(1, int(settings.duckdb_threads or 1))}")
         return con
 
     def _migrate_sector_features_scope(self, con: duckdb.DuckDBPyConnection) -> None:
@@ -1643,7 +1644,7 @@ class DuckDBStorage:
         return summary
 
     def read_df(self, sql: str, params: tuple | list | None = None) -> pd.DataFrame:
-        with self.connect() as con:
+        with _DB_WRITE_LOCK, self.connect() as con:
             return con.execute(sql, params or []).fetchdf()
 
     def latest_run_id(self, universe_id: str | None = None, scope_type: str | None = None) -> str | None:

@@ -7,7 +7,14 @@ import pandas as pd
 
 from src.signals.signal_panel_snapshot import NO_CURRENT_STAGE03V_SCORE_SOURCE
 from src.ui.navigation import page_config, page_labels_for_group
-from src.ui.signal_panel_page import WARNING_TEXT, _compact_counts, _display_value, _localize_readiness_text, _signal_display_frame
+from src.ui.signal_panel_page import (
+    WARNING_TEXT,
+    _build_summary_items,
+    _compact_counts,
+    _display_value,
+    _localize_readiness_text,
+    _signal_display_frame,
+)
 
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -71,6 +78,30 @@ def test_signal_panel_summary_values_are_localized() -> None:
     assert _localize_readiness_text(
         "usable_probability_candidate=1; ordinal_only_candidate=2; probability_source_status=unavailable_current_per_entity_score_source"
     ) == "可显示概率候选=1；仅序数候选=2；概率来源状态=当前实体级分数来源不可用"
+
+
+def test_signal_panel_summary_uses_wrapping_status_items() -> None:
+    snapshot = pd.DataFrame(
+        {
+            "signal_date": [pd.Timestamp("2026-01-02")],
+            "data_freshness_status": ["latest_available"],
+            "volatility_band": ["high"],
+            "hmm_state_label": ["unavailable"],
+            "hsmm_state_phase": ["unavailable"],
+            "stage03v_probability_source_status": [NO_CURRENT_STAGE03V_SCORE_SOURCE],
+            "stage03v_readiness_summary": [
+                "usable_probability_candidate=1; probability_source_status=unavailable_current_per_entity_score_source"
+            ],
+        }
+    )
+
+    items, readiness = _build_summary_items(snapshot)
+    values = {item.label: item.value for item in items}
+
+    assert values["信号日期"] == "2026-01-02"
+    assert values["数据新鲜度"] == "已用最新可得数据:1"
+    assert values["Stage03V 来源"] == "当前实体级分数来源不可用"
+    assert "概率来源状态=当前实体级分数来源不可用" in readiness
 
 
 def test_runtime_contract_artifacts_exist_and_keep_research_only_boundaries() -> None:

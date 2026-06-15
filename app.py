@@ -12,7 +12,9 @@ from src.data_pipeline.storage import DuckDBStorage
 from src.data_pipeline.universe import default_universe_id
 from src.runtime.db_workspace import resolve_active_db_path
 from src.ui.backtest_page import render_backtest
+from src.ui.components.app_style import render_app_layout_css
 from src.ui.components.data_trust_card import build_data_trust_summary
+from src.ui.components.help_dock import render_help_dock
 from src.ui.data_center_page import render_data_center
 from src.ui.database_workspace_page import render_database_workspace, render_sidebar_database_status
 from src.ui.dashboard import render_dashboard
@@ -39,6 +41,8 @@ def build_active_storage(active_db_path: Path | None = None) -> tuple[DuckDBStor
 
 
 st.set_page_config(page_title="A股板块 HMM 状态分析器", layout="wide")
+render_app_layout_css()
+render_help_dock()
 storage, active_db_path = build_active_storage()
 
 with st.sidebar:
@@ -129,7 +133,7 @@ elif page == "模型评估":
 elif page == "回测":
     render_backtest(storage, universe_id=selected_universe_id)
 elif page == "大盘状态":
-    render_market_regime(storage)
+    render_market_regime(storage, universe_id=selected_universe_id)
 elif page == "信号面板":
     render_signal_panel_page(storage, universe_id=selected_universe_id)
 else:

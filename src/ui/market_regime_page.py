@@ -116,10 +116,11 @@ def _transition_matrix(storage: DuckDBStorage) -> pd.DataFrame:
     return pd.DataFrame(rows, index=[f"当前 {display_state_label(label)}" for label in ordered], columns=[f"下一状态：{display_state_label(label)}" for label in ordered])
 
 
-def render_market_regime(storage: DuckDBStorage) -> None:
+def render_market_regime(storage: DuckDBStorage, universe_id: str | None = None) -> None:
     st.title("大盘状态")
     st.caption(HELP_TEXTS["market_regime"])
-    render_data_status_bar(storage)
+    run_id = storage.latest_run_for_current_scope(universe_id)
+    render_data_status_bar(storage, run_id=run_id, universe_id=universe_id)
 
     st.subheader("数据准备")
     st.info("底层数据更新已统一归口到“数据中心”；本页只保留面板专用的本地样本宽度诊断和大盘 HMM 训练。")

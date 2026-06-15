@@ -11,6 +11,8 @@ from src.signals.signal_panel_snapshot import (
     build_signal_panel_snapshot,
     validate_snapshot_schema,
 )
+from src.ui.components.status_display import StatusItem, render_status_grid
+from src.ui.components.help_dock import render_help_chip_row
 from src.ui.help_texts import display_value, rename_columns_for_display
 
 
@@ -21,6 +23,7 @@ SIGNAL_COLUMN_LABELS = {
     "signal_date": "信号日期",
     "data_freshness_status": "数据新鲜度",
     "source_scope": "来源范围",
+    "vol_20d": "20日波动率",
     "vol_60d": "60日波动率",
     "ewma_vol": "EWMA 波动率",
     "volatility_band": "波动率分层",
@@ -172,6 +175,12 @@ def render_signal_panel_page(storage: DuckDBStorage, universe_id: str | None = N
 
 
 def _render_summary(snapshot: pd.DataFrame) -> None:
+    items, readiness = _build_summary_items(snapshot)
+    render_status_grid(items)
+    st.caption(readiness)
+
+
+def _build_summary_items(snapshot: pd.DataFrame) -> tuple[tuple[StatusItem, ...], str]:
     latest_date = snapshot["signal_date"].dropna().max()
     freshness = _compact_counts(snapshot, "data_freshness_status")
     band_counts = _compact_counts(snapshot, "volatility_band")
@@ -180,15 +189,25 @@ def _render_summary(snapshot: pd.DataFrame) -> None:
     hsmm_total = len(snapshot)
     probability_source = _display_value(_first_value(snapshot, "stage03v_probability_source_status", NO_CURRENT_STAGE03V_SCORE_SOURCE))
     readiness = _localize_readiness_text(_first_value(snapshot, "stage03v_readiness_summary", ""))
+    return (
+        (
+            StatusItem("信号日期", _format_signal_date(latest_date), "blue"),
+            StatusItem("数据新鲜度", freshness, "green" if "已用最新可得数据" in freshness else "yellow"),
+            StatusItem("基准风险分层", band_counts, "neutral"),
+            StatusItem("HMM 状态", hmm_counts, "neutral"),
+            StatusItem("HSMM 生命周期覆盖", f"{hsmm_available}/{hsmm_total}", "green" if hsmm_available else "yellow"),
+            StatusItem("Stage03V 来源", probability_source, "green" if "可用" in probability_source and "不可用" not in probability_source else "yellow"),
+        ),
+        readiness,
+    )
 
-    cols = st.columns(6)
-    cols[0].metric("信号日期", str(latest_date))
-    cols[1].metric("数据新鲜度", freshness)
-    cols[2].metric("基准风险分层", band_counts)
-    cols[3].metric("HMM 状态", hmm_counts)
-    cols[4].metric("HSMM 生命周期覆盖", f"{hsmm_available}/{hsmm_total}")
-    cols[5].metric("Stage03V 来源", probability_source)
-    st.caption(readiness)
+
+def _format_signal_date(value: object) -> str:
+    if value is None or pd.isna(value):
+        return "无"
+    if isinstance(value, pd.Timestamp):
+        return str(value.date())
+    return str(value)
 
 
 def _render_filters(snapshot: pd.DataFrame) -> pd.DataFrame:
@@ -252,6 +271,7 @@ def _render_main_table(snapshot: pd.DataFrame) -> None:
         "human_review_note",
         "not_trading_output",
     ]
+    render_help_chip_row(display_cols, labels=SIGNAL_COLUMN_LABELS)
     st.dataframe(_signal_display_frame(snapshot[[col for col in display_cols if col in snapshot.columns]]), width="stretch")
 
 
@@ -273,6 +293,7 @@ def _render_detail_expanders(snapshot: pd.DataFrame) -> None:
             "negative_return_day_share_60d",
             "downside_asymmetry_band",
         ]
+        render_help_chip_row(cols, labels=SIGNAL_COLUMN_LABELS)
         st.dataframe(_signal_display_frame(snapshot[[col for col in cols if col in snapshot.columns]]), width="stretch")
 
     with st.expander("HMM/HSMM 上下文明细", expanded=False):
@@ -298,6 +319,7 @@ def _render_detail_expanders(snapshot: pd.DataFrame) -> None:
             "next_state_tendency",
             "hsmm_probability_display_policy",
         ]
+        render_help_chip_row(cols, labels=SIGNAL_COLUMN_LABELS)
         st.dataframe(_signal_display_frame(snapshot[[col for col in cols if col in snapshot.columns]]), width="stretch")
 
     with st.expander("Stage03V 就绪与概率显示策略", expanded=False):
@@ -314,6 +336,7 @@ def _render_detail_expanders(snapshot: pd.DataFrame) -> None:
             "stage03v_calibrated_probability_available",
             "stage03v_calibrated_probability_fields",
         ]
+        render_help_chip_row(cols, labels=SIGNAL_COLUMN_LABELS)
         st.dataframe(_signal_display_frame(snapshot[[col for col in cols if col in snapshot.columns]]), width="stretch")
 
     with st.expander("证据与产物来源", expanded=False):

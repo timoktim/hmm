@@ -8,6 +8,7 @@ import streamlit as st
 
 from src.data_pipeline.storage import DuckDBStorage
 from src.ui.components.data_trust_card import build_data_trust_summary, render_data_trust_card
+from src.ui.components.status_display import StatusItem, render_status_grid
 from src.ui.help_texts import display_value
 
 
@@ -16,6 +17,7 @@ class DataStatusBarSummary:
     level: str
     status_label: str
     message: str
+    items: tuple[StatusItem, ...]
 
 
 def build_data_status_bar_summary(
@@ -91,7 +93,23 @@ def build_data_status_bar_summary(
         message += " | 问题：" + "、".join(problems)
     elif warnings:
         message += " | 提示：" + "、".join(warnings)
-    return DataStatusBarSummary(level=level, status_label=status_label, message=message)
+
+    status_tone = {"green": "green", "yellow": "yellow", "red": "red"}[level]
+    items = [
+        StatusItem("数据状态", status_label, status_tone),
+        StatusItem("最近网络成功", trust.last_network_success, "blue"),
+        StatusItem("当前 stale 接口", trust.stale_reads, "green" if trust.stale_reads == 0 else status_tone),
+        StatusItem("历史 stale 次数", trust.historical_stale_reads, "neutral"),
+        StatusItem("run 范围", run_scope, "neutral"),
+        StatusItem("feature scope", feature_scope, "neutral"),
+        StatusItem("宽度", f"{breadth_mode}/{display_value(breadth_level)}", "yellow" if breadth_level not in {"full_market", "无宽度数据"} else "green"),
+        StatusItem("大盘模型用宽度", market_uses_breadth, "green" if market_uses_breadth == "是" else "yellow"),
+    ]
+    if problems:
+        items.append(StatusItem("问题", "、".join(problems), "red"))
+    elif warnings:
+        items.append(StatusItem("提示", "、".join(warnings), "yellow"))
+    return DataStatusBarSummary(level=level, status_label=status_label, message=message, items=tuple(items))
 
 
 def render_data_status_bar(
@@ -102,10 +120,11 @@ def render_data_status_bar(
 ) -> None:
     summary = build_data_status_bar_summary(storage, run_id=run_id, universe_id=universe_id, walk_forward_causal=walk_forward_causal)
     if summary.level == "green":
-        st.success(summary.message)
+        st.success(f"数据状态：{summary.status_label}")
     elif summary.level == "yellow":
-        st.warning(summary.message)
+        st.warning(f"数据状态：{summary.status_label}")
     else:
-        st.error(summary.message)
+        st.error(f"数据状态：{summary.status_label}")
+    render_status_grid(summary.items, dense=True)
     with st.expander("查看数据状态详情", expanded=False):
         render_data_trust_card(storage, run_id=run_id, universe_id=universe_id, walk_forward_causal=walk_forward_causal)
