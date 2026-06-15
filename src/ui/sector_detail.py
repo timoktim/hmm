@@ -537,7 +537,7 @@ def render_sector_detail(storage: DuckDBStorage, universe_id: str | None = None)
                             x0=max(row.start_date, pd.to_datetime(overlay_start)),
                             x1=row.end_date,
                             fillcolor=SECTOR_STATE_BG_COLORS.get(row.state_label, "rgba(150,150,150,0.08)"),
-                            opacity=0.5,
+                            opacity=0.75,
                             line_width=0,
                         )
                     for label, group in overlay.groupby("label"):
