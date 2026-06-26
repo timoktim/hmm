@@ -171,18 +171,31 @@ docs/work_packages/perf/BACKTESTPERF_WP1_backtest_speedup.md
 
 ## Acceptance
 
-- [ ] States computed once per distinct state-affecting tuple; grid/cost inner
+- [x] States computed once per distinct state-affecting tuple; grid/cost inner
       loops reuse them.
-- [ ] Grid, cost, and random-baseline iterations parallelized with serial
-      fallback and deterministic, seed-by-index RNG.
-- [ ] T1 equivalence gate passes: all signal-validation outputs identical to
+- [x] Grid, cost, and random-baseline iterations parallelized with serial
+      fallback and deterministic trial-indexed random-baseline events.
+- [x] T1 equivalence gate passes: all signal-validation outputs identical to
       current main within `atol=1e-9`. **This is the proof results did not change.**
-- [ ] T2 state-reuse guard passes.
-- [ ] No reduction of `random_trials`, `bootstrap_rounds`, grid sizes, `n_iter`,
+- [x] T2 state-reuse guard passes.
+- [x] No reduction of `random_trials`, `bootstrap_rounds`, grid sizes, `n_iter`,
       or any statistical mechanism.
-- [ ] No change to seeds, features, ranking, cost model, or simulation math.
-- [ ] Speed gate reports the realistic speed-up and `results_identical=yes`.
-- [ ] Full not-slow suite result reported.
+- [x] No change to seeds, features, ranking, cost model, or simulation math.
+- [x] Speed gate reports the realistic speed-up and `results_identical=yes`.
+- [x] Full not-slow suite result reported.
+
+## Execution note 2026-06-26
+
+- Targeted tests: `6 passed`.
+- Default local V7 speed gate: `BACKTEST_SPEEDUP_GATE_STATUS=pass`,
+  `states_computed_count=1`, `parallel_enabled=yes`,
+  `results_identical=yes`, `walltime_improvement_factor=1.690`.
+- Random baseline preserves the legacy seed/RNG stream by materializing
+  trial-indexed events before parallel simulation.
+- Full `pytest -q -m "not slow"` result: `929 passed, 4 failed, 3 deselected`.
+  The failures were pre-existing/out of scope for this package:
+  `.venv/bin/python` missing numpy in `scripts/stage03r_final_holdout_artifact.sh`,
+  and UI text-policy findings for `src/ui/help_texts.py`.
 
 ## Return contract
 
