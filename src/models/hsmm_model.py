@@ -618,9 +618,12 @@ class DiscreteDurationGaussianHSMM:
 
             model_payload = self.to_dict()
             chunks = _chunked_arrays(arrays, sequence_chunk_size)
-            parts = Parallel(n_jobs=n_jobs, prefer="processes")(
-                delayed(_decode_array_chunk_worker)(model_payload, chunk) for chunk in chunks
-            )
+            tasks = [delayed(_decode_array_chunk_worker)(model_payload, chunk) for chunk in chunks]
+            try:
+                parts = Parallel(n_jobs=n_jobs, prefer="processes")(tasks)
+            except Exception as process_exc:
+                parts = Parallel(n_jobs=n_jobs, prefer="threads")(tasks)
+                self.fit_parallel_warning_ = f"process_backend_unavailable_used_threads: {type(process_exc).__name__}: {process_exc}"
             decoded = [item for part in parts for item in part]
             if len(decoded) != len(arrays):
                 raise RuntimeError("parallel HSMM fit decode returned an unexpected sequence count")
@@ -634,12 +637,11 @@ class DiscreteDurationGaussianHSMM:
     def _emission_logprob(self, x: np.ndarray) -> np.ndarray:
         self._check_fitted()
         x = np.asarray(x, dtype=float)
-        out = np.empty((len(x), self.n_states), dtype=float)
-        for state in range(self.n_states):
-            var = np.maximum(self.vars_[state], self.variance_floor)
-            diff = x - self.means_[state]
-            out[:, state] = -0.5 * (np.log(2 * np.pi * var).sum() + ((diff * diff) / var).sum(axis=1))
-        return out
+        var = np.maximum(self.vars_, self.variance_floor)
+        diff = x[:, None, :] - self.means_[None, :, :]
+        log_norm = np.log(2 * np.pi * var).sum(axis=1)
+        mahalanobis = ((diff * diff) / var[None, :, :]).sum(axis=2)
+        return -0.5 * (log_norm[None, :] + mahalanobis)
 
     def _viterbi_dp_array(self, x: np.ndarray) -> _ViterbiDPResult:
         self._check_fitted()

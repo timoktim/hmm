@@ -5,9 +5,9 @@ HSMM walk-forward cost has two large parts:
 - checkpoint fit: each EM iteration decodes every training sequence with Viterbi, then updates the duration, transition, and emission parameters;
 - snapshot decode: each trained checkpoint produces lifecycle snapshots for the dates it serves.
 
-`DiscreteDurationGaussianHSMM.fit()` now accepts `n_jobs` and `sequence_chunk_size`. When `n_jobs` resolves above 1 and there is more than one training sequence, each EM iteration serializes the current fitted parameter payload and decodes sequence chunks with joblib process workers. If joblib import or execution fails, fit falls back to the serial path and marks the fallback in diagnostics.
+`DiscreteDurationGaussianHSMM.fit()` now accepts `n_jobs` and `sequence_chunk_size`. When `n_jobs` resolves above 1 and there is more than one training sequence, each EM iteration serializes the current fitted parameter payload and decodes sequence chunks with joblib workers. It tries the process backend first, uses the thread backend when a restricted local environment blocks worker processes, and only falls back to the serial path if both parallel backends fail. Serial fallback is marked in diagnostics.
 
-The existing prefix snapshot decoder still uses `n_jobs` and `sector_chunk_size`. In walk-forward config, `fit_n_jobs` controls checkpoint fit decode; when it is omitted, fit decode uses the same value as `n_jobs`. `fit_sequence_chunk_size` controls how many training sequences each fit worker receives.
+The existing prefix snapshot decoder still uses `n_jobs` and `sector_chunk_size`, with the same process-then-thread backend behavior. In walk-forward config, `fit_n_jobs` controls checkpoint fit decode; when it is omitted, fit decode uses the same value as `n_jobs`. `fit_sequence_chunk_size` controls how many training sequences each fit worker receives.
 
 Performance diagnostics are returned in the walk-forward result and written to public profile reports:
 
@@ -51,7 +51,7 @@ The shorter aliases `HSMM_ENGINE`, `HSMM_N_JOBS`, `HSMM_FIT_N_JOBS`, `HSMM_MAX_D
 
 If the DB path is missing, the script prints a skipped status and exits successfully.
 
-The script also prints the requested engine and a fallback reminder before it checks the DB path. In `auto` mode, a missing or unusable numba runtime falls back to the Python Viterbi kernel. That fallback is safe, but it means the run should not be interpreted as a numba speedup measurement.
+The script also prints the requested engine and a fallback reminder before it checks the DB path. In `auto` mode, a missing or unusable numba runtime falls back to the Python Viterbi kernel and emits a warning with `fallback_reason`. That fallback is safe, but it means the run should not be interpreted as a numba speedup measurement.
 
 ## Numba Operational Checks
 
@@ -80,6 +80,14 @@ HSMM_BENCHMARK_MODE=local HSMM_BENCHMARK_DB=data/db/a_share_hmm.duckdb bash scri
 ```
 
 If the DB path is missing, local DB mode prints `HSMM_BENCHMARK_STATUS=skipped reason=missing_db` and exits successfully.
+
+The HSMM-PERF-WP1 local training speed gate is stricter than the profile scripts:
+
+```bash
+PYTHON_BIN=.venv_service312/bin/python bash scripts/hsmm_training_speedup_gate.sh
+```
+
+It runs walk-forward training on the local V7 database with the default model configuration unchanged (`n_states=4`, `max_duration=60`, `n_iter=20`, `train_window_days=504`, monthly checkpoints), while requiring `auto` to resolve to numba and `fit_n_jobs` / decode `n_jobs` to use `auto`. It reports `HSMM_SPEEDUP_GATE_STATUS`, `engine_used`, `resolved_engine_is_numba`, `fit_parallel_enabled`, `walltime_seconds`, `target_seconds=600`, `config_unchanged=yes`, and `core_count`.
 
 ## Presets
 

@@ -1,6 +1,6 @@
 # HSMM Numba Engine
 
-HSMM can use an optional numba backend for the per-sequence Viterbi dynamic programming kernel. The Python engine remains the reference implementation, and numba is not a hard runtime dependency for CI or normal maintenance commands.
+HSMM can use a numba backend for the per-sequence Viterbi dynamic programming kernel. The Python engine remains the reference implementation, while numba is the required fast path for local HSMM training speed gates.
 
 Engine modes:
 
@@ -8,13 +8,13 @@ Engine modes:
 - `numba`: require the numba kernel and raise a clear runtime error when unavailable.
 - `auto`: prefer numba when it can be imported and executed, otherwise fall back to Python.
 
-To enable the optional backend in a local profiling environment:
+To enable the fast path in a local profiling environment:
 
 ```bash
 python -m pip install numba
 ```
 
-The repository dependency files intentionally do not require numba. A missing numba package in `auto` mode is a safe fallback to the Python kernel, not a semantic change. It also means there is no numba dynamic-programming speedup for that run.
+`requirements.txt` includes a numba version range compatible with the supported NumPy range. A missing numba package in `auto` mode is still a safe fallback to the Python kernel, not a semantic change, but the fallback now emits a visible warning carrying `fallback_reason`. That warning means the run should not be interpreted as a numba speedup measurement.
 
 The kernel receives NumPy arrays only:
 
@@ -45,7 +45,7 @@ fallback_reason=<text-or-none>
 compile_warmed=yes|no
 ```
 
-`fallback` exits successfully by default so CI can verify the fallback path without installing numba. Set `HSMM_ENGINE_REQUIRED=1` when a local benchmark must fail unless the numba engine is importable and warmed:
+`fallback` exits successfully by default so targeted CI can verify the fallback path without installing numba. Set `HSMM_ENGINE_REQUIRED=1` when a local benchmark must fail unless the numba engine is importable and warmed:
 
 ```bash
 HSMM_ENGINE_REQUIRED=1 bash scripts/check_hsmm_numba_engine.sh
@@ -91,3 +91,47 @@ Diagnostics are lightweight:
 Walk-forward performance output may include the resolved engine and fallback reason, but DuckDB schema is not migrated by this package. Speedup is not guaranteed; it depends on sequence count, sequence length, state count, duration support, JIT warmup, and worker overhead.
 
 This package changes runtime execution only. It does not change HSMM model semantics, lifecycle probability interpretation, readiness policy, thresholds, Stage04 validation behavior, or storage schema.
+
+## WP1 Local Speed Gate
+
+Use the local V7 speed gate when validating the HSMM-PERF-WP1 fast path:
+
+```bash
+PYTHON_BIN=.venv_service312/bin/python bash scripts/hsmm_training_speedup_gate.sh
+```
+
+The gate keeps the default model configuration unchanged:
+
+- `n_states=4`
+- `max_duration=60`
+- `n_iter=20`
+- `train_window_days=504`
+- `train_frequency=monthly`
+
+It enables the acceleration controls through invocation defaults:
+
+- `hsmm_engine=auto`, which must resolve to `numba`
+- `n_jobs=auto`
+- `fit_n_jobs=auto`
+- `sector_chunk_size=32`
+- `fit_sequence_chunk_size=32`
+
+The gate emits machine-readable lines:
+
+```text
+HSMM_SPEEDUP_GATE_STATUS=pass|fail
+engine_used=numba|python|...
+resolved_engine_is_numba=yes|no
+fit_parallel_enabled=yes|no
+fit_n_jobs=<value>
+decode_n_jobs=<value>
+walltime_seconds=<n>
+target_seconds=600
+config_unchanged=yes
+core_count=<n>
+run_id=<run-id>
+db_path=<project-relative-path>
+checkpoint_count=<n>
+```
+
+It fails if `resolved_engine_is_numba=no`, if fit parallelism is not exercised, or if wall time is at least 600 seconds.

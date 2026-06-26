@@ -678,7 +678,7 @@ def _snapshot_rows_for_checkpoint_prefix(
     try:
         from joblib import Parallel, delayed
 
-        parts = Parallel(n_jobs=jobs, prefer="processes")(
+        tasks = [
             delayed(_prefix_rows_for_sector_items)(
                 model_payload,
                 chunk,
@@ -692,7 +692,11 @@ def _snapshot_rows_for_checkpoint_prefix(
                 snapshot_frequency,
             )
             for chunk in chunks
-        )
+        ]
+        try:
+            parts = Parallel(n_jobs=jobs, prefer="processes")(tasks)
+        except Exception:
+            parts = Parallel(n_jobs=jobs, prefer="threads")(tasks)
         rows = []
         for part in parts:
             rows.extend(part)

@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from pathlib import Path
 
 import joblib
@@ -117,7 +118,7 @@ def test_numba_engine_matches_python_on_small_synthetic_case():
     np.testing.assert_array_equal(_path_from_dp(python_out[0], python_out[1], python_out[2]), _path_from_dp(numba_out[0], numba_out[1], numba_out[2]))
 
 
-def test_auto_engine_falls_back_when_numba_unavailable(monkeypatch):
+def test_auto_engine_falls_back_when_numba_unavailable(monkeypatch, caplog):
     monkeypatch.setattr(hsmm_core, "_NUMBA_KERNEL", None)
     monkeypatch.setattr(hsmm_core, "_NUMBA_COMPILE_WARMED", False)
 
@@ -128,12 +129,15 @@ def test_auto_engine_falls_back_when_numba_unavailable(monkeypatch):
     inputs = _small_core_inputs()
 
     python_out = hsmm_core.hsmm_viterbi_dp(*inputs, engine="python")
-    auto_out = hsmm_core.hsmm_viterbi_dp(*inputs, engine="auto")
+    with caplog.at_level(logging.WARNING, logger="src.models.hsmm_core"):
+        auto_out = hsmm_core.hsmm_viterbi_dp(*inputs, engine="auto")
     diagnostic = hsmm_core.last_hsmm_engine_diagnostic()
 
     np.testing.assert_allclose(auto_out[0], python_out[0])
     assert diagnostic["resolved_engine"] == "python"
     assert "simulated numba missing" in str(diagnostic["fallback_reason"])
+    assert "HSMM auto engine fell back to python" in caplog.text
+    assert "simulated numba missing" in caplog.text
 
 
 def test_numba_engine_required_raises_when_unavailable(monkeypatch):
