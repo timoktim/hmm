@@ -672,6 +672,70 @@ class DuckDBStorage:
                 con.execute(column_sql)
             con.execute(
                 """
+                CREATE TABLE IF NOT EXISTS causal_cache_run_linkage (
+                  linkage_id TEXT PRIMARY KEY,
+                  cache_key TEXT,
+                  causal_cache_id TEXT,
+                  resolved_run_id TEXT,
+                  model_run_id TEXT,
+                  causal_evidence_id TEXT,
+                  linkage_status TEXT,
+                  linkage_confidence DOUBLE,
+                  linkage_method TEXT,
+                  feature_scope_id TEXT,
+                  universe_id TEXT,
+                  scope_type TEXT,
+                  feature_version TEXT,
+                  n_states INTEGER,
+                  cache_start_date DATE,
+                  cache_end_date DATE,
+                  model_train_start DATE,
+                  model_train_end DATE,
+                  coverage_ratio DOUBLE,
+                  expected_state_rows BIGINT,
+                  unique_cache_state_rows BIGINT,
+                  duplicate_key_count BIGINT,
+                  leakage_violation_count BIGINT,
+                  missing_metadata_count BIGINT,
+                  evidence_json TEXT,
+                  blocking_reasons_json TEXT,
+                  created_at TIMESTAMP,
+                  updated_at TIMESTAMP
+                );
+                """
+            )
+            for column_sql in [
+                "ALTER TABLE causal_cache_run_linkage ADD COLUMN IF NOT EXISTS cache_key TEXT",
+                "ALTER TABLE causal_cache_run_linkage ADD COLUMN IF NOT EXISTS causal_cache_id TEXT",
+                "ALTER TABLE causal_cache_run_linkage ADD COLUMN IF NOT EXISTS resolved_run_id TEXT",
+                "ALTER TABLE causal_cache_run_linkage ADD COLUMN IF NOT EXISTS model_run_id TEXT",
+                "ALTER TABLE causal_cache_run_linkage ADD COLUMN IF NOT EXISTS causal_evidence_id TEXT",
+                "ALTER TABLE causal_cache_run_linkage ADD COLUMN IF NOT EXISTS linkage_status TEXT",
+                "ALTER TABLE causal_cache_run_linkage ADD COLUMN IF NOT EXISTS linkage_confidence DOUBLE",
+                "ALTER TABLE causal_cache_run_linkage ADD COLUMN IF NOT EXISTS linkage_method TEXT",
+                "ALTER TABLE causal_cache_run_linkage ADD COLUMN IF NOT EXISTS feature_scope_id TEXT",
+                "ALTER TABLE causal_cache_run_linkage ADD COLUMN IF NOT EXISTS universe_id TEXT",
+                "ALTER TABLE causal_cache_run_linkage ADD COLUMN IF NOT EXISTS scope_type TEXT",
+                "ALTER TABLE causal_cache_run_linkage ADD COLUMN IF NOT EXISTS feature_version TEXT",
+                "ALTER TABLE causal_cache_run_linkage ADD COLUMN IF NOT EXISTS n_states INTEGER",
+                "ALTER TABLE causal_cache_run_linkage ADD COLUMN IF NOT EXISTS cache_start_date DATE",
+                "ALTER TABLE causal_cache_run_linkage ADD COLUMN IF NOT EXISTS cache_end_date DATE",
+                "ALTER TABLE causal_cache_run_linkage ADD COLUMN IF NOT EXISTS model_train_start DATE",
+                "ALTER TABLE causal_cache_run_linkage ADD COLUMN IF NOT EXISTS model_train_end DATE",
+                "ALTER TABLE causal_cache_run_linkage ADD COLUMN IF NOT EXISTS coverage_ratio DOUBLE",
+                "ALTER TABLE causal_cache_run_linkage ADD COLUMN IF NOT EXISTS expected_state_rows BIGINT",
+                "ALTER TABLE causal_cache_run_linkage ADD COLUMN IF NOT EXISTS unique_cache_state_rows BIGINT",
+                "ALTER TABLE causal_cache_run_linkage ADD COLUMN IF NOT EXISTS duplicate_key_count BIGINT",
+                "ALTER TABLE causal_cache_run_linkage ADD COLUMN IF NOT EXISTS leakage_violation_count BIGINT",
+                "ALTER TABLE causal_cache_run_linkage ADD COLUMN IF NOT EXISTS missing_metadata_count BIGINT",
+                "ALTER TABLE causal_cache_run_linkage ADD COLUMN IF NOT EXISTS evidence_json TEXT",
+                "ALTER TABLE causal_cache_run_linkage ADD COLUMN IF NOT EXISTS blocking_reasons_json TEXT",
+                "ALTER TABLE causal_cache_run_linkage ADD COLUMN IF NOT EXISTS created_at TIMESTAMP",
+                "ALTER TABLE causal_cache_run_linkage ADD COLUMN IF NOT EXISTS updated_at TIMESTAMP",
+            ]:
+                con.execute(column_sql)
+            con.execute(
+                """
                 CREATE TABLE IF NOT EXISTS data_health (
                   interface VARCHAR PRIMARY KEY,
                   last_success TIMESTAMP,

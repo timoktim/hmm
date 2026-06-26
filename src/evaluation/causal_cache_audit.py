@@ -17,6 +17,7 @@ from typing import Any, Mapping, Sequence
 import duckdb
 import pandas as pd
 
+from src.evaluation.causal_cache_lineage import STRONG_LINKAGE_STATUSES, load_best_lineage_for_run
 from src.evaluation.evidence_registry import EvidenceRecord, ValidationRunRecord, upsert_evidence_record, upsert_validation_run
 from src.ui.readiness_policy import CANONICAL_READINESS_STATUSES, CAUSAL_SOURCES
 
@@ -66,6 +67,10 @@ class CausalCacheAuditResult:
     local_db_used: bool = False
     tables_checked: dict[str, dict[str, Any]] = field(default_factory=dict)
     cache_linkage_status: str = "not_checked"
+    lineage_status: str | None = None
+    lineage_confidence: float | None = None
+    lineage_method: str | None = None
+    lineage_readiness_effect: str | None = None
     expected_state_rows: int = 0
     unique_cache_state_rows: int = 0
     cache_run_reported_row_count: int | None = None
@@ -487,7 +492,7 @@ def _readiness_and_status(
         return "fail", "blocked", "causal_cache_contract_violation"
     if state_source not in CAUSAL_SOURCES:
         return "partial", "research_only", "state_source_not_proven_causal"
-    if cache_linkage_status not in {"direct_run_link", "cache_id_equals_run_id"}:
+    if cache_linkage_status not in {"direct_run_link", "cache_id_equals_run_id", *STRONG_LINKAGE_STATUSES}:
         return "partial", "research_only", "cache_not_linked_to_resolved_run_id"
     if missing_metadata_count:
         return "partial", "research_only", "unknown_due_to_missing_metadata"
@@ -523,6 +528,23 @@ def build_causal_cache_audit_result(
 
     cache_run, cache_id, cache_run_id, linkage_status, cache_warnings = select_cache_run(con, resolved_run_id)
     warnings.extend(cache_warnings)
+    lineage = load_best_lineage_for_run(con, resolved_run_id=resolved_run_id, cache_key=cache_id)
+    lineage_status = lineage_confidence = lineage_method = lineage_readiness_effect = None
+    if lineage:
+        lineage_status = str(lineage.get("linkage_status") or "")
+        lineage_confidence = lineage.get("linkage_confidence")
+        lineage_method = str(lineage.get("linkage_method") or "")
+        evidence_json = lineage.get("evidence_json")
+        if evidence_json:
+            try:
+                evidence = json.loads(str(evidence_json))
+                lineage_readiness_effect = evidence.get("readiness_effect")
+            except json.JSONDecodeError:
+                lineage_readiness_effect = None
+        warnings.append(f"causal_cache_run_linkage consumed with status={lineage_status}")
+        if lineage_status in STRONG_LINKAGE_STATUSES:
+            linkage_status = lineage_status
+            cache_run_id = resolved_run_id
     state_rows, state_id_column, state_warnings = read_cache_state_rows(
         con,
         cache_id=cache_id,
@@ -619,6 +641,10 @@ def build_causal_cache_audit_result(
         local_db_used=True,
         tables_checked=tables_checked,
         cache_linkage_status=linkage_status,
+        lineage_status=lineage_status,
+        lineage_confidence=lineage_confidence,
+        lineage_method=lineage_method,
+        lineage_readiness_effect=lineage_readiness_effect,
         expected_state_rows=expected_rows,
         unique_cache_state_rows=unique_cache_state_rows,
         cache_run_reported_row_count=reported_row_count,
@@ -658,6 +684,10 @@ def _registry_payload(result: CausalCacheAuditResult, command: str | None = None
         "exec_date_violation_count": result.exec_date_violation_count,
         "readiness_status": result.readiness_status,
         "readiness_reason": result.readiness_reason,
+        "lineage_status": result.lineage_status,
+        "lineage_confidence": result.lineage_confidence,
+        "lineage_method": result.lineage_method,
+        "lineage_readiness_effect": result.lineage_readiness_effect,
     }
     return {
         "model_evidence_registry": {
@@ -767,6 +797,10 @@ def write_reports(result: CausalCacheAuditResult, output_path: str | Path, summa
         f"- causal_cache_id: {result.causal_cache_id or 'n/a'}",
         f"- cache_run_id: {result.cache_run_id or 'n/a'}",
         f"- cache_linkage_status: {result.cache_linkage_status}",
+        f"- lineage_status: {result.lineage_status or 'n/a'}",
+        f"- lineage_confidence: {result.lineage_confidence if result.lineage_confidence is not None else 'n/a'}",
+        f"- lineage_method: {result.lineage_method or 'n/a'}",
+        f"- lineage_readiness_effect: {result.lineage_readiness_effect or 'n/a'}",
         f"- state_source: {result.state_source}",
         f"- state_count: {result.state_count}",
         f"- sector_count: {result.sector_count}",

@@ -1,0 +1,227 @@
+{
+  "requested_run_id": "latest",
+  "resolved_run_id": "bea7ff20106a",
+  "cache_key": "dbefc30c9c4c2328fea7",
+  "causal_cache_id": "dbefc30c9c4c2328fea7",
+  "causal_evidence_id": "causal-evidence-9a2ca254d86fd586773f",
+  "linkage_status": "ambiguous",
+  "linkage_confidence": 0.2,
+  "linkage_method": "multiple_metadata_candidates_without_native_link",
+  "candidate_count": 7,
+  "competing_candidate_count": 6,
+  "coverage_ratio": 0.052885,
+  "native_link_available": false,
+  "strict_inferred_link_available": false,
+  "readiness_effect": "research_only_no_upgrade",
+  "required_next_action": "disambiguate competing caches by writing parent_run_id or causal_evidence_id",
+  "required_next_actions": [
+    "disambiguate competing caches by writing parent_run_id or causal_evidence_id"
+  ],
+  "blocking_reasons": [
+    "multiple_cache_candidates_match_resolved_run_metadata",
+    "strict_metadata_not_fully_matched",
+    "coverage_incomplete",
+    "walk_forward_cache_needs_explicit_causal_evidence_id"
+  ],
+  "warnings": [],
+  "db_path": "data/db/a_share_hmm.duckdb",
+  "local_db_used": true,
+  "db_preflight": "pass",
+  "tables_checked": {
+    "walk_forward_cache_runs": {
+      "present": true,
+      "row_count": 7,
+      "columns": [
+        "cache_key",
+        "n_states",
+        "train_window_days",
+        "retrain_frequency",
+        "feature_version",
+        "start_date",
+        "end_date",
+        "signal_count",
+        "row_count",
+        "created_at",
+        "params_json",
+        "params_hash",
+        "universe_id",
+        "scope_type",
+        "include_custom_baskets",
+        "rebalance_days",
+        "state_date_mode",
+        "feature_scope_id"
+      ]
+    },
+    "walk_forward_state_cache": {
+      "present": true,
+      "row_count": 226810,
+      "columns": [
+        "cache_key",
+        "sector_id",
+        "trade_date",
+        "state_id",
+        "state_label",
+        "prob_trend_up",
+        "prob_neutral",
+        "prob_risk_off",
+        "next_state_probs_json",
+        "train_start",
+        "train_end",
+        "max_observation_date_used",
+        "probability_type",
+        "state_source"
+      ]
+    },
+    "model_runs": {
+      "present": true,
+      "row_count": 25,
+      "columns": [
+        "run_id",
+        "model_type",
+        "n_states",
+        "train_start",
+        "train_end",
+        "feature_version",
+        "model_path",
+        "scaler_path",
+        "created_at",
+        "metrics_json",
+        "universe_id",
+        "scope_type",
+        "include_custom_baskets",
+        "feature_scope_id",
+        "feature_scope_type"
+      ]
+    },
+    "sector_state_daily": {
+      "present": true,
+      "row_count": 2655935,
+      "columns": [
+        "run_id",
+        "sector_id",
+        "trade_date",
+        "state_id",
+        "state_label",
+        "prob_trend_up",
+        "prob_neutral",
+        "prob_risk_off",
+        "next_state_probs_json",
+        "state_source"
+      ]
+    },
+    "hmm_confidence_run_summary": {
+      "present": false,
+      "row_count": null,
+      "columns": []
+    },
+    "hmm_label_alignment_audit": {
+      "present": false,
+      "row_count": null,
+      "columns": []
+    },
+    "hmm_churn_dwell_run_summary": {
+      "present": false,
+      "row_count": null,
+      "columns": []
+    },
+    "causal_cache_run_linkage": {
+      "present": true,
+      "row_count": 1,
+      "columns": [
+        "linkage_id",
+        "cache_key",
+        "causal_cache_id",
+        "resolved_run_id",
+        "model_run_id",
+        "causal_evidence_id",
+        "linkage_status",
+        "linkage_confidence",
+        "linkage_method",
+        "feature_scope_id",
+        "universe_id",
+        "scope_type",
+        "feature_version",
+        "n_states",
+        "cache_start_date",
+        "cache_end_date",
+        "model_train_start",
+        "model_train_end",
+        "coverage_ratio",
+        "expected_state_rows",
+        "unique_cache_state_rows",
+        "duplicate_key_count",
+        "leakage_violation_count",
+        "missing_metadata_count",
+        "evidence_json",
+        "blocking_reasons_json",
+        "created_at",
+        "updated_at"
+      ]
+    }
+  },
+  "candidate_details": [
+    {
+      "cache_key": "dbefc30c9c4c2328fea7",
+      "causal_cache_id": "dbefc30c9c4c2328fea7",
+      "causal_evidence_id": "causal-evidence-9a2ca254d86fd586773f",
+      "metadata": {
+        "cache_key": "dbefc30c9c4c2328fea7",
+        "n_states": 3,
+        "train_window_days": 504,
+        "retrain_frequency": "monthly",
+        "feature_version": "v1",
+        "start_date": "2025-01-02",
+        "end_date": "2026-05-28",
+        "signal_count": 68,
+        "row_count": 30937,
+        "created_at": "2026-05-28T23:56:07.937056",
+        "params_json": "{\"end_date\": \"2026-05-28\", \"feature_scope_id\": \"all\", \"feature_version\": \"v1\", \"include_custom_baskets\": true, \"n_states\": 3, \"rebalance_days\": 5, \"retrain_frequency\": \"monthly\", \"scope_type\": \"all\", \"start_date\": \"2025-01-02\", \"state_date_mode\": \"rebalance_signals_v2\", \"train_window_days\": 504, \"universe_id\": \"all\"}",
+        "params_hash": "dbefc30c9c4c2328fea78f7eaa4408be9f096fea",
+        "universe_id": null,
+        "scope_type": "all",
+        "include_custom_baskets": true,
+        "rebalance_days": 5,
+        "state_date_mode": "rebalance_signals_v2",
+        "feature_scope_id": "all"
+      },
+      "matching_fields": [
+        "n_states",
+        "feature_scope_id",
+        "scope_type",
+        "feature_version"
+      ],
+      "missing_or_mismatched_fields": [
+        "universe_id"
+      ],
+      "coverage_ratio": 0.052885,
+      "expected_state_rows": 584981,
+      "unique_cache_state_rows": 30937,
+      "duplicate_key_count": 0,
+      "leakage_violation_count": 0,
+      "missing_metadata_count": 0,
+      "conceptual_unit": "walk_forward_evidence_unit"
+    }
+  ],
+  "lineage_table_present": true,
+  "linkage_written": false,
+  "report_path": "reports/causal_cache_lineage/stage02_wp_e_lineage_repair_report.md",
+  "summary_json_path": "reports/causal_cache_lineage/stage02_wp_e_lineage_repair_report.json",
+  "external_data_fetch": false,
+  "training_algorithm_modified": false,
+  "duckdb_committed": false,
+  "generated_at": "2026-06-02T07:25:22+00:00",
+  "index_id": "STAGE02-WP-E-v1",
+  "status": "partial",
+  "allowed_linkage_statuses": [
+    "ambiguous",
+    "native_link",
+    "not_linkable",
+    "requires_regeneration",
+    "strict_inferred_link",
+    "weak_inferred_candidate"
+  ],
+  "strong_linkage_statuses": [
+    "native_link",
+    "strict_inferred_link"
+  ]
+}
