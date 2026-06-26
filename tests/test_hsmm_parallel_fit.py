@@ -110,6 +110,19 @@ class _InlineParallel:
         return out
 
 
+class _ProcessFailsThreadSucceeds:
+    def __init__(self, *args, **kwargs):  # noqa: ANN002, ANN003
+        self.prefer = kwargs.get("prefer")
+
+    def __call__(self, tasks):
+        if self.prefer == "processes":
+            raise PermissionError("process backend unavailable")
+        out = []
+        for func, args, kwargs in tasks:
+            out.append(func(*args, **kwargs))
+        return out
+
+
 def test_parallel_fit_matches_serial_paths_on_synthetic_data(monkeypatch):
     monkeypatch.setattr(joblib, "Parallel", _InlineParallel)
     sequences = _synthetic_sequences()
@@ -136,6 +149,26 @@ def test_parallel_fit_matches_serial_paths_on_synthetic_data(monkeypatch):
     np.testing.assert_allclose(serial.startprob_, parallel.startprob_)
     np.testing.assert_allclose(serial.transmat_, parallel.transmat_)
     np.testing.assert_allclose(serial.duration_pmf_, parallel.duration_pmf_)
+
+
+def test_parallel_fit_uses_thread_backend_when_process_backend_is_blocked(monkeypatch):
+    monkeypatch.setattr(joblib, "Parallel", _ProcessFailsThreadSucceeds)
+    model = DiscreteDurationGaussianHSMM(
+        n_states=4,
+        max_duration=12,
+        n_iter=2,
+        random_state=7,
+        engine="python",
+        n_jobs=2,
+        sequence_chunk_size=1,
+    )
+
+    model.fit(_synthetic_sequences(4), FEATURES)
+
+    assert model.fit_parallel_enabled_ is True
+    assert model.fit_parallel_fallback_ is False
+    assert model.fit_parallel_warning_ is not None
+    assert "process_backend_unavailable_used_threads" in model.fit_parallel_warning_
 
 
 def test_parallel_fit_fallback_to_serial(monkeypatch):

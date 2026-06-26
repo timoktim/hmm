@@ -1,9 +1,13 @@
 from __future__ import annotations
 
+import logging
 from dataclasses import asdict, dataclass
 from typing import Callable
 
 import numpy as np
+
+
+logger = logging.getLogger(__name__)
 
 
 @dataclass(frozen=True)
@@ -197,6 +201,13 @@ def _mark_numba_runtime_failure(exc: Exception) -> str:
     return f"numba HSMM kernel failed: {_NUMBA_LOAD_ERROR}"
 
 
+def _warn_auto_fallback(fallback_reason: object) -> None:
+    logger.warning(
+        "HSMM auto engine fell back to python; fallback_reason=%s",
+        fallback_reason or "unknown",
+    )
+
+
 def resolve_hsmm_engine(engine: str) -> str:
     engine = str(engine or "python").lower()
     if engine == "python":
@@ -211,6 +222,7 @@ def resolve_hsmm_engine(engine: str) -> str:
             _set_engine_diagnostic(engine, "unavailable", str(exc))
             raise RuntimeError(f"hsmm_engine='numba' was requested, but {exc}") from exc
         _set_engine_diagnostic(engine, "python", str(exc))
+        _warn_auto_fallback(str(exc))
         return "python"
     _set_engine_diagnostic(engine, "numba")
     return "numba"
@@ -244,6 +256,7 @@ def hsmm_viterbi_dp(
                 _set_engine_diagnostic(requested, "failed", fallback_reason)
                 raise RuntimeError(f"hsmm_engine='numba' was requested, but {fallback_reason}") from exc
             _set_engine_diagnostic(requested, "python", fallback_reason)
+            _warn_auto_fallback(fallback_reason)
     return hsmm_viterbi_dp_python(emission, log_start, log_trans, log_duration)
 
 

@@ -155,6 +155,25 @@ def test_benchmark_matrix_local_mode_skips_missing_db(tmp_path):
     assert result.stdout.strip() == "HSMM_BENCHMARK_STATUS=skipped reason=missing_db"
 
 
+def test_speedup_gate_missing_db_fails_with_machine_readable_output(tmp_path):
+    missing_db = tmp_path / "missing.duckdb"
+    result = subprocess.run(
+        ["bash", "scripts/hsmm_training_speedup_gate.sh"],
+        cwd=REPO_ROOT,
+        env=_script_env(HSMM_SPEEDUP_DB=str(missing_db)),
+        text=True,
+        capture_output=True,
+        check=False,
+    )
+
+    assert result.returncode == 1
+    lines = _parse_key_lines(result.stdout)
+    assert lines["HSMM_SPEEDUP_GATE_STATUS"] == "fail"
+    assert lines["resolved_engine_is_numba"] == "no"
+    assert lines["target_seconds"] == "600"
+    assert lines["config_unchanged"] == "yes"
+
+
 def test_benchmark_matrix_script_synthetic_smoke(tmp_path):
     output = tmp_path / "sample.jsonl"
     result = subprocess.run(
