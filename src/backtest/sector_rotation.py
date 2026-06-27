@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from collections.abc import Callable
+from dataclasses import dataclass
 
 import pandas as pd
 
@@ -23,6 +24,21 @@ from src.utils.lineage import build_model_lineage_payload, canonical_json, hash_
 
 Weights = dict[str, float]
 
+STATE_AFFECTING_BACKTEST_PARAMS = frozenset(
+    {
+        "n_states",
+        "train_window_days",
+        "retrain_frequency",
+        "rebalance_days",
+        "start_date",
+        "end_date",
+        "universe_id",
+        "include_custom_baskets",
+        "feature_version",
+    }
+)
+STATE_NEUTRAL_BACKTEST_PARAMS = frozenset({"threshold", "top_n", "transaction_cost"})
+
 _HMM_WALK_FORWARD_MODEL_VERSION = "stage03pf-wp2"
 _HMM_WALK_FORWARD_CODE_VERSION = "stage03pf-wp2"
 _HMM_WALK_FORWARD_TOL = 0.01
@@ -32,6 +48,27 @@ _CLOSE_ENTRY_DAY_POLICY = "close_execution_after_market_close"
 
 class LineageMismatchError(ValueError):
     pass
+
+
+@dataclass(frozen=True)
+class SectorRotationBacktestContext:
+    run_label: str
+    ohlcv: pd.DataFrame
+    features: pd.DataFrame
+    states: pd.DataFrame
+    state_features: pd.DataFrame
+    open_prices: pd.DataFrame
+    close_prices: pd.DataFrame
+    trade_dates: pd.Series
+    signal_dates: list[pd.Timestamp]
+    start_ts: pd.Timestamp
+    end_ts: pd.Timestamp
+    cache_hit: bool
+    walk_forward: bool
+    retrain_frequency: str
+    state_source: str
+    feature_scope_id: str
+    feature_scope_type: str
 
 
 def _load_sector_ohlcv(
@@ -622,18 +659,21 @@ def _make_events(
     return events
 
 
-def run_sector_rotation_backtest(
+def validate_state_neutral_backtest_params(params: set[str] | list[str] | tuple[str, ...]) -> None:
+    unknown = set(params) - STATE_NEUTRAL_BACKTEST_PARAMS
+    if unknown:
+        allowed = ", ".join(sorted(STATE_NEUTRAL_BACKTEST_PARAMS))
+        forbidden = ", ".join(sorted(unknown))
+        raise ValueError(f"Only state-neutral backtest params may reuse cached states: {forbidden}. Allowed: {allowed}")
+
+
+def prepare_sector_rotation_backtest_context(
     run_id: str | None = None,
-    threshold: float = 0.55,
-    top_n: int = 5,
     rebalance_days: int = 5,
     start_date: str | None = None,
     end_date: str | None = None,
     train_window_days: int | None = 504,
     n_states: int = 3,
-    execution_price: str = "open",
-    entry_day_return_policy: str | None = None,
-    transaction_cost: float = 0.001,
     walk_forward: bool = True,
     retrain_frequency: str = "monthly",
     feature_version: str = settings.default_feature_version,
@@ -642,10 +682,9 @@ def run_sector_rotation_backtest(
     include_custom_baskets: bool = True,
     progress_callback: ProgressCallback | None = None,
     storage: DuckDBStorage | None = None,
-) -> dict[str, object]:
+) -> SectorRotationBacktestContext:
     storage = storage or DuckDBStorage()
     storage.init_schema()
-    execution_policy = _resolve_execution_policy(execution_price, entry_day_return_policy, transaction_cost)
     ohlcv = _load_sector_ohlcv(storage, universe_id=universe_id, include_custom_baskets=include_custom_baskets)
     if ohlcv.empty:
         raise ValueError("缺少板块行情数据。")
@@ -714,6 +753,7 @@ def run_sector_rotation_backtest(
                 states["feature_lineage_hash"] = cache_params["feature_lineage_hash"]
             _write_walk_forward_cache(storage, cache_key, states, cache_params, signal_count=len(state_dates))
         run_label = f"walk_forward:{cache_key}"
+        state_source = "causal_backtest"
     else:
         if not allow_in_sample_demo:
             raise ValueError("训练样本内状态仅用于展示，不能用于策略回测。若要演示，请在 UI 中明确选择非因果演示模式。")
@@ -749,6 +789,7 @@ def run_sector_rotation_backtest(
             states["state_source"] = "in_sample_display"
         run_label = f"in_sample_demo:{run_id}"
         cache_hit = False
+        state_source = "in_sample_display"
 
     if states.empty:
         raise ValueError("walk-forward 训练样本不足或没有可用 HMM 状态。")
@@ -764,6 +805,41 @@ def run_sector_rotation_backtest(
     signal_dates = [pd.Timestamp(d) for d in base_signal_dates if pd.Timestamp(d) in available_state_dates]
     if not signal_dates:
         raise ValueError("可用 HMM 状态没有覆盖任何调仓信号日。")
+
+    return SectorRotationBacktestContext(
+        run_label=run_label,
+        ohlcv=ohlcv,
+        features=features,
+        states=states,
+        state_features=state_features,
+        open_prices=open_prices,
+        close_prices=close_prices,
+        trade_dates=trade_dates,
+        signal_dates=signal_dates,
+        start_ts=start_ts,
+        end_ts=end_ts,
+        cache_hit=cache_hit,
+        walk_forward=walk_forward,
+        retrain_frequency=retrain_frequency,
+        state_source=state_source,
+        feature_scope_id=feature_scope_id,
+        feature_scope_type=feature_scope_type,
+    )
+
+
+def run_sector_rotation_backtest_from_context(
+    context: SectorRotationBacktestContext,
+    threshold: float = 0.55,
+    top_n: int = 5,
+    execution_price: str = "open",
+    entry_day_return_policy: str | None = None,
+    transaction_cost: float = 0.001,
+    cache_hit_override: bool | None = None,
+) -> dict[str, object]:
+    execution_policy = _resolve_execution_policy(execution_price, entry_day_return_policy, transaction_cost)
+    features = context.features
+    state_features = context.state_features
+    close_prices = context.close_prices
 
     def choose_model(signal_date: pd.Timestamp) -> Weights:
         day = state_features[state_features["trade_date"] == signal_date]
@@ -789,17 +865,17 @@ def run_sector_rotation_backtest(
     all_events: list[pd.DataFrame] = []
     comparison_rows: list[dict[str, object]] = []
     for strategy, chooser in strategies.items():
-        events = _make_events(signal_dates, trade_dates, chooser, strategy)
+        events = _make_events(context.signal_dates, context.trade_dates, chooser, strategy)
         curve, trade_info = simulate_portfolio_returns(
-            open_prices=open_prices,
-            close_prices=close_prices,
+            open_prices=context.open_prices,
+            close_prices=context.close_prices,
             target_events=events,
             execution_price=execution_price,
             transaction_cost=transaction_cost,
             entry_day_return_policy=str(execution_policy["entry_day_return_policy"]),
         )
         if not curve.empty:
-            curve = curve[(curve["trade_date"] >= start_ts) & (curve["trade_date"] <= end_ts)].copy()
+            curve = curve[(curve["trade_date"] >= context.start_ts) & (curve["trade_date"] <= context.end_ts)].copy()
             curve["strategy"] = strategy
             curves.append(curve)
         if not events.empty:
@@ -816,8 +892,9 @@ def run_sector_rotation_backtest(
     trades_df = pd.concat(all_events, ignore_index=True) if all_events else pd.DataFrame()
     comparison = pd.DataFrame(comparison_rows)
     model_metrics = comparison[comparison["strategy"] == "model"].iloc[0].to_dict()
+    cache_hit = context.cache_hit if cache_hit_override is None else bool(cache_hit_override)
     return {
-        "run_id": run_label,
+        "run_id": context.run_label,
         "metrics": {
             "annual_return": model_metrics["annual_return_net"],
             "max_drawdown": model_metrics["max_drawdown_net"],
@@ -830,11 +907,59 @@ def run_sector_rotation_backtest(
         "curve": curve,
         "curve_long": curve_long,
         "trades": trades_df,
-        "states": states,
+        "states": context.states,
         "execution_price": execution_price,
         **execution_policy,
         "transaction_cost": transaction_cost,
-        "state_source": "causal_backtest" if walk_forward else "in_sample_display",
+        "state_source": context.state_source,
         "cache_hit": cache_hit,
-        "retrain_frequency": retrain_frequency,
+        "retrain_frequency": context.retrain_frequency,
     }
+
+
+def run_sector_rotation_backtest(
+    run_id: str | None = None,
+    threshold: float = 0.55,
+    top_n: int = 5,
+    rebalance_days: int = 5,
+    start_date: str | None = None,
+    end_date: str | None = None,
+    train_window_days: int | None = 504,
+    n_states: int = 3,
+    execution_price: str = "open",
+    entry_day_return_policy: str | None = None,
+    transaction_cost: float = 0.001,
+    walk_forward: bool = True,
+    retrain_frequency: str = "monthly",
+    feature_version: str = settings.default_feature_version,
+    allow_in_sample_demo: bool = False,
+    universe_id: str | None = None,
+    include_custom_baskets: bool = True,
+    progress_callback: ProgressCallback | None = None,
+    storage: DuckDBStorage | None = None,
+) -> dict[str, object]:
+    _resolve_execution_policy(execution_price, entry_day_return_policy, transaction_cost)
+    context = prepare_sector_rotation_backtest_context(
+        run_id=run_id,
+        rebalance_days=rebalance_days,
+        start_date=start_date,
+        end_date=end_date,
+        train_window_days=train_window_days,
+        n_states=n_states,
+        walk_forward=walk_forward,
+        retrain_frequency=retrain_frequency,
+        feature_version=feature_version,
+        allow_in_sample_demo=allow_in_sample_demo,
+        universe_id=universe_id,
+        include_custom_baskets=include_custom_baskets,
+        progress_callback=progress_callback,
+        storage=storage,
+    )
+    return run_sector_rotation_backtest_from_context(
+        context,
+        threshold=threshold,
+        top_n=top_n,
+        execution_price=execution_price,
+        entry_day_return_policy=entry_day_return_policy,
+        transaction_cost=transaction_cost,
+    )

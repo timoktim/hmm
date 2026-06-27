@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any
@@ -10,13 +11,22 @@ import numpy as np
 import pandas as pd
 
 from src.backtest.metrics import annual_return, calmar_ratio, max_drawdown, sharpe_ratio, win_rate
-from src.backtest.sector_rotation import run_sector_rotation_backtest, simulate_portfolio_returns
+from src.backtest.sector_rotation import (
+    SectorRotationBacktestContext,
+    prepare_sector_rotation_backtest_context,
+    run_sector_rotation_backtest,
+    run_sector_rotation_backtest_from_context,
+    simulate_portfolio_returns,
+    validate_state_neutral_backtest_params,
+)
 from src.config import settings
 from src.data_pipeline.calendar import assert_execution_after_signal, next_trade_date
 from src.data_pipeline.storage import DuckDBStorage
 from src.data_pipeline.universe import load_sector_like_ohlcv
 from src.features.sector_features import FEATURE_COLUMNS, feature_scope_for_universe
 from src.scoring.sector_ranker import rank_sectors
+
+_ORIGINAL_RUN_SECTOR_ROTATION_BACKTEST = run_sector_rotation_backtest
 
 
 @dataclass(frozen=True)
@@ -55,6 +65,66 @@ class SignalValidationConfig:
     rebalance_grid: tuple[int, ...] = (5, 10, 20)
 
     report_dir: str = "reports/signal_validation/primary"
+
+
+@dataclass(frozen=True)
+class _ParallelMapInfo:
+    enabled: bool
+    backend: str
+    requested_jobs: int
+    warning: str | None = None
+
+
+def _context_backtest_available() -> bool:
+    return run_sector_rotation_backtest is _ORIGINAL_RUN_SECTOR_ROTATION_BACKTEST
+
+
+def _resolve_parallel_jobs(n_jobs: int | str | None, task_count: int) -> int:
+    if task_count <= 1:
+        return 1
+    value = os.environ.get("BACKTEST_PERF_N_JOBS", n_jobs if n_jobs is not None else "auto")
+    if isinstance(value, str) and value.strip().lower() == "auto":
+        return min(task_count, max(1, os.cpu_count() or 1))
+    try:
+        jobs = int(value)
+    except (TypeError, ValueError):
+        jobs = 1
+    if jobs <= 0:
+        return min(task_count, max(1, os.cpu_count() or 1))
+    return max(1, min(task_count, jobs))
+
+
+def _parallel_map_ordered(tasks: list[object], worker, n_jobs: int | str | None = "auto") -> tuple[list[object], _ParallelMapInfo]:
+    jobs = _resolve_parallel_jobs(n_jobs, len(tasks))
+    if jobs <= 1:
+        return [worker(task) for task in tasks], _ParallelMapInfo(enabled=False, backend="serial", requested_jobs=1)
+    warning: str | None = None
+    try:
+        from joblib import Parallel, delayed
+
+        delayed_tasks = [delayed(worker)(task) for task in tasks]
+        try:
+            results = Parallel(n_jobs=jobs, prefer="processes")(delayed_tasks)
+            return results, _ParallelMapInfo(enabled=True, backend="processes", requested_jobs=jobs)
+        except Exception as process_exc:
+            warning = f"process_backend_unavailable_used_threads: {type(process_exc).__name__}: {process_exc}"
+            try:
+                results = Parallel(n_jobs=jobs, prefer="threads")(delayed_tasks)
+                return results, _ParallelMapInfo(enabled=True, backend="threads", requested_jobs=jobs, warning=warning)
+            except Exception as thread_exc:
+                warning = f"{warning}; thread_backend_failed_serial: {type(thread_exc).__name__}: {thread_exc}"
+    except Exception as exc:
+        warning = f"parallel_unavailable_serial: {type(exc).__name__}: {exc}"
+    return [worker(task) for task in tasks], _ParallelMapInfo(enabled=False, backend="serial", requested_jobs=jobs, warning=warning)
+
+
+def _attach_parallel_attrs(df: pd.DataFrame, info: _ParallelMapInfo, state_reused: bool) -> pd.DataFrame:
+    df.attrs["parallel_enabled"] = bool(info.enabled)
+    df.attrs["parallel_backend"] = info.backend
+    df.attrs["parallel_requested_jobs"] = int(info.requested_jobs)
+    df.attrs["parallel_warning"] = info.warning
+    df.attrs["state_context_reused"] = bool(state_reused)
+    return df
 
 
 def _to_jsonable(value: Any) -> Any:
@@ -438,25 +508,59 @@ def add_strategy_excess_metrics(comparison: pd.DataFrame, curve_long: pd.DataFra
     return out, excess_df
 
 
-def evaluate_cost_sensitivity(config: SignalValidationConfig, storage: DuckDBStorage, costs: tuple[float, ...]) -> pd.DataFrame:
+def _prepare_backtest_context_from_config(config: SignalValidationConfig, storage: DuckDBStorage) -> SectorRotationBacktestContext:
+    return prepare_sector_rotation_backtest_context(
+        rebalance_days=config.rebalance_days,
+        start_date=config.start_date,
+        end_date=config.end_date,
+        train_window_days=config.train_window_days,
+        n_states=config.n_states,
+        walk_forward=True,
+        retrain_frequency=config.retrain_frequency,
+        feature_version=config.feature_version,
+        allow_in_sample_demo=False,
+        universe_id=config.universe_id,
+        include_custom_baskets=config.include_custom_baskets,
+        storage=storage,
+    )
+
+
+def _run_backtest_direct(
+    config: SignalValidationConfig,
+    storage: DuckDBStorage,
+    *,
+    threshold: float,
+    top_n: int,
+    transaction_cost: float,
+) -> dict[str, object]:
+    return run_sector_rotation_backtest(
+        threshold=float(threshold),
+        top_n=int(top_n),
+        rebalance_days=config.rebalance_days,
+        start_date=config.start_date,
+        end_date=config.end_date,
+        train_window_days=config.train_window_days,
+        n_states=config.n_states,
+        execution_price=config.execution_price,
+        transaction_cost=float(transaction_cost),
+        walk_forward=True,
+        retrain_frequency=config.retrain_frequency,
+        allow_in_sample_demo=False,
+        universe_id=config.universe_id,
+        include_custom_baskets=config.include_custom_baskets,
+        storage=storage,
+    )
+
+
+def _evaluate_cost_sensitivity_direct(config: SignalValidationConfig, storage: DuckDBStorage, costs: tuple[float, ...]) -> pd.DataFrame:
     rows: list[pd.DataFrame] = []
     for cost in costs:
-        result = run_sector_rotation_backtest(
+        result = _run_backtest_direct(
+            config,
+            storage,
             threshold=config.threshold,
             top_n=config.top_n,
-            rebalance_days=config.rebalance_days,
-            start_date=config.start_date,
-            end_date=config.end_date,
-            train_window_days=config.train_window_days,
-            n_states=config.n_states,
-            execution_price=config.execution_price,
             transaction_cost=float(cost),
-            walk_forward=True,
-            retrain_frequency=config.retrain_frequency,
-            allow_in_sample_demo=False,
-            universe_id=config.universe_id,
-            include_custom_baskets=config.include_custom_baskets,
-            storage=storage,
         )
         comparison, _ = add_strategy_excess_metrics(result.get("comparison", pd.DataFrame()), result.get("curve_long", pd.DataFrame()))
         if not comparison.empty:
@@ -466,7 +570,55 @@ def evaluate_cost_sensitivity(config: SignalValidationConfig, storage: DuckDBSto
     return pd.concat(rows, ignore_index=True) if rows else pd.DataFrame()
 
 
-def evaluate_random_baseline(
+def _cost_sensitivity_worker(task: tuple[SectorRotationBacktestContext, float, int, str, float, bool]) -> pd.DataFrame:
+    context, threshold, top_n, execution_price, cost, cache_hit_override = task
+    result = run_sector_rotation_backtest_from_context(
+        context,
+        threshold=float(threshold),
+        top_n=int(top_n),
+        execution_price=execution_price,
+        transaction_cost=float(cost),
+        cache_hit_override=cache_hit_override,
+    )
+    comparison, _ = add_strategy_excess_metrics(result.get("comparison", pd.DataFrame()), result.get("curve_long", pd.DataFrame()))
+    if comparison.empty:
+        return pd.DataFrame()
+    comparison = comparison.copy()
+    comparison["transaction_cost"] = float(cost)
+    return comparison
+
+
+def evaluate_cost_sensitivity(
+    config: SignalValidationConfig,
+    storage: DuckDBStorage,
+    costs: tuple[float, ...],
+    *,
+    context: SectorRotationBacktestContext | None = None,
+    n_jobs: int | str | None = "auto",
+) -> pd.DataFrame:
+    validate_state_neutral_backtest_params(["transaction_cost"])
+    built_context_here = False
+    if context is None and _context_backtest_available():
+        context = _prepare_backtest_context_from_config(config, storage)
+        built_context_here = True
+    if context is None:
+        out = _evaluate_cost_sensitivity_direct(config, storage, costs)
+        return _attach_parallel_attrs(out, _ParallelMapInfo(False, "serial", 1), state_reused=False)
+
+    tasks: list[tuple[SectorRotationBacktestContext, float, int, str, float, bool]] = []
+    for idx, cost in enumerate(costs):
+        if context.walk_forward:
+            cache_hit_override = bool(context.cache_hit) if built_context_here and idx == 0 else True
+        else:
+            cache_hit_override = bool(context.cache_hit)
+        tasks.append((context, float(config.threshold), int(config.top_n), config.execution_price, float(cost), cache_hit_override))
+    results, info = _parallel_map_ordered(tasks, _cost_sensitivity_worker, n_jobs=n_jobs)
+    frames = [result for result in results if isinstance(result, pd.DataFrame) and not result.empty]
+    out = pd.concat(frames, ignore_index=True) if frames else pd.DataFrame()
+    return _attach_parallel_attrs(out, info, state_reused=True)
+
+
+def _evaluate_random_baseline_direct(
     ohlcv: pd.DataFrame,
     signal_dates: list[pd.Timestamp],
     top_n: int,
@@ -522,6 +674,72 @@ def evaluate_random_baseline(
     return baseline, pd.DataFrame(summary_rows)
 
 
+def evaluate_random_baseline(
+    ohlcv: pd.DataFrame,
+    signal_dates: list[pd.Timestamp],
+    top_n: int,
+    transaction_cost: float,
+    random_trials: int,
+    random_state: int,
+    n_jobs: int | str | None = "auto",
+) -> tuple[pd.DataFrame, pd.DataFrame]:
+    if random_trials <= 0 or not signal_dates:
+        return pd.DataFrame(), pd.DataFrame()
+    work = ohlcv.copy()
+    work["trade_date"] = pd.to_datetime(work["trade_date"])
+    open_prices = work.pivot(index="trade_date", columns="sector_id", values="open").sort_index()
+    close_prices = work.pivot(index="trade_date", columns="sector_id", values="close").sort_index()
+    trade_dates = pd.Series(close_prices.index)
+    rng = np.random.default_rng(random_state)
+    tasks: list[tuple[int, pd.DataFrame, pd.DataFrame, pd.DataFrame, float]] = []
+    for trial in range(random_trials):
+        events: list[dict[str, object]] = []
+        for signal_date in signal_dates:
+            signal_date = pd.Timestamp(signal_date)
+            exec_date = next_trade_date(trade_dates, signal_date)
+            if exec_date is None or signal_date not in close_prices.index:
+                continue
+            available = close_prices.loc[signal_date].dropna().index.astype(str).tolist()
+            if not available:
+                continue
+            chosen = rng.choice(available, size=min(top_n, len(available)), replace=False).tolist()
+            weight = 1.0 / len(chosen)
+            events.append({"signal_date": signal_date, "exec_date": exec_date, "weights": {sid: weight for sid in chosen}})
+        tasks.append((trial, pd.DataFrame(events), open_prices, close_prices, float(transaction_cost)))
+    results, info = _parallel_map_ordered(tasks, _random_baseline_worker, n_jobs=n_jobs)
+    rows = [result for result in results if isinstance(result, dict)]
+    baseline = pd.DataFrame(rows)
+    if baseline.empty:
+        return _attach_parallel_attrs(baseline, info, state_reused=False), pd.DataFrame()
+    summary_rows: list[dict[str, object]] = []
+    for metric in ["annual_return_net", "max_drawdown_net", "sharpe_net", "calmar_net", "turnover"]:
+        values = pd.to_numeric(baseline[metric], errors="coerce").dropna()
+        if values.empty:
+            continue
+        summary_rows.append(
+            {
+                "metric": metric,
+                "random_mean": float(values.mean()),
+                "random_median": float(values.median()),
+                "random_p75": float(values.quantile(0.75)),
+                "random_p90": float(values.quantile(0.90)),
+                "random_p95": float(values.quantile(0.95)),
+            }
+        )
+    baseline = _attach_parallel_attrs(baseline, info, state_reused=False)
+    summary = _attach_parallel_attrs(pd.DataFrame(summary_rows), info, state_reused=False)
+    return baseline, summary
+
+
+def _random_baseline_worker(task: tuple[int, pd.DataFrame, pd.DataFrame, pd.DataFrame, float]) -> dict[str, object] | None:
+    trial, events, open_prices, close_prices, transaction_cost = task
+    if events.empty:
+        return None
+    curve, _ = simulate_portfolio_returns(open_prices, close_prices, events, execution_price="open", transaction_cost=transaction_cost)
+    metrics = _strategy_metrics_from_curve(curve)
+    return {"trial": int(trial), **metrics}
+
+
 def evaluate_period_breakdown(curve_long: pd.DataFrame) -> pd.DataFrame:
     if curve_long.empty:
         return pd.DataFrame()
@@ -548,26 +766,16 @@ def evaluate_period_breakdown(curve_long: pd.DataFrame) -> pd.DataFrame:
     return out.drop(columns=["rs20_return"])
 
 
-def evaluate_selection_grid(config: SignalValidationConfig, storage: DuckDBStorage) -> pd.DataFrame:
+def _evaluate_selection_grid_direct(config: SignalValidationConfig, storage: DuckDBStorage) -> pd.DataFrame:
     rows: list[dict[str, object]] = []
     for threshold in config.threshold_grid:
         for top_n in config.top_n_grid:
-            result = run_sector_rotation_backtest(
+            result = _run_backtest_direct(
+                config,
+                storage,
                 threshold=float(threshold),
                 top_n=int(top_n),
-                rebalance_days=config.rebalance_days,
-                start_date=config.start_date,
-                end_date=config.end_date,
-                train_window_days=config.train_window_days,
-                n_states=config.n_states,
-                execution_price=config.execution_price,
                 transaction_cost=config.transaction_cost,
-                walk_forward=True,
-                retrain_frequency=config.retrain_frequency,
-                allow_in_sample_demo=False,
-                universe_id=config.universe_id,
-                include_custom_baskets=config.include_custom_baskets,
-                storage=storage,
             )
             comparison, _ = add_strategy_excess_metrics(result.get("comparison", pd.DataFrame()), result.get("curve_long", pd.DataFrame()))
             model = comparison[comparison["strategy"].eq("model")].head(1)
@@ -591,6 +799,78 @@ def evaluate_selection_grid(config: SignalValidationConfig, storage: DuckDBStora
     return pd.DataFrame(rows)
 
 
+def _selection_grid_worker(task: tuple[SectorRotationBacktestContext, SignalValidationConfig, float, int, bool]) -> dict[str, object] | None:
+    context, config, threshold, top_n, cache_hit_override = task
+    result = run_sector_rotation_backtest_from_context(
+        context,
+        threshold=float(threshold),
+        top_n=int(top_n),
+        execution_price=config.execution_price,
+        transaction_cost=config.transaction_cost,
+        cache_hit_override=cache_hit_override,
+    )
+    comparison, _ = add_strategy_excess_metrics(result.get("comparison", pd.DataFrame()), result.get("curve_long", pd.DataFrame()))
+    model = comparison[comparison["strategy"].eq("model")].head(1)
+    if model.empty:
+        return None
+    row = model.iloc[0].to_dict()
+    return {
+        "n_states": config.n_states,
+        "train_window_days": config.train_window_days,
+        "rebalance_days": config.rebalance_days,
+        "threshold": float(threshold),
+        "top_n": int(top_n),
+        "transaction_cost": config.transaction_cost,
+        "cache_hit": bool(result.get("cache_hit", False)),
+        "signal_count": int(result.get("states", pd.DataFrame()).get("trade_date", pd.Series(dtype=object)).nunique()),
+        "trade_count": int(len(result.get("trades", pd.DataFrame()))),
+        **{
+            k: row.get(k)
+            for k in [
+                "annual_return_net",
+                "max_drawdown_net",
+                "sharpe_net",
+                "calmar_net",
+                "turnover",
+                "excess_annual_return_net_vs_baseline_1_rs20_top_n",
+                "excess_sharpe_net_vs_baseline_1_rs20_top_n",
+            ]
+        },
+    }
+
+
+def evaluate_selection_grid(
+    config: SignalValidationConfig,
+    storage: DuckDBStorage,
+    *,
+    context: SectorRotationBacktestContext | None = None,
+    n_jobs: int | str | None = "auto",
+) -> pd.DataFrame:
+    validate_state_neutral_backtest_params(["threshold", "top_n", "transaction_cost"])
+    built_context_here = False
+    if context is None and _context_backtest_available():
+        context = _prepare_backtest_context_from_config(config, storage)
+        built_context_here = True
+    if context is None:
+        out = _evaluate_selection_grid_direct(config, storage)
+        return _attach_parallel_attrs(out, _ParallelMapInfo(False, "serial", 1), state_reused=False)
+
+    tasks: list[tuple[SectorRotationBacktestContext, SignalValidationConfig, float, int, bool]] = []
+    idx = 0
+    for threshold in config.threshold_grid:
+        for top_n in config.top_n_grid:
+            if context.walk_forward:
+                cache_hit_override = bool(context.cache_hit) if built_context_here and idx == 0 else True
+            else:
+                cache_hit_override = bool(context.cache_hit)
+            tasks.append((context, config, float(threshold), int(top_n), cache_hit_override))
+            idx += 1
+    results, info = _parallel_map_ordered(tasks, _selection_grid_worker, n_jobs=n_jobs)
+    rows = [result for result in results if isinstance(result, dict)]
+    out = pd.DataFrame(rows)
+    return _attach_parallel_attrs(out, info, state_reused=True)
+
+
 def _resolve_config_dates(config: SignalValidationConfig, ohlcv: pd.DataFrame) -> SignalValidationConfig:
     end_date = _normalize_end_date(config, ohlcv)
     start_date = config.start_date
@@ -605,10 +885,14 @@ def _build_signal_frame(
     horizons: tuple[int, ...],
     feature_scope_id: str = "all",
     feature_scope_type: str = "all",
+    features: pd.DataFrame | None = None,
 ) -> pd.DataFrame:
-    from src.backtest.sector_rotation import _build_raw_features
+    if features is None:
+        from src.backtest.sector_rotation import _build_raw_features
 
-    features = _build_raw_features(ohlcv, feature_version=settings.default_feature_version, feature_scope_id=feature_scope_id, feature_scope_type=feature_scope_type)
+        features = _build_raw_features(ohlcv, feature_version=settings.default_feature_version, feature_scope_id=feature_scope_id, feature_scope_type=feature_scope_type)
+    else:
+        features = features.copy()
     states_work = states.copy()
     states_work["trade_date"] = pd.to_datetime(states_work["trade_date"])
     features["trade_date"] = pd.to_datetime(features["trade_date"])
@@ -799,44 +1083,49 @@ def run_signal_validation(config: SignalValidationConfig) -> dict[str, pd.DataFr
     if ohlcv.empty:
         raise ValueError("指定日期范围内缺少板块行情。")
 
-    from src.backtest.sector_rotation import _build_raw_features
-
     feature_scope_id, feature_scope_type = feature_scope_for_universe(storage, resolved_config.universe_id, resolved_config.include_custom_baskets)
-    features = _build_raw_features(full_ohlcv, feature_version=resolved_config.feature_version, feature_scope_id=feature_scope_id, feature_scope_type=feature_scope_type)
+    backtest_context: SectorRotationBacktestContext | None = None
+    if _context_backtest_available():
+        backtest_context = _prepare_backtest_context_from_config(resolved_config, storage)
+        features_full = backtest_context.features.copy()
+    else:
+        from src.backtest.sector_rotation import _build_raw_features
+
+        features_full = _build_raw_features(full_ohlcv, feature_version=resolved_config.feature_version, feature_scope_id=feature_scope_id, feature_scope_type=feature_scope_type)
+    audit_features = features_full
     if resolved_config.start_date:
-        features = features[pd.to_datetime(features["trade_date"]) >= pd.to_datetime(resolved_config.start_date)].copy()
+        audit_features = audit_features[pd.to_datetime(audit_features["trade_date"]) >= pd.to_datetime(resolved_config.start_date)].copy()
     if resolved_config.end_date:
-        features = features[pd.to_datetime(features["trade_date"]) <= pd.to_datetime(resolved_config.end_date)].copy()
-    data_audit = build_data_audit(ohlcv, features)
+        audit_features = audit_features[pd.to_datetime(audit_features["trade_date"]) <= pd.to_datetime(resolved_config.end_date)].copy()
+    data_audit = build_data_audit(ohlcv, audit_features)
     if int(data_audit.loc[0, "duplicate_key_count"]) > 0:
         raise ValueError("数据审计失败：存在重复 sector_id + trade_date。")
     if int(data_audit.loc[0, "non_positive_open_count"]) > 0 or int(data_audit.loc[0, "non_positive_close_count"]) > 0:
         raise ValueError("数据审计失败：存在 open/close <= 0。")
 
-    result = run_sector_rotation_backtest(
-        threshold=resolved_config.threshold,
-        top_n=resolved_config.top_n,
-        rebalance_days=resolved_config.rebalance_days,
-        start_date=resolved_config.start_date,
-        end_date=resolved_config.end_date,
-        train_window_days=resolved_config.train_window_days,
-        n_states=resolved_config.n_states,
-        execution_price=resolved_config.execution_price,
-        transaction_cost=resolved_config.transaction_cost,
-        walk_forward=True,
-        retrain_frequency=resolved_config.retrain_frequency,
-        allow_in_sample_demo=False,
-        universe_id=resolved_config.universe_id,
-        include_custom_baskets=resolved_config.include_custom_baskets,
-        storage=storage,
-    )
+    if backtest_context is not None:
+        result = run_sector_rotation_backtest_from_context(
+            backtest_context,
+            threshold=resolved_config.threshold,
+            top_n=resolved_config.top_n,
+            execution_price=resolved_config.execution_price,
+            transaction_cost=resolved_config.transaction_cost,
+        )
+    else:
+        result = _run_backtest_direct(
+            resolved_config,
+            storage,
+            threshold=resolved_config.threshold,
+            top_n=resolved_config.top_n,
+            transaction_cost=resolved_config.transaction_cost,
+        )
     states = result.get("states", pd.DataFrame())
     trades = result.get("trades", pd.DataFrame())
     causality = causality_audit(states, trades)
     if not causality["passed"].all():
         signal_frame = pd.DataFrame()
     else:
-        signal_frame = _build_signal_frame(states, full_ohlcv, resolved_config.horizons, feature_scope_id, feature_scope_type)
+        signal_frame = _build_signal_frame(states, full_ohlcv, resolved_config.horizons, feature_scope_id, feature_scope_type, features=features_full)
 
     score_cols = ["score_prob_only", "score_prob_spread", "score_ranker", "rs_20d", "ret_20d"]
     if signal_frame.empty:
@@ -847,7 +1136,7 @@ def run_signal_validation(config: SignalValidationConfig) -> dict[str, pd.DataFr
         bucket_returns, bucket_spreads = evaluate_score_buckets(signal_frame, score_cols, resolved_config.horizons, min_cross_section=resolved_config.min_cross_section, bootstrap_rounds=resolved_config.bootstrap_rounds, random_state=resolved_config.random_state)
 
     comparison, excess_metrics = add_strategy_excess_metrics(result.get("comparison", pd.DataFrame()), result.get("curve_long", pd.DataFrame()))
-    cost_sensitivity = evaluate_cost_sensitivity(resolved_config, storage, resolved_config.cost_grid)
+    cost_sensitivity = evaluate_cost_sensitivity(resolved_config, storage, resolved_config.cost_grid, context=backtest_context)
     signal_dates = sorted(pd.to_datetime(states["trade_date"].drop_duplicates()).tolist()) if not states.empty else []
     if resolved_config.skip_random_baseline:
         random_baseline = random_summary = pd.DataFrame()
@@ -865,7 +1154,7 @@ def run_signal_validation(config: SignalValidationConfig) -> dict[str, pd.DataFr
                     random_summary.loc[idx, "model_percentile_vs_random"] = float((random_values <= model_value).mean()) if not random_values.empty else np.nan
                     random_summary.loc[idx, "empirical_p_value_random_ge_model"] = float((random_values >= model_value).mean()) if not random_values.empty else np.nan
 
-    robustness_selection = pd.DataFrame() if resolved_config.skip_robustness else evaluate_selection_grid(resolved_config, storage)
+    robustness_selection = pd.DataFrame() if resolved_config.skip_robustness else evaluate_selection_grid(resolved_config, storage, context=backtest_context)
     robustness_model = pd.DataFrame()
     period_breakdown = evaluate_period_breakdown(result.get("curve_long", pd.DataFrame()))
     conclusion = _summary_conclusion(causality, signal_frame, state_spreads, score_ic, comparison, random_summary, cost_sensitivity, robustness_selection)
@@ -896,7 +1185,20 @@ def run_signal_validation(config: SignalValidationConfig) -> dict[str, pd.DataFr
         "robustness_selection_grid": robustness_selection,
         "robustness_model_grid": robustness_model,
         "period_breakdown": period_breakdown,
-        "summary": {"conclusion_level": conclusion[0], "conclusion_text": conclusion[1], "report_dir": str(report_dir), "cache_hit": bool(result.get("cache_hit", False)), "run_id": result.get("run_id")},
+        "summary": {
+            "conclusion_level": conclusion[0],
+            "conclusion_text": conclusion[1],
+            "report_dir": str(report_dir),
+            "cache_hit": bool(result.get("cache_hit", False)),
+            "run_id": result.get("run_id"),
+            "backtest_state_context_reused": backtest_context is not None,
+            "cost_parallel_backend": cost_sensitivity.attrs.get("parallel_backend"),
+            "cost_parallel_enabled": bool(cost_sensitivity.attrs.get("parallel_enabled", False)),
+            "random_parallel_backend": random_baseline.attrs.get("parallel_backend") if isinstance(random_baseline, pd.DataFrame) else None,
+            "random_parallel_enabled": bool(random_baseline.attrs.get("parallel_enabled", False)) if isinstance(random_baseline, pd.DataFrame) else False,
+            "selection_parallel_backend": robustness_selection.attrs.get("parallel_backend") if isinstance(robustness_selection, pd.DataFrame) else None,
+            "selection_parallel_enabled": bool(robustness_selection.attrs.get("parallel_enabled", False)) if isinstance(robustness_selection, pd.DataFrame) else False,
+        },
     }
     for name, value in outputs.items():
         if isinstance(value, pd.DataFrame):
